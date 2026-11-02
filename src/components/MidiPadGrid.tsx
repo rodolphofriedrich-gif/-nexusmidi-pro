@@ -129,9 +129,10 @@ export function MidiPadGrid({ isActive, isConnected, onNoteOn, onNoteOff, onDisa
   return (
     <div className="flex flex-col w-full h-full bg-[#0a0f1c] rounded-xl border border-[#1e293b] overflow-hidden relative">
       
+      {/* MODAL DE EDIÇÃO (AGORA FIXED PARA COBRIR A TELA TODA) */}
       {editPadIndex !== null && (
-        <div className="absolute inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-          <form onSubmit={handleSavePad} className="bg-[#0f172a] border border-slate-700 rounded-xl p-4 w-full max-w-sm space-y-4">
+        <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+          <form onSubmit={handleSavePad} className="bg-[#0f172a] border border-slate-700 rounded-xl p-4 w-full max-w-sm space-y-4 shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
               <h3 className="text-sm font-bold text-white">Editar Pad</h3>
               <button type="button" onClick={() => setEditPadIndex(null)}><X size={16} className="text-slate-400" /></button>
@@ -163,6 +164,7 @@ export function MidiPadGrid({ isActive, isConnected, onNoteOn, onNoteOff, onDisa
         </div>
       )}
 
+      {/* BARRA DE BANCOS */}
       <div className="flex items-center justify-between bg-[#0f172a] border-b border-[#1e293b] px-2 py-1 shrink-0">
         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-1">{isFullscreen ? tr('Pads') : tr('Pads de Bateria')}</span>
         <div className="flex items-center gap-1">
@@ -174,6 +176,7 @@ export function MidiPadGrid({ isActive, isConnected, onNoteOn, onNoteOff, onDisa
         </div>
       </div>
 
+      {/* GRID */}
       <div className="grid grid-cols-4 grid-rows-2 gap-1 sm:gap-1.5 w-full h-full p-1 sm:p-1.5">
         {banksData[bank].map((pad, index) => {
           const isPressed = pressedPads.has(pad.note);
