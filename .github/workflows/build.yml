@@ -39,8 +39,7 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-
+        npm install
       - name: Typecheck
         run: npm run typecheck
 
@@ -89,7 +88,7 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npm install
 
       - name: Definir versão do app
         run: |
