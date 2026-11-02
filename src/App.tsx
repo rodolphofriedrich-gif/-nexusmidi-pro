@@ -25,7 +25,7 @@ import { tr } from './i18n';
 import { midiManager } from './services/midiService';
 import { NativeMidi } from './services/nativeMidi';
 import { performanceEngine } from './services/performanceService';
-import { prefsStore } from './services/stores';
+import { prefsStore } from './stores/stores'; // ATENÇÃO: Verifique o caminho correto do prefsStore
 import { synthService } from './services/synthService';
 
 type AppTab = 'keyboard' | 'router' | 'studio' | 'monitor';
@@ -73,10 +73,26 @@ export default function App() {
     document.documentElement.lang = prefs.language;
   }, [prefs.language]);
 
+  // Lógica robusta do VU Meter
   useEffect(() => {
-    const onActivity = (velocity: number) => setVuLevel(velocity);
+    let lastActivity = 0;
+    const onActivity = (velocity: number) => {
+      lastActivity = Date.now();
+      setVuLevel(velocity);
+    };
     midiManager.addActivityListener(onActivity);
-    return () => midiManager.removeActivityListener(onActivity);
+    
+    // Timer para limpar o VU se ficar muito tempo sem atividade
+    const interval = setInterval(() => {
+      if (Date.now() - lastActivity > 150) {
+        setVuLevel(0);
+      }
+    }, 200);
+
+    return () => {
+      midiManager.removeActivityListener(onActivity);
+      clearInterval(interval);
+    };
   }, []);
 
   const connectedIds = useMemo(() => new Set(devices.connected.map((d) => d.id)), [devices.connected]);
