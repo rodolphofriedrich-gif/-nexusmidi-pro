@@ -15,14 +15,11 @@
 /* Evita que a altura da tela varie com as barras do navegador */
 @supports (height: 100dvh) {
   .nexus-app {
-  height: 100dvh;
-  transition: padding 0.2s ease;
+    height: 100dvh;
+  }
 }
 
-/* Fullscreen Mode */
-.nexus-app.is-fullscreen {
-  padding: 0 !important;
-}
+/* Fullscreen Mode (esconde o header e VU quando ativado) */
 .nexus-app.is-fullscreen .nexus-header,
 .nexus-app.is-fullscreen .nexus-midi-status {
   display: none !important;
