@@ -38,8 +38,7 @@ jobs:
           restore-keys: npm-${{ runner.os }}-
 
       - name: Instalar dependências
-        run: |
-        npm install
+        run: npm install
       - name: Typecheck
         run: npm run typecheck
 
@@ -87,8 +86,7 @@ jobs:
           restore-keys: npm-${{ runner.os }}-
 
       - name: Instalar dependências
-        run: |
-          npm install
+        run:  npm install
 
       - name: Definir versão do app
         run: |
