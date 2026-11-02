@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Settings2, X, Save } from 'lucide-react';
+import { Settings2, X, Save } from 'lucide-react';
 import { tr } from '../i18n';
 
 interface MidiPadGridProps {
@@ -14,11 +14,10 @@ interface MidiPadGridProps {
 export interface PadData {
   note: number;
   label: string;
-  color: string; // ex: 'bg-blue-500'
+  color: string; 
 }
 
 const DEFAULT_BANKS: PadData[][] = [
-  // Banco 1
   [
     { note: 36, label: 'Bumbo', color: 'bg-blue-500' },
     { note: 38, label: 'Caixa', color: 'bg-red-500' },
@@ -29,7 +28,6 @@ const DEFAULT_BANKS: PadData[][] = [
     { note: 48, label: 'Tom A.', color: 'bg-green-300' },
     { note: 50, label: 'Tom Alto', color: 'bg-teal-500' },
   ],
-  // Banco 2
   [
     { note: 49, label: 'Prato C.', color: 'bg-cyan-500' },
     { note: 51, label: 'Prato R.', color: 'bg-cyan-400' },
@@ -40,7 +38,6 @@ const DEFAULT_BANKS: PadData[][] = [
     { note: 61, label: 'Bongo G.', color: 'bg-purple-400' },
     { note: 76, label: 'Madeira', color: 'bg-stone-500' },
   ],
-  // Banco 3 e 4 (Customizáveis)
   [...Array(8)].map((_, i) => ({ note: 60 + i, label: `Nota ${60 + i}`, color: 'bg-slate-600' })),
   [...Array(8)].map((_, i) => ({ note: 72 + i, label: `Nota ${72 + i}`, color: 'bg-slate-500' })),
 ];
@@ -132,7 +129,6 @@ export function MidiPadGrid({ isActive, isConnected, onNoteOn, onNoteOff, onDisa
   return (
     <div className="flex flex-col w-full h-full bg-[#0a0f1c] rounded-xl border border-[#1e293b] overflow-hidden relative">
       
-      {/* MODAL DE EDIÇÃO DE PAD */}
       {editPadIndex !== null && (
         <div className="absolute inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
           <form onSubmit={handleSavePad} className="bg-[#0f172a] border border-slate-700 rounded-xl p-4 w-full max-w-sm space-y-4">
@@ -167,7 +163,6 @@ export function MidiPadGrid({ isActive, isConnected, onNoteOn, onNoteOff, onDisa
         </div>
       )}
 
-      {/* BARRA DE BANCOS */}
       <div className="flex items-center justify-between bg-[#0f172a] border-b border-[#1e293b] px-2 py-1 shrink-0">
         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-1">{isFullscreen ? tr('Pads') : tr('Pads de Bateria')}</span>
         <div className="flex items-center gap-1">
@@ -179,7 +174,6 @@ export function MidiPadGrid({ isActive, isConnected, onNoteOn, onNoteOff, onDisa
         </div>
       </div>
 
-      {/* GRID */}
       <div className="grid grid-cols-4 grid-rows-2 gap-1 sm:gap-1.5 w-full h-full p-1 sm:p-1.5">
         {banksData[bank].map((pad, index) => {
           const isPressed = pressedPads.has(pad.note);
@@ -190,13 +184,12 @@ export function MidiPadGrid({ isActive, isConnected, onNoteOn, onNoteOff, onDisa
               onPointerUp={(e) => { releasePad(pad.note, e.pointerId); }}
               onPointerCancel={(e) => { releasePad(pad.note, e.pointerId); }}
               onLostPointerCapture={() => releasePad(pad.note, -1)}
-              onContextMenu={(e) => { e.preventDefault(); setEditPadIndex(index); }} // Editar ao segurar (long press)
+              onContextMenu={(e) => { e.preventDefault(); setEditPadIndex(index); }}
               role="button"
               className={`relative flex flex-col items-center justify-center rounded-lg border-2 transition-all duration-75 select-none cursor-pointer overflow-hidden ${isPressed ? `border-white/80 ${pad.color} shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-[0.96] z-10` : `border-[#1e293b] bg-[#0f172a] hover:bg-[#151e2e] shadow-md`} ${!isActive ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
               style={{ touchAction: 'none' }}>
               <div className={`absolute inset-0 opacity-10 ${pad.color} ${isPressed ? 'opacity-50' : ''} transition-opacity`} />
               
-              {/* Botão de engrenagem para editar no canto */}
               <button type="button" onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); }} className="absolute top-1 right-1 z-20 p-1 bg-black/40 rounded hover:bg-black/80 text-white/50 hover:text-white transition">
                 <Settings2 size={10} />
               </button>
