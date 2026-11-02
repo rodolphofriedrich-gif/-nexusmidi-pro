@@ -129,7 +129,7 @@ export function MidiPadGrid({ isActive, isConnected, onNoteOn, onNoteOff, onDisa
   return (
     <div className="flex flex-col w-full h-full bg-[#0a0f1c] rounded-xl border border-[#1e293b] overflow-hidden relative">
       
-      {/* MODAL DE EDIÇÃO (AGORA FIXED PARA COBRIR A TELA TODA) */}
+      {/* MODAL DE EDIÇÃO */}
       {editPadIndex !== null && (
         <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
           <form onSubmit={handleSavePad} className="bg-[#0f172a] border border-slate-700 rounded-xl p-4 w-full max-w-sm space-y-4 shadow-2xl">
@@ -164,7 +164,6 @@ export function MidiPadGrid({ isActive, isConnected, onNoteOn, onNoteOff, onDisa
         </div>
       )}
 
-      {/* BARRA DE BANCOS */}
       <div className="flex items-center justify-between bg-[#0f172a] border-b border-[#1e293b] px-2 py-1 shrink-0">
         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-1">{isFullscreen ? tr('Pads') : tr('Pads de Bateria')}</span>
         <div className="flex items-center gap-1">
@@ -176,7 +175,6 @@ export function MidiPadGrid({ isActive, isConnected, onNoteOn, onNoteOff, onDisa
         </div>
       </div>
 
-      {/* GRID */}
       <div className="grid grid-cols-4 grid-rows-2 gap-1 sm:gap-1.5 w-full h-full p-1 sm:p-1.5">
         {banksData[bank].map((pad, index) => {
           const isPressed = pressedPads.has(pad.note);
@@ -193,9 +191,12 @@ export function MidiPadGrid({ isActive, isConnected, onNoteOn, onNoteOff, onDisa
               style={{ touchAction: 'none' }}>
               <div className={`absolute inset-0 opacity-10 ${pad.color} ${isPressed ? 'opacity-50' : ''} transition-opacity`} />
               
-              <button type="button" onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); }} className="absolute top-1 right-1 z-20 p-1 bg-black/40 rounded hover:bg-black/80 text-white/50 hover:text-white transition">
-                <Settings2 size={10} />
-              </button>
+              {/* Botão de engrenagem só aparece se NÃO estiver em fullscreen */}
+              {!isFullscreen && (
+                <button type="button" onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); }} className="absolute top-1 right-1 z-20 p-1 bg-black/40 rounded hover:bg-black/80 text-white/50 hover:text-white transition">
+                  <Settings2 size={10} />
+                </button>
+              )}
 
               <div className="flex flex-col items-center justify-center h-full w-full p-0.5 z-10 pointer-events-none">
                 <span className={`text-[11px] sm:text-[13px] font-extrabold text-center leading-tight drop-shadow-md truncate w-full px-0.5 ${isPressed ? 'text-white' : 'text-slate-200'}`}>{pad.label}</span>
