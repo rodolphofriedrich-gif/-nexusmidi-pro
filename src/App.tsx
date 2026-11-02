@@ -25,7 +25,7 @@ import { tr } from './i18n';
 import { midiManager } from './services/midiService';
 import { NativeMidi } from './services/nativeMidi';
 import { performanceEngine } from './services/performanceService';
-import { prefsStore } from './stores/stores'; // ATENÇÃO: Verifique o caminho correto do prefsStore
+import { prefsStore } from './services/stores'; // ATENÇÃO: Verifique o caminho correto do prefsStore
 import { synthService } from './services/synthService';
 
 type AppTab = 'keyboard' | 'router' | 'studio' | 'monitor';
