@@ -55,7 +55,7 @@ export const en: Record<string, string> = {
   "Carregue um arquivo .sf2 primeiro.": "Load an .sf2 file first.",
   "Centralizar Roda": "Center Wheel",
   "Champagne": "Champagne",
-  "Chimbal F.": 'Closed H.H.',
+  "Chimbal F.": "Closed H.H.",
   "Chimbal A.": "Open H.H.",
   "Chorus": "Chorus",
   "Com uma escala ativa, notas fora dela são ajustadas para a mais próxima.": "With a scale active, notes outside it are snapped to the nearest one.",
