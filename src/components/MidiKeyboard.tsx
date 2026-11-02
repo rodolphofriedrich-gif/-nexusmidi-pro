@@ -44,7 +44,8 @@ const OCTAVE_NOTES = [
 ] as const;
 
 const TOTAL_WHITE_KEYS = 14;
-const MIN_KEY_WIDTH = 35;
+// MUDANÇA: Tamanho mínimo das teclas aumentado para 52px
+const MIN_KEY_WIDTH = 52; 
 const MAX_KEY_WIDTH = 95;
 
 export function MidiKeyboard({
@@ -56,7 +57,7 @@ export function MidiKeyboard({
 }: MidiKeyboardProps) {
   const [viewMode, setViewMode] = useState<'keyboard' | 'pads'>('keyboard');
   const [startOctave, setStartOctave] = useState(3);
-  const [keyWidth, setKeyWidth] = useState(60);
+  const [keyWidth, setKeyWidth] = useState(MIN_KEY_WIDTH);
   const [minKeyWidth, setMinKeyWidth] = useState(MIN_KEY_WIDTH);
   const [isScrollLocked, setIsScrollLocked] = useState(false);
   const [pressedNotes, setPressedNotes] = useState<Set<number>>(() => new Set());
@@ -252,7 +253,6 @@ export function MidiKeyboard({
           </div>
           <button type="button" onClick={onToggleActive} className={`flex h-8 items-center justify-center gap-1.5 rounded-lg border px-3 text-[10px] font-bold transition-all ${isActive ? 'border-cyan-700/50 bg-cyan-900/30 text-cyan-400' : 'border-slate-700 bg-slate-800/50 text-slate-500'}`}><Power size={14} /><span className="hidden sm:inline">{isActive ? 'ON' : 'OFF'}</span></button>
           
-          {/* SUSTAIN: Só aparece se NÃO estiver em fullscreen */}
           {!isFullscreen && (
             <button type="button" onClick={onToggleSustain} className={`flex h-8 items-center justify-center gap-1.5 rounded-lg border px-3 text-[10px] font-bold transition-all ${isSustainActive ? 'border-amber-500/50 bg-amber-900/30 text-amber-400' : 'border-slate-700 bg-slate-800/50 text-slate-400'}`}><Pause size={14} /><span className="hidden sm:inline">SUSTAIN</span></button>
           )}
@@ -297,15 +297,15 @@ export function MidiKeyboard({
             <SlidersHorizontal size={14} />
           </button>
 
-          {/* MENU DE CONFIGURAÇÕES RÁPIDAS MAIS LARGO */}
+          {/* MENU DE CONFIGURAÇÕES MAIS LARGO */}
           {isQuickSettingsOpen && (
-            <div className="absolute top-full right-0 z-[150] mt-2 w-[340px] sm:w-[400px] max-h-[75vh] overflow-y-auto custom-scrollbar rounded-xl border border-slate-700 bg-[#0f172a] p-3 shadow-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute top-full right-0 z-[150] mt-2 w-[92vw] max-w-[420px] max-h-[75vh] overflow-y-auto custom-scrollbar rounded-xl border border-slate-700 bg-[#0f172a] p-4 shadow-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-150">
               
               <div>
-                <label className="flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400 mb-1.5"><Activity size={12} /> {tr('Intensidade (Velocity)')}</label>
-                <div className="grid grid-cols-4 gap-1.5">
+                <label className="flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400 mb-2"><Activity size={12} /> {tr('Intensidade (Velocity)')}</label>
+                <div className="grid grid-cols-4 gap-2">
                   {[{ id: 30, label: tr('Suave') }, { id: 64, label: tr('Médio') }, { id: 100, label: tr('Forte') }, { id: 127, label: tr('Max') }].map((v) => (
-                    <button type="button" key={v.id} onClick={() => onSelectVelocity(v.id)} className={`flex flex-col items-center justify-center py-1.5 rounded-lg border transition-all ${selectedVelocity === v.id ? 'bg-cyan-900/40 border-cyan-600/50 text-cyan-300 font-bold shadow-[0_0_10px_rgba(8,145,178,0.2)]' : 'bg-[#0a0f1c] border-slate-800 text-slate-500 hover:bg-slate-800'}`}>
+                    <button type="button" key={v.id} onClick={() => onSelectVelocity(v.id)} className={`flex flex-col items-center justify-center py-2 rounded-lg border transition-all ${selectedVelocity === v.id ? 'bg-cyan-900/40 border-cyan-600/50 text-cyan-300 font-bold shadow-[0_0_10px_rgba(8,145,178,0.2)]' : 'bg-[#0a0f1c] border-slate-800 text-slate-500 hover:bg-slate-800'}`}>
                       <span className="text-[10px] font-semibold">{v.label}</span><span className="text-[9px] font-mono opacity-80">{v.id}</span>
                     </button>
                   ))}
@@ -315,10 +315,10 @@ export function MidiKeyboard({
               <div className="h-px w-full bg-slate-800" />
               
               <div>
-                <label className="flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400 mb-1.5">{tr('Cores do Teclado')}</label>
-                <div className="grid grid-cols-6 gap-1.5">
+                <label className="flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400 mb-2">{tr('Cores do Teclado')}</label>
+                <div className="grid grid-cols-6 gap-2">
                   {KEYBOARD_PALETTES.map((pal) => (
-                    <button type="button" key={pal.id} onClick={() => onSelectPalette(pal.id)} title={tr(pal.name)} className={`relative h-7 w-full rounded-lg overflow-hidden border-2 transition-all ${selectedPaletteId === pal.id ? 'border-cyan-400 scale-105 shadow-[0_0_10px_rgba(34,211,238,0.3)]' : 'border-[#1e293b] hover:border-slate-500 hover:scale-105'}`}>
+                    <button type="button" key={pal.id} onClick={() => onSelectPalette(pal.id)} title={tr(pal.name)} className={`relative h-8 w-full rounded-lg overflow-hidden border-2 transition-all ${selectedPaletteId === pal.id ? 'border-cyan-400 scale-105 shadow-[0_0_10px_rgba(34,211,238,0.3)]' : 'border-[#1e293b] hover:border-slate-500 hover:scale-105'}`}>
                       <div className="absolute inset-0 flex"><div className="w-2/3 h-full" style={{ backgroundColor: pal.white }} /><div className="w-1/3 h-full" style={{ backgroundColor: pal.black }} /></div>
                     </button>
                   ))}
@@ -329,11 +329,11 @@ export function MidiKeyboard({
                 <>
                   <div className="h-px w-full bg-slate-800" />
                   <div>
-                    <label className="flex items-center justify-between text-[10px] font-bold uppercase text-slate-400 mb-1.5"><span>{tr('Zoom do Teclado')}</span><span className="font-mono text-cyan-300">{keyWidth}px</span></label>
+                    <label className="flex items-center justify-between text-[10px] font-bold uppercase text-slate-400 mb-2"><span>{tr('Zoom do Teclado')}</span><span className="font-mono text-cyan-300">{keyWidth}px</span></label>
                     <input type="range" min={minKeyWidth} max={MAX_KEY_WIDTH} value={keyWidth} onChange={(e) => setKeyWidth(Number(e.target.value))} className="h-1.5 w-full cursor-pointer accent-cyan-400" />
                   </div>
                   <div className="h-px w-full bg-slate-800" />
-                  <button type="button" onClick={() => setIsScrollLocked(!isScrollLocked)} className={`flex items-center justify-between w-full p-1.5 rounded-lg border transition-colors ${isScrollLocked ? 'bg-amber-900/20 border-amber-700/50 text-amber-400' : 'bg-[#0a0f1c] border-slate-800 text-slate-400'}`}>
+                  <button type="button" onClick={() => setIsScrollLocked(!isScrollLocked)} className={`flex items-center justify-between w-full p-2 rounded-lg border transition-colors ${isScrollLocked ? 'bg-amber-900/20 border-amber-700/50 text-amber-400' : 'bg-[#0a0f1c] border-slate-800 text-slate-400'}`}>
                     <span className="text-xs font-bold flex items-center gap-2">{isScrollLocked ? <Maximize size={14} /> : <MoveHorizontal size={14} />} {tr('Rolagem Livre')}</span>
                     <div className={`w-8 h-4 rounded-full transition-colors relative ${isScrollLocked ? 'bg-amber-500' : 'bg-slate-700'}`}><div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${isScrollLocked ? 'left-4' : 'left-0.5'}`} /></div>
                   </button>
@@ -347,45 +347,49 @@ export function MidiKeyboard({
       <div className="flex-1 min-h-0 relative flex flex-row gap-1">
         {viewMode === 'keyboard' && (
           <div className="flex flex-col gap-1 w-10 shrink-0 bg-[#0f172a] rounded-xl border border-[#1e293b] p-1 justify-between relative">
+            
             {/* PB Container */}
             <div className="flex flex-col items-center flex-1 w-full relative">
-              <span className="text-[7px] font-bold text-slate-500 mb-1">PB</span>
+              <span className="text-[7px] font-bold text-slate-500 absolute top-0 z-10">PB</span>
+              
+              {/* Área do Trilho + Thumb */}
+              <div className="relative w-2 h-[80%] my-auto bg-[#05080f] rounded-full border border-[#1e293b]">
+                <div className="absolute top-1/2 left-0 right-0 h-px bg-slate-600 z-10" />
+                <div className="absolute top-1/2 left-0 right-0 bg-fuchsia-600/50 h-1/2 opacity-50" style={{ bottom: '50%' }} />
+                {/* Thumb posicionado relativo ao trilho */}
+                <div className="absolute w-5 h-3 bg-gradient-to-b from-slate-300 to-slate-500 rounded shadow z-30 left-1/2 -translate-x-1/2" 
+                     style={{ bottom: `calc(${(pbValue / 16383) * 100}% - 6px)` }} />
+              </div>
+
               <input 
                 type="range" min="0" max="16383" value={pbValue} 
                 onChange={(e) => { const val = Number(e.target.value); setPbValue(val); onPitchBend(val); }}
                 onPointerUp={() => { setPbValue(8192); onPitchBend(8192); }}
-                className="absolute top-4 bottom-4 w-8 h-full opacity-0 cursor-ns-resize z-20"
+                className="absolute top-4 bottom-4 w-8 h-full opacity-0 cursor-ns-resize z-40"
                 style={{ WebkitAppearance: 'slider-vertical', writingMode: 'vertical-lr', direction: 'rtl' }}
-              />
-              <div className="w-2 bg-[#05080f] rounded-full h-full border border-[#1e293b] relative overflow-hidden flex-1 my-1">
-                <div className="absolute top-1/2 left-0 right-0 h-px bg-slate-600 z-10" />
-                <div className="absolute bottom-1/2 left-0 right-0 bg-fuchsia-600/50 z-0 h-1/2 opacity-50" />
-              </div>
-              {/* THUMB VISUAL DO PB */}
-              <div 
-                className="absolute w-5 h-3 bg-gradient-to-b from-slate-300 to-slate-500 rounded shadow pointer-events-none z-30"
-                style={{ bottom: `calc(${(pbValue / 16383) * 100}% - 6px)` }}
               />
             </div>
 
             {/* MOD Container */}
             <div className="flex flex-col items-center flex-1 w-full relative">
-              <span className="text-[7px] font-bold text-slate-500 mb-1">MOD</span>
+              <span className="text-[7px] font-bold text-slate-500 absolute top-0 z-10">MOD</span>
+              
+              {/* Área do Trilho + Thumb */}
+              <div className="relative w-2 h-[80%] my-auto bg-[#05080f] rounded-full border border-[#1e293b]">
+                 <div className="absolute bottom-0 left-0 right-0 bg-cyan-500/50 z-10" style={{ height: `${(modValue / 127) * 100}%` }} />
+                 {/* Thumb posicionado relativo ao trilho */}
+                 <div className="absolute w-5 h-3 bg-gradient-to-b from-slate-300 to-slate-500 rounded shadow z-30 left-1/2 -translate-x-1/2" 
+                      style={{ bottom: `calc(${(modValue / 127) * 100}% - 6px)` }} />
+              </div>
+
               <input 
                 type="range" min="0" max="127" value={modValue} 
                 onChange={(e) => { const val = Number(e.target.value); setModValue(val); onModWheel(val); }}
-                className="absolute top-4 bottom-4 w-8 h-full opacity-0 cursor-ns-resize z-20"
+                className="absolute top-4 bottom-4 w-8 h-full opacity-0 cursor-ns-resize z-40"
                 style={{ WebkitAppearance: 'slider-vertical', writingMode: 'vertical-lr', direction: 'rtl' }}
               />
-              <div className="w-2 bg-[#05080f] rounded-full h-full border border-[#1e293b] relative overflow-hidden flex-1 my-1">
-                 <div className="absolute bottom-0 left-0 right-0 bg-cyan-500/50 z-0" style={{ height: `${(modValue / 127) * 100}%` }} />
-              </div>
-              {/* THUMB VISUAL DO MOD */}
-              <div 
-                className="absolute w-5 h-3 bg-gradient-to-b from-slate-300 to-slate-500 rounded shadow pointer-events-none z-30"
-                style={{ bottom: `calc(${(modValue / 127) * 100}% - 6px)` }}
-              />
             </div>
+
           </div>
         )}
 
@@ -393,19 +397,19 @@ export function MidiKeyboard({
           {viewMode === 'keyboard' ? (
             <div className="relative flex-1 flex overflow-hidden rounded-xl border border-[#1e293b]">
               
-              {/* SETAS DE ROLAGEM FIXAS */}
+              {/* SETAS DE ROLAGEM FIXAS NO CONTAINER PAI (Z-INDEX ALTO) */}
               {!isScrollLocked && (
                 <>
-                  <button type="button" aria-label={tr('Rolar para a esquerda')} onClick={() => scrollKeyboard('left')} className="absolute left-1 top-1/2 -translate-y-1/2 z-[60] p-1.5 bg-black/50 hover:bg-black/80 text-white rounded-full backdrop-blur-sm shadow-md transition-all active:scale-95 border border-white/10">
-                    <ChevronLeft size={20} />
+                  <button type="button" aria-label={tr('Rolar para a esquerda')} onClick={() => scrollKeyboard('left')} className="absolute left-2 top-1/2 -translate-y-1/2 z-50 p-1.5 bg-black/40 hover:bg-black/80 text-white rounded-full backdrop-blur-sm shadow-xl transition-all active:scale-95 border border-white/10">
+                    <ChevronLeft size={24} />
                   </button>
-                  <button type="button" aria-label={tr('Rolar para a direita')} onClick={() => scrollKeyboard('right')} className="absolute right-1 top-1/2 -translate-y-1/2 z-[60] p-1.5 bg-black/50 hover:bg-black/80 text-white rounded-full backdrop-blur-sm shadow-md transition-all active:scale-95 border border-white/10">
-                    <ChevronRight size={20} />
+                  <button type="button" aria-label={tr('Rolar para a direita')} onClick={() => scrollKeyboard('right')} className="absolute right-2 top-1/2 -translate-y-1/2 z-50 p-1.5 bg-black/40 hover:bg-black/80 text-white rounded-full backdrop-blur-sm shadow-xl transition-all active:scale-95 border border-white/10">
+                    <ChevronRight size={24} />
                   </button>
                 </>
               )}
 
-              <div ref={scrollViewportRef} className={`nexus-midi-viewport relative flex-1 ${isScrollLocked ? 'overflow-hidden' : 'overflow-x-auto overflow-y-hidden'}`} style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(30,41,59,0.72), rgba(2,6,23,0.98) 78%)', touchAction: isScrollLocked ? 'none' : 'pan-x', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+              <div ref={scrollViewportRef} className={`nexus-midi-viewport relative z-0 flex-1 ${isScrollLocked ? 'overflow-hidden' : 'overflow-x-auto overflow-y-hidden'}`} style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(30,41,59,0.72), rgba(2,6,23,0.98) 78%)', touchAction: isScrollLocked ? 'none' : 'pan-x', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                 <div className="relative flex h-full items-stretch p-0.5" style={{ width: `${keyboardWidth}px`, minWidth: `${keyboardWidth}px`, marginInline: isScrollLocked ? 'auto' : undefined }}>
                   {renderKeys()}
                 </div>
