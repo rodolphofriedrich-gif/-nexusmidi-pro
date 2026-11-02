@@ -61,7 +61,6 @@ export function MidiKeyboard({
   const [isScrollLocked, setIsScrollLocked] = useState(false);
   const [pressedNotes, setPressedNotes] = useState<Set<number>>(() => new Set());
 
-  // NOVO: Estados para os sliders
   const [pbValue, setPbValue] = useState(8192);
   const [modValue, setModValue] = useState(0);
 
@@ -252,7 +251,11 @@ export function MidiKeyboard({
             <button type="button" onClick={() => { if (viewMode === 'keyboard') setLastPianoChannel(selectedChannel); setViewMode('pads'); if (selectedChannel !== 10) onSelectChannel(10); }} className={`flex h-7 items-center gap-1.5 px-2.5 text-[10px] font-bold rounded-md transition-colors ${viewMode === 'pads' ? 'bg-cyan-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><LayoutGrid size={12} /> PADS</button>
           </div>
           <button type="button" onClick={onToggleActive} className={`flex h-8 items-center justify-center gap-1.5 rounded-lg border px-3 text-[10px] font-bold transition-all ${isActive ? 'border-cyan-700/50 bg-cyan-900/30 text-cyan-400' : 'border-slate-700 bg-slate-800/50 text-slate-500'}`}><Power size={14} /><span className="hidden sm:inline">{isActive ? 'ON' : 'OFF'}</span></button>
-          <button type="button" onClick={onToggleSustain} className={`flex h-8 items-center justify-center gap-1.5 rounded-lg border px-3 text-[10px] font-bold transition-all ${isSustainActive ? 'border-amber-500/50 bg-amber-900/30 text-amber-400' : 'border-slate-700 bg-slate-800/50 text-slate-400'}`}><Pause size={14} /><span className="hidden sm:inline">SUSTAIN</span></button>
+          
+          {/* SUSTAIN: Só aparece se NÃO estiver em fullscreen */}
+          {!isFullscreen && (
+            <button type="button" onClick={onToggleSustain} className={`flex h-8 items-center justify-center gap-1.5 rounded-lg border px-3 text-[10px] font-bold transition-all ${isSustainActive ? 'border-amber-500/50 bg-amber-900/30 text-amber-400' : 'border-slate-700 bg-slate-800/50 text-slate-400'}`}><Pause size={14} /><span className="hidden sm:inline">SUSTAIN</span></button>
+          )}
           
           <button type="button" onClick={onToggleFullscreen} className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${isFullscreen ? 'bg-amber-600 border-amber-500 text-white' : 'bg-[#0f172a] border-[#1e293b] text-slate-400 hover:text-slate-200'}`}>
             {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
@@ -294,9 +297,9 @@ export function MidiKeyboard({
             <SlidersHorizontal size={14} />
           </button>
 
-          {/* MENU DE CONFIGURAÇÕES RÁPIDAS COM ALTURA MÁXIMA */}
+          {/* MENU DE CONFIGURAÇÕES RÁPIDAS MAIS LARGO */}
           {isQuickSettingsOpen && (
-            <div className="absolute top-full right-0 z-[150] mt-2 w-80 max-h-[75vh] overflow-y-auto custom-scrollbar rounded-xl border border-slate-700 bg-[#0f172a] p-3 shadow-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute top-full right-0 z-[150] mt-2 w-[340px] sm:w-[400px] max-h-[75vh] overflow-y-auto custom-scrollbar rounded-xl border border-slate-700 bg-[#0f172a] p-3 shadow-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-150">
               
               <div>
                 <label className="flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400 mb-1.5"><Activity size={12} /> {tr('Intensidade (Velocity)')}</label>
@@ -342,22 +345,15 @@ export function MidiKeyboard({
       </div>
 
       <div className="flex-1 min-h-0 relative flex flex-row gap-1">
-        {/* PAINEL DE PITCH BEND E MODULAÇÃO */}
         {viewMode === 'keyboard' && (
-          <div className="flex flex-col gap-1 w-10 shrink-0 bg-[#0f172a] rounded-xl border border-[#1e293b] p-1 justify-between">
+          <div className="flex flex-col gap-1 w-10 shrink-0 bg-[#0f172a] rounded-xl border border-[#1e293b] p-1 justify-between relative">
+            {/* PB Container */}
             <div className="flex flex-col items-center flex-1 w-full relative">
               <span className="text-[7px] font-bold text-slate-500 mb-1">PB</span>
               <input 
                 type="range" min="0" max="16383" value={pbValue} 
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setPbValue(val);
-                  onPitchBend(val);
-                }}
-                onPointerUp={() => {
-                  setPbValue(8192);
-                  onPitchBend(8192);
-                }}
+                onChange={(e) => { const val = Number(e.target.value); setPbValue(val); onPitchBend(val); }}
+                onPointerUp={() => { setPbValue(8192); onPitchBend(8192); }}
                 className="absolute top-4 bottom-4 w-8 h-full opacity-0 cursor-ns-resize z-20"
                 style={{ WebkitAppearance: 'slider-vertical', writingMode: 'vertical-lr', direction: 'rtl' }}
               />
@@ -365,22 +361,30 @@ export function MidiKeyboard({
                 <div className="absolute top-1/2 left-0 right-0 h-px bg-slate-600 z-10" />
                 <div className="absolute bottom-1/2 left-0 right-0 bg-fuchsia-600/50 z-0 h-1/2 opacity-50" />
               </div>
+              {/* THUMB VISUAL DO PB */}
+              <div 
+                className="absolute w-5 h-3 bg-gradient-to-b from-slate-300 to-slate-500 rounded shadow pointer-events-none z-30"
+                style={{ bottom: `calc(${(pbValue / 16383) * 100}% - 6px)` }}
+              />
             </div>
+
+            {/* MOD Container */}
             <div className="flex flex-col items-center flex-1 w-full relative">
               <span className="text-[7px] font-bold text-slate-500 mb-1">MOD</span>
               <input 
                 type="range" min="0" max="127" value={modValue} 
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setModValue(val);
-                  onModWheel(val);
-                }}
+                onChange={(e) => { const val = Number(e.target.value); setModValue(val); onModWheel(val); }}
                 className="absolute top-4 bottom-4 w-8 h-full opacity-0 cursor-ns-resize z-20"
                 style={{ WebkitAppearance: 'slider-vertical', writingMode: 'vertical-lr', direction: 'rtl' }}
               />
               <div className="w-2 bg-[#05080f] rounded-full h-full border border-[#1e293b] relative overflow-hidden flex-1 my-1">
-                 <div className="absolute bottom-0 left-0 right-0 bg-cyan-500/50 z-0 h-1/2" style={{ height: `${(modValue / 127) * 100}%` }} />
+                 <div className="absolute bottom-0 left-0 right-0 bg-cyan-500/50 z-0" style={{ height: `${(modValue / 127) * 100}%` }} />
               </div>
+              {/* THUMB VISUAL DO MOD */}
+              <div 
+                className="absolute w-5 h-3 bg-gradient-to-b from-slate-300 to-slate-500 rounded shadow pointer-events-none z-30"
+                style={{ bottom: `calc(${(modValue / 127) * 100}% - 6px)` }}
+              />
             </div>
           </div>
         )}
@@ -389,14 +393,14 @@ export function MidiKeyboard({
           {viewMode === 'keyboard' ? (
             <div className="relative flex-1 flex overflow-hidden rounded-xl border border-[#1e293b]">
               
-              {/* SETAS DE ROLAGEM FIXAS NO CONTAINER PAI */}
+              {/* SETAS DE ROLAGEM FIXAS */}
               {!isScrollLocked && (
                 <>
-                  <button type="button" aria-label={tr('Rolar para a esquerda')} onClick={() => scrollKeyboard('left')} className="absolute left-2 top-1/2 -translate-y-1/2 z-50 p-2 bg-black/60 hover:bg-black/90 text-white rounded-full backdrop-blur-sm shadow-xl transition-all active:scale-95 border border-white/10">
-                    <ChevronLeft size={24} />
+                  <button type="button" aria-label={tr('Rolar para a esquerda')} onClick={() => scrollKeyboard('left')} className="absolute left-1 top-1/2 -translate-y-1/2 z-[60] p-1.5 bg-black/50 hover:bg-black/80 text-white rounded-full backdrop-blur-sm shadow-md transition-all active:scale-95 border border-white/10">
+                    <ChevronLeft size={20} />
                   </button>
-                  <button type="button" aria-label={tr('Rolar para a direita')} onClick={() => scrollKeyboard('right')} className="absolute right-2 top-1/2 -translate-y-1/2 z-50 p-2 bg-black/60 hover:bg-black/90 text-white rounded-full backdrop-blur-sm shadow-xl transition-all active:scale-95 border border-white/10">
-                    <ChevronRight size={24} />
+                  <button type="button" aria-label={tr('Rolar para a direita')} onClick={() => scrollKeyboard('right')} className="absolute right-1 top-1/2 -translate-y-1/2 z-[60] p-1.5 bg-black/50 hover:bg-black/80 text-white rounded-full backdrop-blur-sm shadow-md transition-all active:scale-95 border border-white/10">
+                    <ChevronRight size={20} />
                   </button>
                 </>
               )}
