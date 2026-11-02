@@ -288,6 +288,7 @@ export const en: Record<string, string> = {
   "Tom G.": "Floor Tom",
   "Tom M.": "Mid Tom",
   "Tom A.": "High Tom",
+  "Tom Alto": "High Tom"
   "Toque em \"Aprender\" e mexa em um knob ou fader do seu controlador. Ele passa a controlar aquele parâmetro.": "Tap \"Learn\" and move a knob or fader on your controller. It will then control that parameter.",
   "Toque em \"Importar SF2\" para adicionar seu primeiro SoundFont.": "Tap \"Import SF2\" to add your first SoundFont.",
   "Transp.": "Transp.",
