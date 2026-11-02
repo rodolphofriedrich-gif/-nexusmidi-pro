@@ -28,7 +28,7 @@
     "@capacitor/core": "^8.5.2",
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/share": "^8.0.0",
-    "lucide-react": "^0.546.0",
+    "lucide-react": "^1.65.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "spessasynth_lib": "^4.3.14"
