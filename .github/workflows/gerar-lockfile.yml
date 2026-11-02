@@ -1,0 +1,33 @@
+name: Gerar package-lock.json
+
+on:
+  workflow_dispatch: # Isso cria um botão para você rodar manualmente
+
+permissions:
+  contents: write # Permissão para o robô salvar o arquivo no seu repositório
+
+jobs:
+  gerar-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Atualizar npm para v11
+        run: npm install -g npm@11
+
+      - name: Instalar dependências (gera o lockfile)
+        run: npm install
+
+      - name: Commitar e enviar o package-lock.json para o repositório
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: adiciona package-lock.json gerado automaticamente"
+          git push
