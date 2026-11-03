@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Activity, X, Maximize, MoveHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Activity, X, Maximize, Minimize, MoveHorizontal, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { MidiPadGrid } from './MidiPadGrid';
 import { KEYBOARD_PALETTES } from '../constants/palettes';
 import { tr } from '../i18n';
@@ -25,6 +25,7 @@ interface MidiKeyboardProps {
   onActiveNotesChange?: (count: number) => void;
   isActive: boolean;
   isSustainActive: boolean;
+  onToggleSustain: () => void;
   selectedVelocity: number;
   onSelectVelocity: (v: number) => void;
   selectedPaletteId: string;
@@ -32,6 +33,7 @@ interface MidiKeyboardProps {
   onPitchBend: (value: number) => void;
   onModWheel: (value: number) => void;
   isFullscreen: boolean;
+  onToggleFullscreen: () => void;
 }
 
 const OCTAVE_NOTES = [
@@ -98,9 +100,9 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   viewMode, startOctave, padBank,
   isConnected, selectedChannel, onSelectChannel, onNoteOn, onNoteOff, onDisabledPress,
   customWhiteKeyColor, customBlackKeyColor, onActiveNotesChange,
-  isActive, isSustainActive,
+  isActive, isSustainActive, onToggleSustain,
   selectedVelocity, onSelectVelocity, selectedPaletteId, onSelectPalette,
-  onPitchBend, onModWheel, isFullscreen
+  onPitchBend, onModWheel, isFullscreen, onToggleFullscreen
 }, ref) => {
   const [keyWidth, setKeyWidth] = useState(MIN_KEY_WIDTH);
   const [minKeyWidth, setMinKeyWidth] = useState(MIN_KEY_WIDTH);
@@ -113,6 +115,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   const [lastPianoChannel] = useState(selectedChannel);
   const [isChannelOpen, setIsChannelOpen] = useState(false);
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
+  const [isFullscreenMenuOpen, setIsFullscreenMenuOpen] = useState(false);
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -158,7 +161,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
       observer?.disconnect();
       window.removeEventListener('resize', updateMinSize);
     };
-  }, [viewMode]);
+  }, [viewMode, isFullscreen]);
 
   const updateScrollState = useCallback(() => {
     const el = scrollViewportRef.current;
@@ -303,8 +306,42 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   const keyboardWidth = TOTAL_WHITE_KEYS * keyWidth;
 
   return (
-    <section className="nexus-midi-keyboard flex min-h-0 min-w-0 w-full flex-1 flex-col gap-1 rounded-2xl border p-1 sm:p-1.5" style={{ background: 'linear-gradient(145deg, rgba(17,24,39,0.98), rgba(8,13,25,0.99))', borderColor: 'rgba(148,163,184,0.16)', boxShadow: '0 18px 50px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.035)' }}>
+    <section className="nexus-midi-keyboard flex min-h-0 min-w-0 w-full flex-1 flex-col gap-1 rounded-2xl border p-1 sm:p-1.5 relative" style={{ background: 'linear-gradient(145deg, rgba(17,24,39,0.98), rgba(8,13,25,0.99))', borderColor: 'rgba(148,163,184,0.16)', boxShadow: '0 18px 50px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.035)' }}>
       
+      {/* BOTOES FLUTUANTES NO MODO FULLSCREEN */}
+      {isFullscreen && (
+        <>
+          <div className="fixed top-4 right-4 z-[9999]">
+            <button onClick={onToggleFullscreen} className="bg-black/60 p-3 rounded-full text-white hover:bg-black/80 backdrop-blur-sm transition shadow-lg border border-slate-600/50">
+              <Minimize size={20} />
+            </button>
+          </div>
+          <div className="fixed top-4 left-4 z-[9999]">
+            <button onClick={() => setIsFullscreenMenuOpen(!isFullscreenMenuOpen)} className="bg-black/60 p-3 rounded-full text-white hover:bg-black/80 backdrop-blur-sm transition shadow-lg border border-slate-600/50">
+              <Menu size={20} />
+            </button>
+            {isFullscreenMenuOpen && (
+              <div className="absolute top-full left-0 mt-2 bg-[#0f172a]/95 backdrop-blur-md border border-slate-700 rounded-xl p-3 flex flex-col gap-2 min-w-[160px] shadow-2xl">
+                <button onClick={() => { onToggleSustain(); setIsFullscreenMenuOpen(false); }} className={`flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs font-bold ${isSustainActive ? 'bg-cyan-900/50 text-cyan-400' : 'text-slate-300 hover:bg-slate-800'}`}>
+                  <span>Sustain</span>
+                  <span className={`w-2 h-2 rounded-full ${isSustainActive ? 'bg-cyan-400' : 'bg-slate-600'}`} />
+                </button>
+                <button onClick={() => { setIsChannelOpen(true); setIsFullscreenMenuOpen(false); }} className="flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800">
+                  <span>Canal</span>
+                  <span className="font-mono text-cyan-400">{String(selectedChannel).padStart(2, '0')}</span>
+                </button>
+                <button onClick={() => { setIsQuickSettingsOpen(true); setIsFullscreenMenuOpen(false); }} className="flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800">
+                  <span>Configurações</span>
+                </button>
+                <button className="flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800">
+                  <span>Escala</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {isChannelOpen && (
         <Popup title={tr('Canal MIDI')} onClose={() => setIsChannelOpen(false)} widthClass="max-w-xs">
           <div className="grid grid-cols-4 gap-2">
