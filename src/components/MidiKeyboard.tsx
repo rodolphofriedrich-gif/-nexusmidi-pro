@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { ChevronDown, Activity, X, Maximize, MoveHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Activity, X, Maximize, MoveHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { MidiPadGrid } from './MidiPadGrid';
 import { KEYBOARD_PALETTES } from '../constants/palettes';
 import { tr } from '../i18n';
@@ -110,7 +110,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   const [pbValue, setPbValue] = useState(8192);
   const [modValue, setModValue] = useState(0);
 
-  const [lastPianoChannel, setLastPianoChannel] = useState(selectedChannel);
+  const [lastPianoChannel] = useState(selectedChannel);
   const [isChannelOpen, setIsChannelOpen] = useState(false);
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
 
@@ -301,7 +301,6 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   };
 
   const keyboardWidth = TOTAL_WHITE_KEYS * keyWidth;
-  const btnClass = "flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#1e293b] bg-[#0f172a] text-slate-400 transition-all hover:bg-slate-800 hover:text-slate-200 active:scale-95";
 
   return (
     <section className="nexus-midi-keyboard flex min-h-0 min-w-0 w-full flex-1 flex-col gap-1 rounded-2xl border p-1 sm:p-1.5" style={{ background: 'linear-gradient(145deg, rgba(17,24,39,0.98), rgba(8,13,25,0.99))', borderColor: 'rgba(148,163,184,0.16)', boxShadow: '0 18px 50px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.035)' }}>
