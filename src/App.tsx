@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 import {
   Activity, AudioWaveform, GitBranch, LogOut, Music2, Menu, X, Usb, Bluetooth, type LucideIcon,
   RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Maximize, Minimize, Power, Piano, LayoutGrid, SlidersHorizontal
@@ -60,32 +62,28 @@ export default function App() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [monitorPaused, setMonitorPaused] = useState(false);
 
-  // BOTÃO VOLTAR DO ANDROID
+  // BOTÃO VOLTAR DO ANDROID (Apenas no ambiente nativo)
   useEffect(() => {
-    let listener: any;
-    const handleBack = () => {
-      if (isSidebarOpen) { setIsSidebarOpen(false); return; }
-      if (openMenu) { setOpenMenu(null); return; }
-      if (isFullscreen) { setIsFullscreen(false); return; }
-      if (showExit) { setShowExit(false); return; }
-      setShowExit(true);
+    if (!Capacitor.isNativePlatform()) return;
+
+    let backButtonListener: any;
+
+    const setupBackButton = async () => {
+      backButtonListener = await CapApp.addListener('backButton', () => {
+        if (isSidebarOpen) { setIsSidebarOpen(false); return; }
+        if (openMenu) { setOpenMenu(null); return; }
+        if (isFullscreen) { setIsFullscreen(false); return; }
+        if (showExit) { setShowExit(false); return; }
+        setShowExit(true);
+      });
     };
 
-    const setup = async () => {
-      try {
-        // @ts-ignore - O plugin pode não estar instalado no ambiente de desenvolvimento web
-        const { App: CapApp } = await import('@capacitor/app');
-        listener = await CapApp.addListener('backButton', handleBack);
-      } catch {
-        // Fallback web
-        window.addEventListener('popstate', handleBack);
-      }
-    };
-    setup();
+    void setupBackButton();
 
     return () => {
-      if (listener) listener.remove();
-      else window.removeEventListener('popstate', handleBack);
+      if (backButtonListener) {
+        void backButtonListener.remove();
+      }
     };
   }, [isSidebarOpen, openMenu, isFullscreen, showExit]);
 
