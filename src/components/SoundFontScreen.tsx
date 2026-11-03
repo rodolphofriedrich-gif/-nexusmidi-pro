@@ -177,7 +177,7 @@ export function SoundFontScreen({ onStatus }: Props) {
               ))}
             </div>
             <button onClick={saveScene} className="flex h-8 items-center gap-1.5 rounded-lg border border-amber-600/50 bg-amber-900/20 px-3 text-[10px] font-bold text-amber-400 hover:bg-amber-900/40 transition">
-              Salvar Cena
+              {tr('Salvar Cena')}
             </button>
           </div>
 
