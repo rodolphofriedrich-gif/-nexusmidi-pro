@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
-  Activity,
-  AudioWaveform,
-  GitBranch,
-  LogOut,
-  Music2,
-  type LucideIcon,
+  Activity, AudioWaveform, GitBranch, LogOut, Music2, Menu, X, Usb, Bluetooth, type LucideIcon,
 } from 'lucide-react';
 import { ConnectionMenu } from './components/ConnectionMenu';
 import { ExitDialog } from './components/ExitDialog';
@@ -53,6 +48,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<AppTab>('keyboard');
   const [openMenu, setOpenMenu] = useState<'usb' | 'ble' | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showExit, setShowExit] = useState(false);
   const [vuLevel, setVuLevel] = useState(0);
   const [activeNotes, setActiveNotes] = useState(0);
@@ -73,9 +69,7 @@ export default function App() {
     midiManager.addActivityListener(onActivity);
     
     const interval = setInterval(() => {
-      if (Date.now() - lastActivity > 150) {
-        setVuLevel(0);
-      }
+      if (Date.now() - lastActivity > 150) setVuLevel(0);
     }, 200);
 
     return () => {
@@ -128,82 +122,89 @@ export default function App() {
   return (
     <div className={`nexus-app fixed inset-0 flex h-[100dvh] w-full select-none overflow-hidden font-sans antialiased ${isFullscreen ? 'is-fullscreen' : ''}`}>
       
-      {/* NAVEGAÇÃO LATERAL (RAIL) - Esconde em tela cheia */}
+      {/* OVERLAY ESCURO QUANDO A GAVETA ESTÁ ABERTA */}
+      {isSidebarOpen && !isFullscreen && (
+        <div 
+          className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* GAVETA LATERAL (DRAWER) */}
       {!isFullscreen && (
-        <aside className="relative z-[100] flex h-full w-16 shrink-0 flex-col items-center border-r border-[#1e293b] bg-[#0a0f1c] py-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-          <div className="flex flex-1 flex-col gap-4">
-            {NAV_ITEMS.map(({ id, Icon, label }) => {
-              const selected = activeTab === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => { setActiveTab(id); setOpenMenu(null); }}
-                  title={label}
-                  aria-label={label}
-                  className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all ${selected ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-                >
-                  <Icon size={22} strokeWidth={selected ? 2.5 : 2} />
-                </button>
-              );
-            })}
+        <aside 
+          className={`fixed inset-y-0 left-0 z-[100] flex w-64 flex-col border-r border-[#1e293b] bg-[#0a0f1c] transition-transform duration-300 ease-in-out ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <div className="flex h-12 items-center justify-between px-4 border-b border-[#1e293b] shrink-0">
+            <span className="text-sm font-extrabold tracking-wider text-slate-200">
+              NEXUSMIDI <span className="text-cyan-400">Pro</span>
+            </span>
+            <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400 hover:text-white transition">
+              <X size={20} />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowExit(true)}
-            title={tr('Sair')}
-            aria-label={tr('Sair')}
-            className="mt-auto flex h-11 w-11 items-center justify-center rounded-xl text-rose-400/70 transition-colors hover:bg-rose-950/50 hover:text-rose-400"
-          >
-            <LogOut size={22} strokeWidth={2} />
-          </button>
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 flex flex-col gap-4">
+            {/* Navegação */}
+            <div className="flex flex-col gap-1">
+              {NAV_ITEMS.map(({ id, Icon, label }) => {
+                const selected = activeTab === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => { setActiveTab(id); setIsSidebarOpen(false); setOpenMenu(null); }}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${selected ? 'bg-cyan-900/30 text-cyan-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                  >
+                    <Icon size={18} />
+                    <span className="text-sm">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="h-px w-full bg-[#1e293b]" />
+
+            {/* Conexões */}
+            <div className="flex flex-col gap-2">
+              <span className="text-[10px] font-bold uppercase text-slate-500 px-3">Conexões</span>
+              <ConnectionMenu kind="usb" isOpen={openMenu === 'usb'} isConnected={isUsbConnected} statusLabel={isUsbConnected ? tr('Conectado') : tr('Desconectado')} devices={usbDevices} connectedIds={connectedIds} showDisconnectAll={isUsbConnected} onToggleOpen={() => toggleMenu('usb')} onRefresh={() => void devices.refresh()} onToggleDevice={(d) => void devices.toggleConnect(d)} onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }} />
+              <ConnectionMenu kind="ble" isOpen={openMenu === 'ble'} isConnected={isBleConnected || devices.bleServerActive} statusLabel={devices.bleServerActive ? tr('Visível') : isBleConnected ? tr('Conectado') : tr('Desconectado')} devices={bleDevices} connectedIds={connectedIds} showDisconnectAll={devices.connected.length > 0 || devices.bleServerActive} onToggleOpen={() => toggleMenu('ble')} onRefresh={() => void devices.refresh()} onToggleDevice={(d) => void devices.toggleConnect(d)} onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }} isScanning={devices.scanningBle} isServerActive={devices.bleServerActive} onScan={() => void devices.scanBle()} onStartServer={() => void devices.startBleServer()} />
+            </div>
+          </div>
+
+          <div className="p-3 border-t border-[#1e293b] shrink-0">
+            <button type="button" onClick={() => { setIsSidebarOpen(false); setShowExit(true); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-rose-400/70 transition-colors hover:bg-rose-950/50 hover:text-rose-400">
+              <LogOut size={18} />
+              <span className="text-sm font-semibold">{tr('Sair')}</span>
+            </button>
+          </div>
         </aside>
       )}
 
       {/* CONTEÚDO PRINCIPAL */}
       <div className="flex h-full flex-1 flex-col overflow-hidden">
-        
-        {/* HEADER COMPACTO */}
         {!isFullscreen && (
-          <header className="relative z-[90] flex h-12 w-full shrink-0 items-center justify-between gap-3 border-b border-[#1e293b] bg-[#0a0f1c] px-3 pt-[env(safe-area-inset-top)] sm:px-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="truncate text-xs font-bold uppercase tracking-widest text-slate-300">
-                {tabTitle(activeTab)}
-              </span>
+          <header className="relative z-[80] flex h-12 w-full shrink-0 items-center justify-between gap-3 border-b border-[#1e293b] bg-[#0a0f1c] px-3 pt-[env(safe-area-inset-top)] sm:px-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <button type="button" onClick={() => setIsSidebarOpen(true)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" title={tr('Menu')}>
+                <Menu size={20} />
+              </button>
+              {/* TÍTULO REMOVIDO DO HEADER (agora está dentro de cada tela) */}
             </div>
-
             <div className="flex shrink-0 items-center gap-2">
-              <ConnectionMenu
-                kind="usb"
-                isOpen={openMenu === 'usb'}
-                isConnected={isUsbConnected}
-                statusLabel={isUsbConnected ? tr('Conectado') : tr('Desconectado')}
-                devices={usbDevices}
-                connectedIds={connectedIds}
-                showDisconnectAll={isUsbConnected}
-                onToggleOpen={() => toggleMenu('usb')}
-                onRefresh={() => void devices.refresh()}
-                onToggleDevice={(d) => void devices.toggleConnect(d)}
-                onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }}
-              />
-              <ConnectionMenu
-                kind="ble"
-                isOpen={openMenu === 'ble'}
-                isConnected={isBleConnected || devices.bleServerActive}
-                statusLabel={devices.bleServerActive ? tr('Visível') : isBleConnected ? tr('Conectado') : tr('Desconectado')}
-                devices={bleDevices}
-                connectedIds={connectedIds}
-                showDisconnectAll={devices.connected.length > 0 || devices.bleServerActive}
-                onToggleOpen={() => toggleMenu('ble')}
-                onRefresh={() => void devices.refresh()}
-                onToggleDevice={(d) => void devices.toggleConnect(d)}
-                onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }}
-                isScanning={devices.scanningBle}
-                isServerActive={devices.bleServerActive}
-                onScan={() => void devices.scanBle()}
-                onStartServer={() => void devices.startBleServer()}
-              />
+              {isUsbConnected && (
+                <div className="flex items-center justify-center h-7 w-7 rounded-md bg-emerald-900/30 text-emerald-400 border border-emerald-800/50" title="USB Conectado">
+                  <Usb size={14} />
+                </div>
+              )}
+              {(isBleConnected || devices.bleServerActive) && (
+                <div className="flex items-center justify-center h-7 w-7 rounded-md bg-emerald-900/30 text-emerald-400 border border-emerald-800/50" title="Bluetooth Conectado">
+                  <Bluetooth size={14} />
+                </div>
+              )}
             </div>
           </header>
         )}
