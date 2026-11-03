@@ -47,7 +47,6 @@ const TOTAL_WHITE_KEYS = 14;
 const MIN_KEY_WIDTH = 52;
 const MAX_KEY_WIDTH = 95;
 
-/* ---------- POPUP GENÉRICO (usado nas configurações e na lista de canais) ---------- */
 interface PopupProps {
   title: string;
   onClose: () => void;
@@ -109,11 +108,8 @@ export function MidiKeyboard({
   const [lastPianoChannel, setLastPianoChannel] = useState(selectedChannel);
   const [isChannelOpen, setIsChannelOpen] = useState(false);
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
-
-  // Banco dos pads (agora controlado aqui, na barra superior)
   const [padBank, setPadBank] = useState(0);
 
-  // Estado das setas de rolagem
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
@@ -154,7 +150,6 @@ export function MidiKeyboard({
     };
   }, [viewMode]);
 
-  /* ---------- Rolagem do teclado ---------- */
   const updateScrollState = useCallback(() => {
     const el = scrollViewportRef.current;
     if (!el) return;
@@ -184,7 +179,6 @@ export function MidiKeyboard({
     }
   };
 
-  /* ---------- Notas ---------- */
   const pressNote = (note: number, pointerId: number) => {
     if (!isActive) return;
     if (!isConnected) { onDisabledPressRef.current(); return; }
@@ -266,12 +260,12 @@ export function MidiKeyboard({
               className="relative z-10 flex h-full shrink-0 cursor-pointer flex-col items-center justify-end rounded-b-lg border transition-[filter,transform,box-shadow] duration-75 select-none"
               style={{
                 width: `${keyWidth}px`,
-                background: isPressed ? `linear-gradient(180deg, ${customWhiteKeyColor} 0%, #bfdbfe 100%)` : `linear-gradient(180deg, ${customWhiteKeyColor} 0%, ${customWhiteKeyColor} 88%, #cbd5e1 100%)`,
+                background: isPressed ? `linear-gradient(180deg, ${customWhiteKeyColor} 0%, #bfdbfe 100%)` : `linear-gradient(180deg, #f8fafc 0%, #e2e8f0 88%, #cbd5e1 100%)`,
                 borderColor: isPressed ? '#22d3ee' : 'rgba(100,116,139,0.75)',
-                boxShadow: isPressed ? 'inset 0 3px 9px rgba(15,23,42,0.22), 0 0 12px rgba(34,211,238,0.28)' : '0 3px 0 rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.25)',
+                boxShadow: isPressed ? 'inset 0 3px 9px rgba(15,23,42,0.22), 0 0 12px rgba(34,211,238,0.28)' : '0 4px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.9)', // Acabamento off-white e sombra mais dura
                 transform: isPressed ? 'translateY(2px)' : 'translateY(0)', touchAction: 'none', opacity: keyOpacity,
               }}>
-              <span className="mb-4 rounded px-1 text-[10px] font-bold select-none" style={{ color: isPressed ? '#075985' : '#1e293b', background: isPressed ? 'rgba(255,255,255,0.45)' : 'transparent' }}>{noteLabel}</span>
+              <span className="mb-4 rounded px-1 text-[10px] font-bold select-none" style={{ color: isPressed ? '#075985' : '#64748b', background: isPressed ? 'rgba(255,255,255,0.45)' : 'transparent' }}>{noteLabel}</span>
             </div>
           );
         } else {
@@ -282,9 +276,9 @@ export function MidiKeyboard({
               className="absolute top-0 z-30 flex h-[62%] cursor-pointer flex-col items-center justify-end rounded-b-sm border select-none"
               style={{
                 width: `${blackWidth}px`, left: `${left}px`,
-                background: isPressed ? 'linear-gradient(180deg, #38bdf8 0%, #0369a1 100%)' : `linear-gradient(180deg, ${customBlackKeyColor} 0%, ${customBlackKeyColor} 72%, #020617 100%)`,
+                background: isPressed ? 'linear-gradient(180deg, #38bdf8 0%, #0369a1 100%)' : `linear-gradient(180deg, #334155 0%, #1e293b 72%, #020617 100%)`, // Acabamento grafite
                 borderColor: isPressed ? '#67e8f9' : '#020617',
-                boxShadow: isPressed ? '0 0 12px rgba(34,211,238,0.55), inset 0 0 5px rgba(255,255,255,0.25)' : '0 3px 4px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.1)',
+                boxShadow: isPressed ? '0 0 12px rgba(34,211,238,0.55), inset 0 0 5px rgba(255,255,255,0.25)' : '0 3px 4px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.1)', // Sombra mais suave
                 transform: isPressed ? 'translateY(2px)' : 'translateY(0)', touchAction: 'none', opacity: keyOpacity,
               }}>
               <span className="mb-4 text-[9px] font-bold select-none" style={{ color: isPressed ? '#ecfeff' : '#cbd5e1' }}>{noteDef.name}</span>
@@ -298,49 +292,54 @@ export function MidiKeyboard({
 
   const keyboardWidth = TOTAL_WHITE_KEYS * keyWidth;
 
-  const arrowBtnClass = 'flex w-9 shrink-0 items-center justify-center bg-[#0f172a] text-slate-200 transition hover:bg-slate-700 active:bg-slate-600 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-[#0f172a]';
+  // Unificação do visual dos botões
+  const btnClass = "flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#1e293b] bg-[#0f172a] text-slate-400 transition-all hover:bg-slate-800 hover:text-slate-200 active:scale-95";
+  const btnActiveClass = "border-cyan-700/50 bg-cyan-900/30 text-cyan-400 shadow-[0_0_10px_rgba(8,145,178,0.2)]";
 
   return (
     <section className="nexus-midi-keyboard flex min-h-0 min-w-0 w-full flex-1 flex-col gap-1 rounded-2xl border p-1 sm:p-1.5" style={{ background: 'linear-gradient(145deg, rgba(17,24,39,0.98), rgba(8,13,25,0.99))', borderColor: 'rgba(148,163,184,0.16)', boxShadow: '0 18px 50px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.035)' }}>
 
-      {/* ---------- BARRA SUPERIOR ---------- */}
       <div className="nexus-midi-controls relative z-50 flex shrink-0 items-center justify-between gap-2 rounded-xl border px-2 py-1.5 sm:px-3" style={{ background: 'rgba(5,10,22,0.76)', borderColor: 'rgba(148,163,184,0.14)' }}>
         <div className="custom-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto sm:gap-3" style={{ scrollbarWidth: 'none' }}>
-          <div className="flex shrink-0 bg-[#0f172a] rounded-lg p-0.5 border border-[#1e293b]">
-            <button type="button" onClick={() => { setViewMode('keyboard'); if (selectedChannel === 10 && lastPianoChannel !== 10) onSelectChannel(lastPianoChannel); }} className={`flex h-7 items-center gap-1.5 px-2.5 text-[10px] font-bold rounded-md transition-colors ${viewMode === 'keyboard' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><Piano size={12} /> PIANO</button>
-            <button type="button" onClick={() => { if (viewMode === 'keyboard') setLastPianoChannel(selectedChannel); setViewMode('pads'); if (selectedChannel !== 10) onSelectChannel(10); }} className={`flex h-7 items-center gap-1.5 px-2.5 text-[10px] font-bold rounded-md transition-colors ${viewMode === 'pads' ? 'bg-cyan-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><LayoutGrid size={12} /> PADS</button>
+          
+          {/* Toggle Piano/Pads com visual unificado */}
+          <div className="flex shrink-0 bg-[#0a0f1c] rounded-lg p-0.5 border border-[#1e293b]">
+            <button type="button" onClick={() => { setViewMode('keyboard'); if (selectedChannel === 10 && lastPianoChannel !== 10) onSelectChannel(lastPianoChannel); }} className={`flex h-7 items-center gap-1.5 px-3 text-[10px] font-bold rounded-md transition-colors ${viewMode === 'keyboard' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><Piano size={12} /> PIANO</button>
+            <button type="button" onClick={() => { if (viewMode === 'keyboard') setLastPianoChannel(selectedChannel); setViewMode('pads'); if (selectedChannel !== 10) onSelectChannel(10); }} className={`flex h-7 items-center gap-1.5 px-3 text-[10px] font-bold rounded-md transition-colors ${viewMode === 'pads' ? 'bg-cyan-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><LayoutGrid size={12} /> PADS</button>
           </div>
 
-          <button type="button" onClick={onToggleActive} className={`flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-3 text-[10px] font-bold transition-all ${isActive ? 'border-cyan-700/50 bg-cyan-900/30 text-cyan-400' : 'border-slate-700 bg-slate-800/50 text-slate-500'}`}><Power size={14} /><span className="hidden sm:inline">{isActive ? 'ON' : 'OFF'}</span></button>
+          <button type="button" onClick={onToggleActive} className={`${btnClass} ${isActive ? btnActiveClass : ''} px-3 text-[10px] font-bold`}><Power size={14} /><span className="hidden sm:inline">{isActive ? 'ON' : 'OFF'}</span></button>
 
-          <button type="button" onClick={onToggleFullscreen} className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${isFullscreen ? 'bg-amber-600 border-amber-500 text-white' : 'bg-[#0f172a] border-[#1e293b] text-slate-400 hover:text-slate-200'}`}>
+          <button type="button" onClick={onToggleFullscreen} className={`${btnClass} ${isFullscreen ? 'bg-amber-600 border-amber-500 text-white' : ''} w-8`}>
             {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
           </button>
 
-          {/* MODO PIANO: oitava + sustain (agora também em tela cheia) */}
+          {/* Oitavas e Sustain no modo Piano */}
           {viewMode === 'keyboard' && (
             <>
-              <div className="flex shrink-0 items-center overflow-hidden rounded-lg border" style={{ background: '#0f172a', borderColor: 'rgba(148,163,184,0.2)' }}>
-                <button type="button" disabled={startOctave <= 1} onClick={() => setStartOctave((v) => Math.max(1, v - 1))} className="flex h-8 w-7 items-center justify-center text-lg font-semibold text-slate-300 transition hover:bg-slate-700 hover:text-white disabled:opacity-35">−</button>
-                <span className="min-w-[32px] text-center font-mono text-xs font-bold text-cyan-300">C{startOctave}</span>
-                <button type="button" disabled={startOctave >= 6} onClick={() => setStartOctave((v) => Math.min(6, v + 1))} className="flex h-8 w-7 items-center justify-center text-lg font-semibold text-slate-300 transition hover:bg-slate-700 hover:text-white disabled:opacity-35">+</button>
+              <div className="flex shrink-0 items-center gap-1">
+                <button type="button" disabled={startOctave <= 1} onClick={() => setStartOctave((v) => Math.max(1, v - 1))} className={`${btnClass} w-8 text-lg font-bold`}>−</button>
+                <div className="flex h-8 min-w-[44px] items-center justify-center rounded-lg border border-[#1e293b] bg-[#0a0f1c] px-2 font-mono text-xs font-bold text-cyan-300">
+                  C{startOctave}
+                </div>
+                <button type="button" disabled={startOctave >= 6} onClick={() => setStartOctave((v) => Math.min(6, v + 1))} className={`${btnClass} w-8 text-lg font-bold`}>+</button>
               </div>
 
-              <button type="button" onClick={onToggleSustain} className={`flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-3 text-[10px] font-bold transition-all ${isSustainActive ? 'border-amber-500/50 bg-amber-900/30 text-amber-400' : 'border-slate-700 bg-slate-800/50 text-slate-400'}`}>
-                <Pause size={14} /><span>SUSTAIN</span>
+              <button type="button" onClick={onToggleSustain} className={`${btnClass} ${isSustainActive ? btnActiveClass : ''} px-3 text-[10px] font-bold`}>
+                <Pause size={14} /><span className="hidden sm:inline">SUSTAIN</span>
               </button>
             </>
           )}
 
-          {/* MODO PADS: bancos 1 a 4 na barra superior */}
+          {/* Bancos no modo Pads (Segmentado) */}
           {viewMode === 'pads' && (
-            <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[#1e293b] bg-[#0f172a] p-0.5">
+            <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[#1e293b] bg-[#0a0f1c] p-0.5">
               {[0, 1, 2, 3].map((b) => (
                 <button
                   key={b}
                   type="button"
                   onClick={() => setPadBank(b)}
-                  className={`h-7 whitespace-nowrap rounded-md px-2.5 text-[10px] font-bold transition-colors ${padBank === b ? 'border border-cyan-800/50 bg-cyan-900/40 text-cyan-300' : 'border border-transparent text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
+                  className={`h-7 whitespace-nowrap rounded-md px-3 text-[10px] font-bold transition-colors ${padBank === b ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
                 >
                   {tr('Banco {n}', { n: b + 1 })}
                 </button>
@@ -350,19 +349,18 @@ export function MidiKeyboard({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <button type="button" onClick={() => setIsChannelOpen(true)} className="flex h-8 items-center gap-1.5 rounded-lg border border-[#1e293b] bg-[#0f172a] px-2.5 text-slate-400 transition hover:bg-slate-800">
+          <button type="button" onClick={() => setIsChannelOpen(true)} className={`${btnClass} px-2.5`}>
             <span className="text-[10px] font-bold uppercase">CH</span>
             <span className="min-w-[16px] text-center font-mono text-xs font-bold text-cyan-300">{String(selectedChannel).padStart(2, '0')}</span>
             <ChevronDown size={12} />
           </button>
 
-          <button type="button" onClick={() => setIsQuickSettingsOpen(true)} className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${isQuickSettingsOpen ? 'bg-slate-700 border-slate-600 text-white' : 'bg-[#0f172a] border-[#1e293b] text-slate-400 hover:text-slate-200'}`}>
+          <button type="button" onClick={() => setIsQuickSettingsOpen(true)} className={`${btnClass} w-8`}>
             <SlidersHorizontal size={14} />
           </button>
         </div>
       </div>
 
-      {/* ---------- POPUP: CANAL MIDI ---------- */}
       {isChannelOpen && (
         <Popup title={tr('Canal MIDI')} onClose={() => setIsChannelOpen(false)} widthClass="max-w-xs">
           <div className="grid grid-cols-4 gap-2">
@@ -384,11 +382,9 @@ export function MidiKeyboard({
         </Popup>
       )}
 
-      {/* ---------- POPUP: CONFIGURAÇÕES ---------- */}
       {isQuickSettingsOpen && (
         <Popup title={tr('Configurações')} onClose={() => setIsQuickSettingsOpen(false)} widthClass="max-w-2xl">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {/* Coluna esquerda */}
             <div className="flex flex-col gap-4">
               <div>
                 <label className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400"><Activity size={12} /> {tr('Intensidade (Velocity)')}</label>
@@ -413,7 +409,6 @@ export function MidiKeyboard({
               </div>
             </div>
 
-            {/* Coluna direita */}
             {viewMode === 'keyboard' ? (
               <div className="flex flex-col gap-4">
                 <div>
@@ -433,19 +428,18 @@ export function MidiKeyboard({
         </Popup>
       )}
 
-      {/* ---------- ÁREA PRINCIPAL ---------- */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-row gap-1">
         {viewMode === 'keyboard' && (
           <div className="relative flex w-10 shrink-0 flex-col justify-between gap-1 rounded-xl border border-[#1e293b] bg-[#0f172a] p-1">
-
-            {/* PB */}
+            
+            {/* PB - Metal Thumb */}
             <div className="relative flex w-full flex-1 flex-col items-center">
               <span className="absolute top-0 z-10 text-[7px] font-bold text-slate-500">PB</span>
-              <div className="relative my-auto h-[80%] w-2 rounded-full border border-[#1e293b] bg-[#05080f]">
+              <div className="relative my-auto h-[80%] w-2.5 rounded-full border border-[#1e293b] bg-[#05080f] shadow-inner">
                 <div className="absolute top-1/2 left-0 right-0 z-10 h-px bg-slate-600" />
                 <div className="absolute top-1/2 left-0 right-0 h-1/2 bg-fuchsia-600/50 opacity-50" style={{ bottom: '50%' }} />
-                <div className="absolute left-1/2 z-30 h-3 w-5 -translate-x-1/2 rounded bg-gradient-to-b from-slate-300 to-slate-500 shadow"
-                     style={{ bottom: `calc(${(pbValue / 16383) * 100}% - 6px)` }} />
+                <div className="absolute left-1/2 z-30 h-4 w-6 -translate-x-1/2 rounded-sm bg-gradient-to-b from-gray-300 via-gray-400 to-gray-600 border border-gray-500 shadow-[0_2px_5px_rgba(0,0,0,0.8)]"
+                     style={{ bottom: `calc(${(pbValue / 16383) * 100}% - 8px)` }} />
               </div>
               <input
                 type="range" min="0" max="16383" value={pbValue}
@@ -456,13 +450,13 @@ export function MidiKeyboard({
               />
             </div>
 
-            {/* MOD */}
+            {/* MOD - Metal Thumb */}
             <div className="relative flex w-full flex-1 flex-col items-center">
               <span className="absolute top-0 z-10 text-[7px] font-bold text-slate-500">MOD</span>
-              <div className="relative my-auto h-[80%] w-2 rounded-full border border-[#1e293b] bg-[#05080f]">
+              <div className="relative my-auto h-[80%] w-2.5 rounded-full border border-[#1e293b] bg-[#05080f] shadow-inner">
                 <div className="absolute bottom-0 left-0 right-0 z-10 bg-cyan-500/50" style={{ height: `${(modValue / 127) * 100}%` }} />
-                <div className="absolute left-1/2 z-30 h-3 w-5 -translate-x-1/2 rounded bg-gradient-to-b from-slate-300 to-slate-500 shadow"
-                     style={{ bottom: `calc(${(modValue / 127) * 100}% - 6px)` }} />
+                <div className="absolute left-1/2 z-30 h-4 w-6 -translate-x-1/2 rounded-sm bg-gradient-to-b from-gray-300 via-gray-400 to-gray-600 border border-gray-500 shadow-[0_2px_5px_rgba(0,0,0,0.8)]"
+                     style={{ bottom: `calc(${(modValue / 127) * 100}% - 8px)` }} />
               </div>
               <input
                 type="range" min="0" max="127" value={modValue}
@@ -477,10 +471,10 @@ export function MidiKeyboard({
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {viewMode === 'keyboard' ? (
             <div ref={containerRef} className="relative flex min-w-0 flex-1 overflow-hidden rounded-xl border border-[#1e293b]">
-
-              {/* Seta esquerda: coluna própria, nunca fica atrás das teclas */}
+              
+              {/* Setas de hardware (colunas dedicadas) */}
               {!isScrollLocked && (
-                <button type="button" aria-label={tr('Rolar para a esquerda')} disabled={!canScrollLeft} onClick={() => scrollKeyboard('left')} className={`${arrowBtnClass} border-r border-[#1e293b]`}>
+                <button type="button" aria-label={tr('Rolar para a esquerda')} disabled={!canScrollLeft} onClick={() => scrollKeyboard('left')} className="flex w-10 shrink-0 items-center justify-center border-r border-[#1e293b] bg-[#0f172a] text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:opacity-20 disabled:hover:bg-[#0f172a]">
                   <ChevronLeft size={24} />
                 </button>
               )}
@@ -496,9 +490,8 @@ export function MidiKeyboard({
                 </div>
               </div>
 
-              {/* Seta direita: coluna própria */}
               {!isScrollLocked && (
-                <button type="button" aria-label={tr('Rolar para a direita')} disabled={!canScrollRight} onClick={() => scrollKeyboard('right')} className={`${arrowBtnClass} border-l border-[#1e293b]`}>
+                <button type="button" aria-label={tr('Rolar para a direita')} disabled={!canScrollRight} onClick={() => scrollKeyboard('right')} className="flex w-10 shrink-0 items-center justify-center border-l border-[#1e293b] bg-[#0f172a] text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:opacity-20 disabled:hover:bg-[#0f172a]">
                   <ChevronRight size={24} />
                 </button>
               )}
