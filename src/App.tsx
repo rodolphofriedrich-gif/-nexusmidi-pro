@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useRef } from 'react';
 import {
   Activity, AudioWaveform, GitBranch, LogOut, Music2, Menu, X, Usb, Bluetooth, type LucideIcon,
+  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Maximize, Minimize, Power, Piano, LayoutGrid, SlidersHorizontal, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { ConnectionMenu } from './components/ConnectionMenu';
 import { ExitDialog } from './components/ExitDialog';
-import { MidiKeyboard } from './components/MidiKeyboard';
+import { MidiKeyboard, MidiKeyboardHandle } from './components/MidiKeyboard';
 import { MidiMonitorScreen } from './components/MidiMonitorScreen';
 import { MidiRouterScreen } from './components/MidiRouterScreen';
 import { MidiStatusBar } from './components/MidiStatusBar';
@@ -16,7 +17,7 @@ import { useMidiDevices } from './hooks/useMidiDevices';
 import { useStore } from './hooks/useStore';
 import { useToast, type ToastType } from './hooks/useToast';
 import { tr } from './i18n';
-import { midiManager } from './services/midiService';
+import { midiManager, VIRTUAL_ID } from './services/midiService';
 import { NativeMidi } from './services/nativeMidi';
 import { performanceEngine } from './services/performanceService';
 import { prefsStore } from './services/stores';
@@ -47,6 +48,19 @@ export default function App() {
   const [keyboardEnabled, setKeyboardEnabled] = useState(true);
   const [sustain, setSustain] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Estados para os controles do cabeçalho (Teclado)
+  const [keyboardViewMode, setKeyboardViewMode] = useState<'keyboard' | 'pads'>('keyboard');
+  const [startOctave, setStartOctave] = useState(3);
+  const [padBank, setPadBank] = useState(0);
+  const keyboardRef = useRef<MidiKeyboardHandle>(null);
+
+  // Estados para o cabeçalho (Estúdio, Roteador, Monitor)
+  const [studioTab, setStudioTab] = useState<'synth' | 'mixer' | 'tools'>('synth');
+  const [isRouterRefreshing, setIsRouterRefreshing] = useState(false);
+  const [monitorFilter, setMonitorFilter] = useState<'all' | 'RX' | 'TX'>('all');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [monitorPaused, setMonitorPaused] = useState(false);
 
   useEffect(() => {
     document.documentElement.lang = prefs.language;
@@ -111,6 +125,22 @@ export default function App() {
     void devices.refresh();
   };
 
+  const handleRefreshRouter = async () => {
+    setIsRouterRefreshing(true);
+    try {
+      await devices.refresh();
+    } finally {
+      setIsRouterRefreshing(false);
+    }
+  };
+
+  const addNewRoute = () => {
+    midiManager.addRoute({ sourceId: VIRTUAL_ID, destinationId: devices.connected[0]?.id ?? '' });
+  };
+
+  const btnClass = "flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#1e293b] bg-[#0f172a] text-slate-400 transition-all hover:bg-slate-800 hover:text-slate-200 active:scale-95 px-2.5 text-[10px] font-bold";
+  const btnActiveClass = "border-cyan-700/50 bg-cyan-900/30 text-cyan-400 shadow-[0_0_10px_rgba(8,145,178,0.2)]";
+
   return (
     <div className={`nexus-app fixed inset-0 flex h-[100dvh] w-full select-none overflow-hidden font-sans antialiased ${isFullscreen ? 'is-fullscreen' : ''}`}>
       
@@ -159,7 +189,7 @@ export default function App() {
 
             <div className="h-px w-full bg-[#1e293b]" />
 
-            {/* Conexões */}
+            {/* Conexões (Abre Modal Centralizado) */}
             <div className="flex flex-col gap-2">
               <span className="text-[10px] font-bold uppercase text-slate-500 px-3">Conexões</span>
               <ConnectionMenu kind="usb" isOpen={openMenu === 'usb'} isConnected={isUsbConnected} statusLabel={isUsbConnected ? tr('Conectado') : tr('Desconectado')} devices={usbDevices} connectedIds={connectedIds} showDisconnectAll={isUsbConnected} onToggleOpen={() => toggleMenu('usb')} onRefresh={() => void devices.refresh()} onToggleDevice={(d) => void devices.toggleConnect(d)} onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }} />
@@ -179,12 +209,115 @@ export default function App() {
       {/* CONTEÚDO PRINCIPAL */}
       <div className="flex h-full flex-1 flex-col overflow-hidden">
         {!isFullscreen && (
-          <header className="relative z-[80] flex h-12 w-full shrink-0 items-center justify-between gap-3 border-b border-[#1e293b] bg-[#0a0f1c] px-3 pt-[env(safe-area-inset-top)] sm:px-4">
-            <div className="flex min-w-0 items-center gap-2">
-              <button type="button" onClick={() => setIsSidebarOpen(true)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" title={tr('Menu')}>
+          <header className="relative z-[80] flex h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-[#1e293b] bg-[#0a0f1c] px-2 pt-[env(safe-area-inset-top)] sm:px-3">
+            
+            {/* Lado Esquerdo: Menu + Controles Dinâmicos */}
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
+              <button type="button" onClick={() => setIsSidebarOpen(true)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" title={tr('Menu')}>
                 <Menu size={20} />
               </button>
+
+              {/* CONTROLES DO TECLADO */}
+              {activeTab === 'keyboard' && (
+                <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 bg-[#0a0f1c] rounded-lg p-0.5 border border-[#1e293b]">
+                    <button type="button" onClick={() => { setKeyboardViewMode('keyboard'); if (prefs.channel === 10 && keyboardRef.current) keyboardRef.current.setLastChannel(); }} className={`flex h-7 items-center gap-1.5 px-3 text-[10px] font-bold rounded-md transition-colors ${keyboardViewMode === 'keyboard' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><Piano size={12} /> PIANO</button>
+                    <button type="button" onClick={() => { setKeyboardViewMode('pads'); if (prefs.channel !== 10) prefsStore.set({ channel: 10 }); }} className={`flex h-7 items-center gap-1.5 px-3 text-[10px] font-bold rounded-md transition-colors ${keyboardViewMode === 'pads' ? 'bg-cyan-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><LayoutGrid size={12} /> PADS</button>
+                  </div>
+
+                  {keyboardViewMode === 'keyboard' ? (
+                    <>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button type="button" disabled={startOctave <= 1} onClick={() => setStartOctave(v => Math.max(1, v - 1))} className={`${btnClass} w-8 text-lg`}>−</button>
+                        <div className="flex h-8 min-w-[44px] items-center justify-center rounded-lg border border-[#1e293b] bg-[#0a0f1c] px-2 font-mono text-xs font-bold text-cyan-300">C{startOctave}</div>
+                        <button type="button" disabled={startOctave >= 6} onClick={() => setStartOctave(v => Math.min(6, v + 1))} className={`${btnClass} w-8 text-lg`}>+</button>
+                      </div>
+                      <button type="button" onClick={handleToggleSustain} className={`${btnClass} ${sustain ? btnActiveClass : ''} hidden sm:flex`}><Pause size={14} /> SUSTAIN</button>
+                    </>
+                  ) : (
+                    <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[#1e293b] bg-[#0a0f1c] p-0.5">
+                      {[0, 1, 2, 3].map((b) => (
+                        <button key={b} type="button" onClick={() => setPadBank(b)} className={`h-7 whitespace-nowrap rounded-md px-3 text-[10px] font-bold transition-colors ${padBank === b ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}>{tr('BANCO {n}', { n: b + 1 })}</button>
+                      ))}
+                    </div>
+                  )}
+
+                  <button type="button" onClick={() => { setKeyboardEnabled(!keyboardEnabled); showMessage(!keyboardEnabled ? tr('Teclado Virtual Ligado') : tr('Teclado Virtual Desligado'), 'info', 1500); }} className={`${btnClass} ${keyboardEnabled ? btnActiveClass : ''} hidden md:flex`}><Power size={14} /><span className="hidden lg:inline">{keyboardEnabled ? 'ON' : 'OFF'}</span></button>
+                  <button type="button" onClick={() => setIsFullscreen(!isFullscreen)} className={`${btnClass} ${isFullscreen ? 'bg-amber-600 border-amber-500 text-white' : ''} w-8 hidden md:flex`}>{isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}</button>
+
+                  <div className="h-6 w-px bg-slate-700 shrink-0 hidden sm:block mx-1" />
+
+                  <button type="button" onClick={() => keyboardRef.current?.openChannelPopup()} className={`${btnClass}`}>
+                    <span className="text-[10px] font-bold uppercase">CH</span>
+                    <span className="min-w-[16px] text-center font-mono text-xs font-bold text-cyan-300">{String(prefs.channel).padStart(2, '0')}</span>
+                    <ChevronDown size={12} />
+                  </button>
+                  <button type="button" onClick={() => keyboardRef.current?.openSettingsPopup()} className={`${btnClass} w-8`}>
+                    <SlidersHorizontal size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* CONTROLES DO ROTEADOR */}
+              {activeTab === 'router' && (
+                <div className="flex items-center gap-3">
+                  <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400 shrink-0 hidden sm:flex">
+                    <GitBranch size={16} /> {tr('Roteador MIDI Matriz')}
+                  </h2>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button type="button" aria-label={tr('Atualizar lista')} onClick={() => void handleRefreshRouter()} disabled={isRouterRefreshing} className={`${btnClass} w-8`}>
+                      <RefreshCw size={14} className={isRouterRefreshing ? 'animate-spin' : ''} />
+                    </button>
+                    <button type="button" onClick={addNewRoute} className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-cyan-900/50 transition hover:bg-cyan-500">
+                      <Plus size={16} /> <span className="hidden sm:inline">{tr('Nova Rota')}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* CONTROLES DO ESTÚDIO */}
+              {activeTab === 'studio' && (
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-slate-300 mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button type="button" onClick={() => setStudioTab('synth')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'synth' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><AudioWaveform size={14} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
+                    <button type="button" onClick={() => setStudioTab('mixer')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'mixer' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><SlidersHorizontal size={14} /> <span className="hidden sm:inline">{tr('Mixer / CC')}</span></button>
+                    <button type="button" onClick={() => setStudioTab('tools')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'tools' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><Settings2 size={14} /> <span className="hidden sm:inline">{tr('Ferramentas')}</span></button>
+                  </div>
+                </div>
+              )}
+
+              {/* CONTROLES DO MONITOR */}
+              {activeTab === 'monitor' && (
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-fuchsia-400 shrink-0 hidden sm:block">{tr('MIDI Monitor')}</h2>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="relative">
+                      <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} className="flex h-8 items-center gap-2 rounded-lg border border-slate-700 bg-[#0f172a] px-3 text-xs text-slate-300 hover:bg-slate-800">
+                        {monitorFilter === 'all' ? tr('Todos') : monitorFilter === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')} <ChevronDown size={12} />
+                      </button>
+                      {isFilterOpen && (
+                        <div className="absolute left-0 top-full z-50 mt-1 w-40 overflow-hidden rounded-lg border border-slate-700 bg-[#0f172a] shadow-2xl">
+                          {(['all', 'RX', 'TX'] as const).map((f) => (
+                            <button type="button" key={f} onClick={() => { setMonitorFilter(f); setIsFilterOpen(false); }} className={`w-full px-3 py-2 text-left text-xs hover:bg-slate-800 ${monitorFilter === f ? 'font-bold text-fuchsia-400' : 'text-slate-300'}`}>
+                              {f === 'all' ? tr('Todos') : f === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => setMonitorPaused(!monitorPaused)} className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${monitorPaused ? 'border-amber-600/60 bg-amber-900/30 text-amber-400' : 'border-slate-700 bg-[#0f172a] text-slate-300 hover:bg-slate-800'}`}>
+                      {monitorPaused ? <Play size={14} /> : <Pause size={14} />}
+                    </button>
+                    <button type="button" onClick={() => { midiManager.clearLog(); setMonitorPaused(false); }} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-[#0f172a] text-slate-300 transition hover:bg-red-950/50 hover:text-red-400">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Lado Direito: Status USB/BLE */}
             <div className="flex shrink-0 items-center gap-2">
               {isUsbConnected && (
                 <div className="flex items-center justify-center h-7 w-7 rounded-md bg-emerald-900/30 text-emerald-400 border border-emerald-800/50" title="USB Conectado">
@@ -210,6 +343,10 @@ export default function App() {
                 {!isFullscreen && <div className="py-1"><VuMeter level={vuLevel} /></div>}
                 <div className="nexus-keyboard-container flex min-h-0 flex-1 flex-col">
                   <MidiKeyboard
+                    ref={keyboardRef}
+                    viewMode={keyboardViewMode}
+                    startOctave={startOctave}
+                    padBank={padBank}
                     isConnected={canPlay}
                     selectedChannel={prefs.channel}
                     onSelectChannel={(channel) => { prefsStore.set({ channel }); showMessage(tr('Canal: {n}', { n: channel }), 'info', 1500); }}
@@ -220,9 +357,7 @@ export default function App() {
                     customBlackKeyColor={palette.black}
                     onActiveNotesChange={setActiveNotes}
                     isActive={keyboardEnabled}
-                    onToggleActive={() => { setKeyboardEnabled(!keyboardEnabled); showMessage(!keyboardEnabled ? tr('Teclado Virtual Ligado') : tr('Teclado Virtual Desligado'), 'info', 1500); }}
                     isSustainActive={sustain}
-                    onToggleSustain={() => void handleToggleSustain()}
                     selectedVelocity={prefs.velocity}
                     onSelectVelocity={(velocity) => prefsStore.set({ velocity })}
                     selectedPaletteId={prefs.paletteId}
@@ -230,7 +365,6 @@ export default function App() {
                     onPitchBend={(val) => void midiManager.sendPitchBend(prefs.channel, val)}
                     onModWheel={(val) => void midiManager.sendControlChange(prefs.channel, 1, val)}
                     isFullscreen={isFullscreen}
-                    onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
                   />
                 </div>
                 {!isFullscreen && <div className="py-1"><VuMeter level={vuLevel} /></div>}
@@ -241,19 +375,19 @@ export default function App() {
 
           {activeTab === 'router' && (
             <div className="nexus-screen-container flex min-h-0 flex-1 flex-col overflow-hidden">
-              <MidiRouterScreen destinations={devices.destinations} connectedDestinations={devices.connected} onRefresh={devices.refresh} />
+              <MidiRouterScreen destinations={devices.destinations} connectedDestinations={devices.connected} onRefresh={devices.refresh} isRefreshing={isRouterRefreshing} />
             </div>
           )}
 
           {activeTab === 'studio' && (
             <div className="nexus-screen-container flex min-h-0 flex-1 flex-col overflow-hidden">
-              <StudioScreen onStatus={(message, type = 'info') => showMessage(message, type, 3000)} />
+              <StudioScreen activeTab={studioTab} onStatus={(message, type = 'info') => showMessage(message, type, 3000)} />
             </div>
           )}
 
           {activeTab === 'monitor' && (
             <div className="nexus-screen-container flex min-h-0 flex-1 flex-col overflow-hidden">
-              <MidiMonitorScreen />
+              <MidiMonitorScreen filter={monitorFilter} paused={monitorPaused} />
             </div>
           )}
         </main>
