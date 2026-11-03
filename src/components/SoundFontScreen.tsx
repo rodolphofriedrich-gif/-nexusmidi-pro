@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
-import { AlertCircle, CheckCircle2, Library, List, SlidersHorizontal, UploadCloud } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Library, List, SlidersHorizontal, UploadCloud, X, ChevronLeft, ChevronRight, Settings2 } from 'lucide-react';
 import { GM_PRESETS } from '../constants/gm';
 import { useStore } from '../hooks/useStore';
 import type { ToastType } from '../hooks/useToast';
@@ -18,7 +18,30 @@ interface Props {
   onStatus: (message: string, type?: ToastType) => void;
 }
 
-type ViewMode = 'presets' | 'config' | 'library';
+type ViewMode = 'presets' | 'library';
+
+// Componente Popup simples
+function Popup({ title, onClose, children, widthClass = 'max-w-2xl' }: { title: string; onClose: () => void; children: React.ReactNode; widthClass?: string }) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className={`flex max-h-[92vh] w-full ${widthClass} flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0f172a] shadow-2xl`}>
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-2.5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">{title}</h3>
+          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-[#0a0f1c] text-slate-400 transition hover:text-white">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">{children}</div>
+      </div>
+    </div>
+  );
+}
 
 export function SoundFontScreen({ onStatus }: Props) {
   const settings = useStore(synthSettingsStore);
@@ -28,6 +51,8 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const [viewMode, setViewMode] = useState<ViewMode>('presets');
   const [activeChannel, setActiveChannel] = useState(() => prefsStore.get().channel);
+  const [channelGroup, setChannelGroup] = useState(0); // 0 = 1-8, 1 = 5-12, 2 = 9-16, 3 = 13-4 (loop)
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const busy = library.busy || synth.loading;
 
@@ -88,6 +113,15 @@ export function SoundFontScreen({ onStatus }: Props) {
     setTimeout(() => chord.forEach((note) => synthService.noteOff(note, activeChannel)), 1000);
   };
 
+  // Lógica dos dois blocos de canais
+  const getChannelBlock = (offset: number) => {
+    const start = (channelGroup * 4 + offset * 4) % 16 + 1;
+    return [start, start + 1, start + 2, start + 3];
+  };
+
+  const nextGroup = () => setChannelGroup((g) => (g + 1) % 4);
+  const prevGroup = () => setChannelGroup((g) => (g + 3) % 4);
+
   const tabClass = (mode: ViewMode, active: string) =>
     `flex h-8 items-center justify-center gap-1.5 px-3 text-[10px] font-bold rounded-lg transition-colors ${viewMode === mode ? active : 'text-slate-500 hover:text-slate-300'}`;
 
@@ -95,7 +129,7 @@ export function SoundFontScreen({ onStatus }: Props) {
     <div className="flex w-full flex-1 flex-row overflow-hidden bg-[#0a0f1c] p-2 text-slate-100 gap-2">
       
       {/* COLUNA ESQUERDA: Controles Rápidos + Canais */}
-      <div className="flex w-[40%] max-w-[400px] shrink-0 flex-col gap-2">
+      <div className="flex w-[35%] max-w-[360px] shrink-0 flex-col gap-2">
         <div className="w-full shrink-0">
           <ActiveSoundFontCard
             preset={activePreset()}
@@ -110,38 +144,47 @@ export function SoundFontScreen({ onStatus }: Props) {
         </div>
 
         <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
-          {/* Mini Mixer de Canais (1 a 16) */}
-          <div className="grid grid-cols-4 gap-1 pb-2 shrink-0">
-            {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16].map(ch => {
-              const isMuted = channels.muted[ch];
-              const isSoloed = channels.solo === ch;
-              const isActive = activeChannel === ch;
-              
+          {/* Header dos canais com navegação */}
+          <div className="flex items-center justify-between mb-2 shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Canais MIDI</span>
+            <div className="flex items-center gap-1">
+              <button onClick={prevGroup} className="p-1 text-slate-400 hover:text-white"><ChevronLeft size={14} /></button>
+              <button onClick={nextGroup} className="p-1 text-slate-400 hover:text-white"><ChevronRight size={14} /></button>
+            </div>
+          </div>
+
+          {/* Dois blocos de 4 canais */}
+          <div className="grid grid-cols-2 gap-2">
+            {[0, 1].map((offset) => {
+              const block = getChannelBlock(offset);
               return (
-                <div key={ch} className={`flex flex-col items-center p-1 rounded-lg border transition-colors ${isActive ? 'bg-slate-800 border-cyan-600/50' : 'bg-[#0a0f1c] border-[#1e293b]'}`}>
-                  <button 
-                    type="button"
-                    onClick={() => setActiveChannel(ch)} 
-                    className={`w-full h-6 rounded font-mono text-[10px] font-bold mb-1 transition-colors ${isActive ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-700'}`}
-                  >
-                    {ch}
-                  </button>
-                  <div className="flex gap-1 w-full">
-                    <button 
-                      type="button"
-                      onClick={() => toggleMute(ch)} 
-                      className={`flex-1 h-4 rounded flex items-center justify-center text-[8px] font-bold ${isMuted ? 'bg-rose-600 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
-                    >
-                      M
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => toggleSolo(ch)} 
-                      className={`flex-1 h-4 rounded flex items-center justify-center text-[8px] font-bold ${isSoloed ? 'bg-amber-500 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
-                    >
-                      S
-                    </button>
-                  </div>
+                <div key={offset} className="flex flex-col gap-1 p-1.5 rounded-lg bg-[#0a0f1c] border border-[#1e293b]">
+                  {block.map((ch) => {
+                    const isMuted = channels.muted[ch];
+                    const isSoloed = channels.solo === ch;
+                    const isActive = activeChannel === ch;
+                    return (
+                      <div key={ch} className={`flex items-center gap-1 rounded-md p-1 transition-colors ${isActive ? 'bg-cyan-900/30 border border-cyan-600/50' : 'border border-transparent hover:bg-slate-800'}`}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveChannel(ch)}
+                          className={`w-6 h-6 rounded font-mono text-[10px] font-bold transition-colors ${isActive ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}
+                        >
+                          {ch}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleMute(ch)}
+                          className={`flex-1 h-5 rounded text-[8px] font-bold ${isMuted ? 'bg-rose-600 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
+                        >M</button>
+                        <button
+                          type="button"
+                          onClick={() => toggleSolo(ch)}
+                          className={`flex-1 h-5 rounded text-[8px] font-bold ${isSoloed ? 'bg-amber-500 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
+                        >S</button>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -149,7 +192,7 @@ export function SoundFontScreen({ onStatus }: Props) {
         </div>
       </div>
 
-      {/* COLUNA DIREITA: Lista de Presets / Config / Biblioteca */}
+      {/* COLUNA DIREITA: Lista / Biblioteca */}
       <div className="flex-1 min-w-0 flex flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
         
         {/* Header com Abas e Importar */}
@@ -158,21 +201,27 @@ export function SoundFontScreen({ onStatus }: Props) {
             <button type="button" onClick={() => setViewMode('presets')} className={tabClass('presets', 'bg-cyan-600 text-white shadow-sm')}>
               <List size={12} /> PRESETS
             </button>
-            <button type="button" onClick={() => setViewMode('config')} className={tabClass('config', 'bg-cyan-600 text-white shadow-sm')}>
-              <SlidersHorizontal size={12} /> CONFIG
-            </button>
             <button type="button" onClick={() => setViewMode('library')} className={tabClass('library', 'bg-cyan-600 text-white shadow-sm')}>
               <Library size={12} /> BIBLIOTECA
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsConfigOpen(true)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-[#0a0f1c] text-slate-400 hover:text-white transition"
+              title={tr('Configurações')}
+            >
+              <Settings2 size={14} />
+            </button>
+
             {synth.fileName ? (
-              <span className="flex max-w-[120px] items-center gap-1 truncate font-mono text-[10px] text-emerald-400">
+              <span className="hidden max-w-[120px] items-center gap-1 truncate font-mono text-[10px] text-emerald-400 sm:flex">
                 <CheckCircle2 size={12} /> {synth.fileName}
               </span>
             ) : (
-              <span className="flex items-center gap-1 font-mono text-[10px] text-slate-500">
+              <span className="hidden items-center gap-1 font-mono text-[10px] text-slate-500 sm:flex">
                 <AlertCircle size={12} /> Sem SF2
               </span>
             )}
@@ -188,7 +237,7 @@ export function SoundFontScreen({ onStatus }: Props) {
           </div>
         </div>
 
-        {/* Conteúdo da Aba */}
+        {/* Conteúdo */}
         <div className="flex-1 min-h-0 w-full overflow-hidden">
           {viewMode === 'presets' && (
             <SoundFontList
@@ -203,9 +252,6 @@ export function SoundFontScreen({ onStatus }: Props) {
               onToggleSolo={toggleSolo}
             />
           )}
-          {viewMode === 'config' && (
-            <SynthSettingsPanel settings={settings} onUpdateSetting={updateSetting} onReset={handleReset} />
-          )}
           {viewMode === 'library' && (
             <SoundFontLibraryPanel
               library={library}
@@ -215,6 +261,13 @@ export function SoundFontScreen({ onStatus }: Props) {
           )}
         </div>
       </div>
+
+      {/* POPUP DE CONFIGURAÇÕES */}
+      {isConfigOpen && (
+        <Popup title={tr('Configurações')} onClose={() => setIsConfigOpen(false)} widthClass="max-w-2xl">
+          <SynthSettingsPanel settings={settings} onUpdateSetting={updateSetting} onReset={handleReset} />
+        </Popup>
+      )}
     </div>
   );
 }
