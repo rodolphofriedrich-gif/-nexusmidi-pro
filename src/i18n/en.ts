@@ -72,7 +72,6 @@ export const en: Record<string, string> = {
   "Conecte um dispositivo USB/BLE no topo.": "Connect a USB/BLE device at the top.",
   "Configurações": "Settings",
   "Configurações restauradas para o padrão.": "Settings restored to defaults.",
-  "Controles MIDI": "MIDI Controls",
   "Controles redefinidos localmente.": "Controls reset locally.",
   "Cordas": "Strings",
   "Cores do Teclado": "Keyboard Colors",
