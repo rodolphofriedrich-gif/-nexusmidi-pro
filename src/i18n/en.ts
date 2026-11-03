@@ -203,8 +203,6 @@ export const en: Record<string, string> = {
   "Ouvir": "Listen",
   "PRESETS": "PRESETS",
   "Padrão": "Default",
-  "Pads": "Pads",
-  "Pads de Bateria": "Drum Pads",
   "Palmas": "Claps",
   "Pandeiro": "Tambourine",
   "Panorama": "Pan",
