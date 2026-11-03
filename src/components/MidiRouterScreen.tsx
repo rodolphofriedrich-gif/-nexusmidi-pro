@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowRightLeft, ChevronDown, Download, Plus, Upload, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, ChevronDown, Download, Upload, Trash2 } from 'lucide-react';
 import { tr } from '../i18n';
 import { midiManager } from '../services/midiService';
 import type { MidiDestination, MidiRoute } from '../types/midi';
