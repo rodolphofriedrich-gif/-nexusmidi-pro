@@ -31,14 +31,13 @@ export function SoundFontScreen({ onStatus }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const busy = library.busy || synth.loading;
 
-  // Erros da biblioteca (arquivo inválido, falha de leitura) viram aviso na tela.
   useEffect(() => {
     if (library.error) onStatus(library.error, 'error');
   }, [library.error, onStatus]);
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    e.target.value = ''; // permite importar o mesmo arquivo de novo
+    e.target.value = '';
     if (!file) return;
     onStatus(tr('Carregando e salvando SoundFont...'), 'info');
     if (await soundFontLibrary.importFile(file)) {
@@ -90,46 +89,91 @@ export function SoundFontScreen({ onStatus }: Props) {
   };
 
   const tabClass = (mode: ViewMode, active: string) =>
-    `flex h-7 items-center gap-1.5 px-3 text-[10px] font-bold rounded-md transition-colors ${viewMode === mode ? active : 'text-slate-500 hover:text-slate-300'}`;
+    `flex h-8 items-center justify-center gap-1.5 px-3 text-[10px] font-bold rounded-lg transition-colors ${viewMode === mode ? active : 'text-slate-500 hover:text-slate-300'}`;
 
   return (
-    <div className="flex w-full flex-1 flex-col gap-2 overflow-hidden bg-[#0a0f1c] p-2 text-slate-100 sm:p-3">
-      <div className="w-full shrink-0">
-        <ActiveSoundFontCard
-          preset={activePreset()}
-          volume={settings.volume}
-          onVolumeChange={(v) => updateSetting('volume', v)}
-          reverb={settings.reverb}
-          onReverbChange={(v) => updateSetting('reverb', v)}
-          transpose={settings.transpose}
-          onTransposeChange={(v) => updateSetting('transpose', v)}
-          onAudition={handleAudition}
-        />
+    <div className="flex w-full flex-1 flex-row overflow-hidden bg-[#0a0f1c] p-2 text-slate-100 gap-2">
+      
+      {/* COLUNA ESQUERDA: Controles Rápidos + Canais */}
+      <div className="flex w-[40%] max-w-[400px] shrink-0 flex-col gap-2">
+        <div className="w-full shrink-0">
+          <ActiveSoundFontCard
+            preset={activePreset()}
+            volume={settings.volume}
+            onVolumeChange={(v) => updateSetting('volume', v)}
+            reverb={settings.reverb}
+            onReverbChange={(v) => updateSetting('reverb', v)}
+            transpose={settings.transpose}
+            onTransposeChange={(v) => updateSetting('transpose', v)}
+            onAudition={handleAudition}
+          />
+        </div>
+
+        <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
+          {/* Mini Mixer de Canais (1 a 16) */}
+          <div className="grid grid-cols-4 gap-1 pb-2 shrink-0">
+            {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16].map(ch => {
+              const isMuted = channels.muted[ch];
+              const isSoloed = channels.solo === ch;
+              const isActive = activeChannel === ch;
+              
+              return (
+                <div key={ch} className={`flex flex-col items-center p-1 rounded-lg border transition-colors ${isActive ? 'bg-slate-800 border-cyan-600/50' : 'bg-[#0a0f1c] border-[#1e293b]'}`}>
+                  <button 
+                    type="button"
+                    onClick={() => setActiveChannel(ch)} 
+                    className={`w-full h-6 rounded font-mono text-[10px] font-bold mb-1 transition-colors ${isActive ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-700'}`}
+                  >
+                    {ch}
+                  </button>
+                  <div className="flex gap-1 w-full">
+                    <button 
+                      type="button"
+                      onClick={() => toggleMute(ch)} 
+                      className={`flex-1 h-4 rounded flex items-center justify-center text-[8px] font-bold ${isMuted ? 'bg-rose-600 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
+                    >
+                      M
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => toggleSolo(ch)} 
+                      className={`flex-1 h-4 rounded flex items-center justify-center text-[8px] font-bold ${isSoloed ? 'bg-amber-500 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
+                    >
+                      S
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
-        <div className="mb-2 flex shrink-0 flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
-          <div className="flex rounded-lg border border-[#1e293b] bg-[#0a0f1c] p-0.5">
-            <button type="button" onClick={() => setViewMode('presets')} className={tabClass('presets', 'bg-slate-700 text-white shadow-sm')}>
-              <List size={12} /> {tr('PRESETS')}
+      {/* COLUNA DIREITA: Lista de Presets / Config / Biblioteca */}
+      <div className="flex-1 min-w-0 flex flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
+        
+        {/* Header com Abas e Importar */}
+        <div className="mb-2 flex shrink-0 items-center justify-between gap-2 border-b border-[#1e293b] pb-2">
+          <div className="flex bg-[#0a0f1c] rounded-lg p-0.5 border border-[#1e293b]">
+            <button type="button" onClick={() => setViewMode('presets')} className={tabClass('presets', 'bg-cyan-600 text-white shadow-sm')}>
+              <List size={12} /> PRESETS
             </button>
-            <button type="button" onClick={() => setViewMode('config')} className={tabClass('config', 'bg-cyan-700 text-white shadow-sm')}>
-              <SlidersHorizontal size={12} /> {tr('CONFIG')}
+            <button type="button" onClick={() => setViewMode('config')} className={tabClass('config', 'bg-cyan-600 text-white shadow-sm')}>
+              <SlidersHorizontal size={12} /> CONFIG
             </button>
-            <button type="button" onClick={() => setViewMode('library')} className={tabClass('library', 'bg-emerald-700 text-white shadow-sm')}>
-              <Library size={12} /> {tr('BIBLIOTECA')}
-              {library.items.length > 0 && <span className="rounded bg-black/30 px-1 font-mono">{library.items.length}</span>}
+            <button type="button" onClick={() => setViewMode('library')} className={tabClass('library', 'bg-cyan-600 text-white shadow-sm')}>
+              <Library size={12} /> BIBLIOTECA
             </button>
           </div>
 
-          <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+          <div className="flex items-center gap-3">
             {synth.fileName ? (
-              <span className="hidden max-w-[120px] items-center gap-1 truncate font-mono text-[10px] text-emerald-400 sm:flex sm:max-w-[200px]">
+              <span className="flex max-w-[120px] items-center gap-1 truncate font-mono text-[10px] text-emerald-400">
                 <CheckCircle2 size={12} /> {synth.fileName}
               </span>
             ) : (
-              <span className="hidden items-center gap-1 font-mono text-[10px] text-amber-500 sm:flex">
-                <AlertCircle size={12} /> {tr('Vazio')}
+              <span className="flex items-center gap-1 font-mono text-[10px] text-slate-500">
+                <AlertCircle size={12} /> Sem SF2
               </span>
             )}
             <input type="file" accept=".sf2" ref={fileInputRef} onChange={(e) => void handleFileChange(e)} className="hidden" />
@@ -137,39 +181,38 @@ export function SoundFontScreen({ onStatus }: Props) {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={busy}
-              className="flex shrink-0 items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-[10px] font-bold text-white shadow transition hover:bg-cyan-500 disabled:opacity-50"
+              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-[10px] font-bold text-white shadow transition hover:bg-cyan-500 disabled:opacity-50"
             >
-              <UploadCloud size={12} /> {busy ? tr('Carregando...') : tr('Importar SF2')}
+              <UploadCloud size={14} /> {busy ? '...' : 'Importar SF2'}
             </button>
           </div>
         </div>
 
-        <div className="flex min-h-0 w-full flex-1 flex-col items-center">
-          <div className="h-full w-full">
-            {viewMode === 'presets' && (
-              <SoundFontList
-                soundFonts={GM_PRESETS}
-                activeChannel={activeChannel}
-                onSelectChannel={setActiveChannel}
-                channelAssignments={channels.assignments}
-                onAssignProgram={handleAssignProgram}
-                mutedChannels={channels.muted}
-                soloedChannel={channels.solo}
-                onToggleMute={toggleMute}
-                onToggleSolo={toggleSolo}
-              />
-            )}
-            {viewMode === 'config' && (
-              <SynthSettingsPanel settings={settings} onUpdateSetting={updateSetting} onReset={handleReset} />
-            )}
-            {viewMode === 'library' && (
-              <SoundFontLibraryPanel
-                library={library}
-                onActivate={(id) => void handleActivate(id)}
-                onRemove={(id) => void handleRemove(id)}
-              />
-            )}
-          </div>
+        {/* Conteúdo da Aba */}
+        <div className="flex-1 min-h-0 w-full overflow-hidden">
+          {viewMode === 'presets' && (
+            <SoundFontList
+              soundFonts={GM_PRESETS}
+              activeChannel={activeChannel}
+              onSelectChannel={setActiveChannel}
+              channelAssignments={channels.assignments}
+              onAssignProgram={handleAssignProgram}
+              mutedChannels={channels.muted}
+              soloedChannel={channels.solo}
+              onToggleMute={toggleMute}
+              onToggleSolo={toggleSolo}
+            />
+          )}
+          {viewMode === 'config' && (
+            <SynthSettingsPanel settings={settings} onUpdateSetting={updateSetting} onReset={handleReset} />
+          )}
+          {viewMode === 'library' && (
+            <SoundFontLibraryPanel
+              library={library}
+              onActivate={(id) => void handleActivate(id)}
+              onRemove={(id) => void handleRemove(id)}
+            />
+          )}
         </div>
       </div>
     </div>
