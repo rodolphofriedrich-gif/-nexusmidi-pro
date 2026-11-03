@@ -24,14 +24,14 @@ export function StudioScreen({ onStatus }: StudioScreenProps) {
         <button
           type="button"
           onClick={() => setActiveTab('mixer')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-colors ${activeTab === 'mixer' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-colors ${activeTab === 'mixer' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}
         >
           <SlidersHorizontal size={16} /> Mixer / CC
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('tools')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-colors ${activeTab === 'tools' ? 'bg-pink-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-colors ${activeTab === 'tools' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}
         >
           <WandSparkles size={16} /> Ferramentas
         </button>
