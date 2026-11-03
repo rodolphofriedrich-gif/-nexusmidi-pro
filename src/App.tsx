@@ -73,7 +73,7 @@ export default function App() {
 
     const setup = async () => {
       try {
-        // Importação dinâmica do Capacitor App para evitar erro se rodar no navegador
+        // @ts-ignore - O plugin pode não estar instalado no ambiente de desenvolvimento web
         const { App: CapApp } = await import('@capacitor/app');
         listener = await CapApp.addListener('backButton', handleBack);
       } catch {
