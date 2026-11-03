@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Play, Save, SlidersHorizontal, Trash2, RotateCcw, ShieldAlert } from 'lucide-react';
+import { Play, Save, Trash2, RotateCcw, ShieldAlert } from 'lucide-react';
 import { tr } from '../i18n';
 import { uid } from '../lib/id';
 import { midiManager } from '../services/midiService';
@@ -64,7 +64,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     }
   });
 
-  const { modWheel, volume, expression, pan, sustain, program, pitchBend, pressure, reverb, chorus, cutoff, resonance } = state;
+  const { modWheel, volume, expression, pan, sustain, program, pitchBend, reverb, chorus, cutoff, resonance } = state;
 
   const updateState = (key: string, value: any) => setState((s: any) => ({ ...s, [key]: value }));
 
