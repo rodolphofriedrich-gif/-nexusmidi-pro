@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
-import { AlertCircle, CheckCircle2, Library, List, SlidersHorizontal, UploadCloud, X, ChevronLeft, ChevronRight, Settings2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Library, List, UploadCloud, X, ChevronLeft, ChevronRight, Settings2 } from 'lucide-react';
 import { GM_PRESETS } from '../constants/gm';
 import { useStore } from '../hooks/useStore';
 import type { ToastType } from '../hooks/useToast';
@@ -51,7 +51,7 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const [viewMode, setViewMode] = useState<ViewMode>('presets');
   const [activeChannel, setActiveChannel] = useState(() => prefsStore.get().channel);
-  const [channelGroup, setChannelGroup] = useState(0); // 0 = 1-8, 1 = 5-12, 2 = 9-16, 3 = 13-4 (loop)
+  const [channelGroup, setChannelGroup] = useState(0); 
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const busy = library.busy || synth.loading;
@@ -113,7 +113,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     setTimeout(() => chord.forEach((note) => synthService.noteOff(note, activeChannel)), 1000);
   };
 
-  // Lógica dos dois blocos de canais
   const getChannelBlock = (offset: number) => {
     const start = (channelGroup * 4 + offset * 4) % 16 + 1;
     return [start, start + 1, start + 2, start + 3];
@@ -128,7 +127,7 @@ export function SoundFontScreen({ onStatus }: Props) {
   return (
     <div className="flex w-full flex-1 flex-row overflow-hidden bg-[#0a0f1c] p-2 text-slate-100 gap-2">
       
-      {/* COLUNA ESQUERDA: Controles Rápidos + Canais */}
+      {/* COLUNA ESQUERDA */}
       <div className="flex w-[35%] max-w-[360px] shrink-0 flex-col gap-2">
         <div className="w-full shrink-0">
           <ActiveSoundFontCard
@@ -144,7 +143,6 @@ export function SoundFontScreen({ onStatus }: Props) {
         </div>
 
         <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
-          {/* Header dos canais com navegação */}
           <div className="flex items-center justify-between mb-2 shrink-0">
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Canais MIDI</span>
             <div className="flex items-center gap-1">
@@ -153,7 +151,6 @@ export function SoundFontScreen({ onStatus }: Props) {
             </div>
           </div>
 
-          {/* Dois blocos de 4 canais */}
           <div className="grid grid-cols-2 gap-2">
             {[0, 1].map((offset) => {
               const block = getChannelBlock(offset);
@@ -192,10 +189,9 @@ export function SoundFontScreen({ onStatus }: Props) {
         </div>
       </div>
 
-      {/* COLUNA DIREITA: Lista / Biblioteca */}
+      {/* COLUNA DIREITA */}
       <div className="flex-1 min-w-0 flex flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
         
-        {/* Header com Abas e Importar */}
         <div className="mb-2 flex shrink-0 items-center justify-between gap-2 border-b border-[#1e293b] pb-2">
           <div className="flex bg-[#0a0f1c] rounded-lg p-0.5 border border-[#1e293b]">
             <button type="button" onClick={() => setViewMode('presets')} className={tabClass('presets', 'bg-cyan-600 text-white shadow-sm')}>
@@ -237,7 +233,6 @@ export function SoundFontScreen({ onStatus }: Props) {
           </div>
         </div>
 
-        {/* Conteúdo */}
         <div className="flex-1 min-h-0 w-full overflow-hidden">
           {viewMode === 'presets' && (
             <SoundFontList
@@ -262,7 +257,6 @@ export function SoundFontScreen({ onStatus }: Props) {
         </div>
       </div>
 
-      {/* POPUP DE CONFIGURAÇÕES */}
       {isConfigOpen && (
         <Popup title={tr('Configurações')} onClose={() => setIsConfigOpen(false)} widthClass="max-w-2xl">
           <SynthSettingsPanel settings={settings} onUpdateSetting={updateSetting} onReset={handleReset} />
