@@ -1,21 +1,20 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowRightLeft, ChevronDown, Download, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { ArrowRightLeft, ChevronDown, Download, Plus, Upload, Trash2 } from 'lucide-react';
 import { tr } from '../i18n';
-import { midiManager, VIRTUAL_ID } from '../services/midiService';
+import { midiManager } from '../services/midiService';
 import type { MidiDestination, MidiRoute } from '../types/midi';
 
 interface Props {
   destinations: MidiDestination[];
   connectedDestinations: MidiDestination[];
   onRefresh: () => Promise<void>;
+  isRefreshing: boolean;
 }
 
 const ALL_INPUTS = '__all__';
 
-export function MidiRouterScreen({ destinations, connectedDestinations, onRefresh }: Props) {
-  // As rotas vivem no serviço (e são salvas no aparelho); aqui só as observamos.
+export function MidiRouterScreen({ destinations, connectedDestinations, isRefreshing }: Props) {
   const routes = useSyncExternalStore(midiManager.subscribeRoutes, midiManager.getRoutes, midiManager.getRoutes);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -27,19 +26,6 @@ export function MidiRouterScreen({ destinations, connectedDestinations, onRefres
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleRefreshClick = async () => {
-    setIsRefreshing(true);
-    try {
-      await onRefresh();
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const addNewRoute = () => {
-    midiManager.addRoute({ sourceId: VIRTUAL_ID, destinationId: connectedDestinations[0]?.id ?? '' });
-  };
-
   const updateRoute = <K extends keyof MidiRoute>(id: string, field: K, value: MidiRoute[K]) => {
     midiManager.updateRoute(id, { [field]: value } as Partial<MidiRoute>);
     setOpenDropdown(null);
@@ -47,11 +33,12 @@ export function MidiRouterScreen({ destinations, connectedDestinations, onRefres
 
   const availableInputs: Array<{ id: string; name: string }> = [
     { id: ALL_INPUTS, name: tr('Todas as entradas') },
-    { id: VIRTUAL_ID, name: tr('Teclado Virtual') },
+    { id: 'virtual', name: tr('Teclado Virtual') },
     ...destinations
       .filter((d) => d.type !== 'virtual')
       .map((d) => ({ id: d.id, name: `${d.displayName} (${d.type.toUpperCase()})` })),
   ];
+  
   const inputName = (route: MidiRoute) =>
     availableInputs.find((i) => i.id === (route.sourceId ?? ALL_INPUTS))?.name ?? tr('Selecione...');
 
@@ -79,33 +66,6 @@ export function MidiRouterScreen({ destinations, connectedDestinations, onRefres
 
   return (
     <div className="custom-scrollbar flex w-full flex-1 flex-col gap-4 overflow-y-auto bg-[#0a0f1c] p-3 pb-32 text-slate-100 sm:p-5">
-      <div className="flex flex-col items-start justify-between gap-3 border-b border-slate-800 pb-4 sm:flex-row sm:items-center">
-        <div>
-          <h2 className="flex items-center gap-2 text-base font-bold uppercase tracking-wider text-cyan-400">
-            <ArrowRightLeft size={18} /> {tr('Roteador MIDI Matriz')}
-          </h2>
-          <p className="mt-1 text-xs text-slate-400">{tr('Crie rotas independentes entre entradas e saídas simultâneas.')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label={tr('Atualizar lista')}
-            onClick={() => void handleRefreshClick()}
-            disabled={isRefreshing}
-            className="flex shrink-0 items-center gap-2 rounded-lg border border-slate-700 bg-[#0f172a] px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-          </button>
-          <button
-            type="button"
-            onClick={addNewRoute}
-            className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-cyan-900/50 transition hover:bg-cyan-500"
-          >
-            <Plus size={16} /> {tr('Nova Rota')}
-          </button>
-        </div>
-      </div>
-
       {routes.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-800 py-20 text-slate-500">
           <ArrowRightLeft size={48} className="mb-4 opacity-20" />
