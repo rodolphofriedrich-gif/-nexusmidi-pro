@@ -31,14 +31,6 @@ const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string }> 
   { id: 'monitor', Icon: Activity, label: 'Monitor' },
 ];
 
-const tabTitle = (id: AppTab): string =>
-  ({
-    keyboard: tr('Teclado Virtual'),
-    router: tr('Roteador MIDI'),
-    studio: tr('Estúdio'),
-    monitor: tr('Monitor MIDI'),
-  })[id];
-
 export default function App() {
   const prefs = useStore(prefsStore);
   const synth = useSyncExternalStore(synthService.subscribe, synthService.getSnapshot, synthService.getSnapshot);
@@ -192,7 +184,6 @@ export default function App() {
               <button type="button" onClick={() => setIsSidebarOpen(true)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" title={tr('Menu')}>
                 <Menu size={20} />
               </button>
-              {/* TÍTULO REMOVIDO DO HEADER (agora está dentro de cada tela) */}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {isUsbConnected && (
