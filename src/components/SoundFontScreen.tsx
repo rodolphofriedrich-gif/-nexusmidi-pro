@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
-import { AlertCircle, CheckCircle2, Library, List, UploadCloud, X, ChevronLeft, ChevronRight, Settings2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Library, List, UploadCloud, X, Settings2 } from 'lucide-react';
 import { GM_PRESETS } from '../constants/gm';
 import { useStore } from '../hooks/useStore';
 import type { ToastType } from '../hooks/useToast';
@@ -20,7 +20,9 @@ interface Props {
 
 type ViewMode = 'presets' | 'library';
 
-// Componente Popup simples
+const SCENES = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+const SCENES_KEY = 'nexusmidi_studio_scenes';
+
 function Popup({ title, onClose, children, widthClass = 'max-w-2xl' }: { title: string; onClose: () => void; children: React.ReactNode; widthClass?: string }) {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -51,10 +53,18 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const [viewMode, setViewMode] = useState<ViewMode>('presets');
   const [activeChannel, setActiveChannel] = useState(() => prefsStore.get().channel);
-  const [channelGroup, setChannelGroup] = useState(0); 
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const busy = library.busy || synth.loading;
+
+  // Sistema de Cenas
+  const [scenes, setScenes] = useState<Record<string, any>>(() => {
+    try {
+      const saved = localStorage.getItem(SCENES_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [activeScene, setActiveScene] = useState('A');
 
   useEffect(() => {
     if (library.error) onStatus(library.error, 'error');
@@ -96,8 +106,7 @@ export function SoundFontScreen({ onStatus }: Props) {
     onStatus(tr('Configurações restauradas para o padrão.'), 'info');
   };
 
-  const toggleMute = (ch: number) =>
-    channelsStore.set((s) => ({ ...s, muted: { ...s.muted, [ch]: !s.muted[ch] } }));
+  const toggleMute = (ch: number) => channelsStore.set((s) => ({ ...s, muted: { ...s.muted, [ch]: !s.muted[ch] } }));
   const toggleSolo = (ch: number) => channelsStore.set((s) => ({ ...s, solo: s.solo === ch ? null : ch }));
 
   const activePreset = (): SoundFontPreset =>
@@ -113,13 +122,24 @@ export function SoundFontScreen({ onStatus }: Props) {
     setTimeout(() => chord.forEach((note) => synthService.noteOff(note, activeChannel)), 1000);
   };
 
-  const getChannelBlock = (offset: number) => {
-    const start = (channelGroup * 4 + offset * 4) % 16 + 1;
-    return [start, start + 1, start + 2, start + 3];
+  // Funções de Cena
+  const loadScene = (scene: string) => {
+    setActiveScene(scene);
+    if (scenes[scene]) {
+      channelsStore.set(scenes[scene].channels);
+      synthSettingsStore.set(scenes[scene].settings);
+      onStatus(tr('Cena {scene} carregada.', { scene }), 'info');
+    } else {
+      onStatus(tr('Cena {scene} está vazia.', { scene }), 'warn');
+    }
   };
 
-  const nextGroup = () => setChannelGroup((g) => (g + 1) % 4);
-  const prevGroup = () => setChannelGroup((g) => (g + 3) % 4);
+  const saveScene = () => {
+    const newScenes = { ...scenes, [activeScene]: { channels: channelsStore.get(), settings: synthSettingsStore.get() } };
+    setScenes(newScenes);
+    localStorage.setItem(SCENES_KEY, JSON.stringify(newScenes));
+    onStatus(tr('Cena {scene} salva com sucesso.', { scene: activeScene }), 'success');
+  };
 
   const tabClass = (mode: ViewMode, active: string) =>
     `flex h-8 items-center justify-center gap-1.5 px-3 text-[10px] font-bold rounded-lg transition-colors ${viewMode === mode ? active : 'text-slate-500 hover:text-slate-300'}`;
@@ -127,9 +147,9 @@ export function SoundFontScreen({ onStatus }: Props) {
   return (
     <div className="flex w-full flex-1 flex-row overflow-hidden bg-[#0a0f1c] p-2 text-slate-100 gap-2">
       
-      {/* COLUNA ESQUERDA */}
-      <div className="flex w-[35%] max-w-[360px] shrink-0 flex-col gap-2">
-        <div className="w-full shrink-0">
+      {/* COLUNA ESQUERDA (Reduzida, sem duplicar canais) */}
+      <div className="flex w-[25%] max-w-[280px] min-w-[200px] shrink-0 flex-col gap-2">
+        <div className="w-full shrink-0 h-48 flex flex-col">
           <ActiveSoundFontCard
             preset={activePreset()}
             volume={settings.volume}
@@ -141,68 +161,36 @@ export function SoundFontScreen({ onStatus }: Props) {
             onAudition={handleAudition}
           />
         </div>
-
-        <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
-          <div className="flex items-center justify-between mb-2 shrink-0">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Canais MIDI</span>
-            <div className="flex items-center gap-1">
-              <button onClick={prevGroup} className="p-1 text-slate-400 hover:text-white"><ChevronLeft size={14} /></button>
-              <button onClick={nextGroup} className="p-1 text-slate-400 hover:text-white"><ChevronRight size={14} /></button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {[0, 1].map((offset) => {
-              const block = getChannelBlock(offset);
-              return (
-                <div key={offset} className="flex flex-col gap-1 p-1.5 rounded-lg bg-[#0a0f1c] border border-[#1e293b]">
-                  {block.map((ch) => {
-                    const isMuted = channels.muted[ch];
-                    const isSoloed = channels.solo === ch;
-                    const isActive = activeChannel === ch;
-                    return (
-                      <div key={ch} className={`flex items-center gap-1 rounded-md p-1 transition-colors ${isActive ? 'bg-cyan-900/30 border border-cyan-600/50' : 'border border-transparent hover:bg-slate-800'}`}>
-                        <button
-                          type="button"
-                          onClick={() => setActiveChannel(ch)}
-                          className={`w-6 h-6 rounded font-mono text-[10px] font-bold transition-colors ${isActive ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}
-                        >
-                          {ch}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => toggleMute(ch)}
-                          className={`flex-1 h-5 rounded text-[8px] font-bold ${isMuted ? 'bg-rose-600 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
-                        >M</button>
-                        <button
-                          type="button"
-                          onClick={() => toggleSolo(ch)}
-                          className={`flex-1 h-5 rounded text-[8px] font-bold ${isSoloed ? 'bg-amber-500 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
-                        >S</button>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
-      {/* COLUNA DIREITA */}
+      {/* COLUNA DIREITA (Mais larga) */}
       <div className="flex-1 min-w-0 flex flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
         
-        <div className="mb-2 flex shrink-0 items-center justify-between gap-2 border-b border-[#1e293b] pb-2">
-          <div className="flex bg-[#0a0f1c] rounded-lg p-0.5 border border-[#1e293b]">
-            <button type="button" onClick={() => setViewMode('presets')} className={tabClass('presets', 'bg-cyan-600 text-white shadow-sm')}>
-              <List size={12} /> PRESETS
-            </button>
-            <button type="button" onClick={() => setViewMode('library')} className={tabClass('library', 'bg-cyan-600 text-white shadow-sm')}>
-              <Library size={12} /> BIBLIOTECA
+        {/* BARRA DE CENAS E CONTROLES */}
+        <div className="mb-2 flex flex-wrap shrink-0 items-center justify-between gap-2 border-b border-[#1e293b] pb-2">
+          <div className="flex items-center gap-2">
+            <div className="flex bg-[#0a0f1c] rounded-lg p-0.5 border border-[#1e293b]">
+              {SCENES.map((s) => (
+                <button key={s} type="button" onClick={() => loadScene(s)} className={`flex h-8 items-center justify-center px-3 text-[10px] font-bold rounded-md transition-colors ${activeScene === s ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'}`}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            <button onClick={saveScene} className="flex h-8 items-center gap-1.5 rounded-lg border border-amber-600/50 bg-amber-900/20 px-3 text-[10px] font-bold text-amber-400 hover:bg-amber-900/40 transition">
+              Salvar Cena
             </button>
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="flex bg-[#0a0f1c] rounded-lg p-0.5 border border-[#1e293b]">
+              <button type="button" onClick={() => setViewMode('presets')} className={tabClass('presets', 'bg-cyan-600 text-white shadow-sm')}>
+                <List size={12} /> PRESETS
+              </button>
+              <button type="button" onClick={() => setViewMode('library')} className={tabClass('library', 'bg-cyan-600 text-white shadow-sm')}>
+                <Library size={12} /> BIBLIOTECA
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => setIsConfigOpen(true)}
