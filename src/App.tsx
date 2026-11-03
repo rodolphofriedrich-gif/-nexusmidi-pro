@@ -25,11 +25,11 @@ import { synthService } from './services/synthService';
 
 type AppTab = 'keyboard' | 'router' | 'studio' | 'monitor';
 
-const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string }> = [
-  { id: 'keyboard', Icon: Music2, label: 'Teclado' },
-  { id: 'router', Icon: GitBranch, label: 'Roteador' },
-  { id: 'studio', Icon: AudioWaveform, label: 'Estúdio' },
-  { id: 'monitor', Icon: Activity, label: 'Monitor' },
+const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string; color: string }> = [
+  { id: 'keyboard', Icon: Music2, label: 'Teclado', color: 'text-cyan-400' },
+  { id: 'router', Icon: GitBranch, label: 'Roteador', color: 'text-emerald-400' },
+  { id: 'studio', Icon: AudioWaveform, label: 'Estúdio', color: 'text-amber-400' },
+  { id: 'monitor', Icon: Activity, label: 'Monitor', color: 'text-fuchsia-400' },
 ];
 
 export default function App() {
@@ -49,18 +49,45 @@ export default function App() {
   const [sustain, setSustain] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   
-  // Estados para os controles do cabeçalho (Teclado)
   const [keyboardViewMode, setKeyboardViewMode] = useState<'keyboard' | 'pads'>('keyboard');
   const [startOctave, setStartOctave] = useState(3);
   const [padBank, setPadBank] = useState(0);
   const keyboardRef = useRef<MidiKeyboardHandle>(null);
 
-  // Estados para o cabeçalho (Estúdio, Roteador, Monitor)
   const [studioTab, setStudioTab] = useState<'synth' | 'mixer' | 'tools'>('synth');
   const [isRouterRefreshing, setIsRouterRefreshing] = useState(false);
   const [monitorFilter, setMonitorFilter] = useState<'all' | 'RX' | 'TX'>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [monitorPaused, setMonitorPaused] = useState(false);
+
+  // BOTÃO VOLTAR DO ANDROID
+  useEffect(() => {
+    let listener: any;
+    const handleBack = () => {
+      if (isSidebarOpen) { setIsSidebarOpen(false); return; }
+      if (openMenu) { setOpenMenu(null); return; }
+      if (isFullscreen) { setIsFullscreen(false); return; }
+      if (showExit) { setShowExit(false); return; }
+      setShowExit(true);
+    };
+
+    const setup = async () => {
+      try {
+        // Importação dinâmica do Capacitor App para evitar erro se rodar no navegador
+        const { App: CapApp } = await import('@capacitor/app');
+        listener = await CapApp.addListener('backButton', handleBack);
+      } catch {
+        // Fallback web
+        window.addEventListener('popstate', handleBack);
+      }
+    };
+    setup();
+
+    return () => {
+      if (listener) listener.remove();
+      else window.removeEventListener('popstate', handleBack);
+    };
+  }, [isSidebarOpen, openMenu, isFullscreen, showExit]);
 
   useEffect(() => {
     document.documentElement.lang = prefs.language;
@@ -144,21 +171,12 @@ export default function App() {
   return (
     <div className={`nexus-app fixed inset-0 flex h-[100dvh] w-full select-none overflow-hidden font-sans antialiased ${isFullscreen ? 'is-fullscreen' : ''}`}>
       
-      {/* OVERLAY ESCURO QUANDO A GAVETA ESTÁ ABERTA */}
       {isSidebarOpen && !isFullscreen && (
-        <div 
-          className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm transition-opacity"
-          onClick={() => setIsSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      {/* GAVETA LATERAL (DRAWER) */}
       {!isFullscreen && (
-        <aside 
-          className={`fixed inset-y-0 left-0 z-[100] flex w-64 flex-col border-r border-[#1e293b] bg-[#0a0f1c] transition-transform duration-300 ease-in-out ${
-            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-        >
+        <aside className={`fixed inset-y-0 left-0 z-[100] flex w-64 flex-col border-r border-[#1e293b] bg-[#0a0f1c] transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="flex h-12 items-center justify-between px-4 border-b border-[#1e293b] shrink-0">
             <span className="text-sm font-extrabold tracking-wider text-slate-200">
               NEXUSMIDI <span className="text-cyan-400">Pro</span>
@@ -169,18 +187,17 @@ export default function App() {
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar p-3 flex flex-col gap-4">
-            {/* Navegação */}
             <div className="flex flex-col gap-1">
-              {NAV_ITEMS.map(({ id, Icon, label }) => {
+              {NAV_ITEMS.map(({ id, Icon, label, color }) => {
                 const selected = activeTab === id;
                 return (
                   <button
                     key={id}
                     type="button"
                     onClick={() => { setActiveTab(id); setIsSidebarOpen(false); setOpenMenu(null); }}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${selected ? 'bg-cyan-900/30 text-cyan-400 font-bold' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${selected ? `bg-slate-800/80 ${color} font-bold` : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                   >
-                    <Icon size={18} />
+                    <Icon size={18} className={selected ? color : ''} />
                     <span className="text-sm">{label}</span>
                   </button>
                 );
@@ -189,7 +206,6 @@ export default function App() {
 
             <div className="h-px w-full bg-[#1e293b]" />
 
-            {/* Conexões (Abre Modal Centralizado) */}
             <div className="flex flex-col gap-2">
               <span className="text-[10px] font-bold uppercase text-slate-500 px-3">Conexões</span>
               <ConnectionMenu kind="usb" isOpen={openMenu === 'usb'} isConnected={isUsbConnected} statusLabel={isUsbConnected ? tr('Conectado') : tr('Desconectado')} devices={usbDevices} connectedIds={connectedIds} showDisconnectAll={isUsbConnected} onToggleOpen={() => toggleMenu('usb')} onRefresh={() => void devices.refresh()} onToggleDevice={(d) => void devices.toggleConnect(d)} onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }} />
@@ -198,20 +214,18 @@ export default function App() {
           </div>
 
           <div className="p-3 border-t border-[#1e293b] shrink-0">
-            <button type="button" onClick={() => { setIsSidebarOpen(false); setShowExit(true); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-rose-400/70 transition-colors hover:bg-rose-950/50 hover:text-rose-400">
+            <button type="button" onClick={() => { setIsSidebarOpen(false); setShowExit(true); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 transition-colors">
               <LogOut size={18} />
-              <span className="text-sm font-semibold">{tr('Sair')}</span>
+              <span className="text-sm font-bold">{tr('Sair')}</span>
             </button>
           </div>
         </aside>
       )}
 
-      {/* CONTEÚDO PRINCIPAL */}
       <div className="flex h-full flex-1 flex-col overflow-hidden">
         {!isFullscreen && (
           <header className="relative z-[80] flex h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-[#1e293b] bg-[#0a0f1c] px-2 pt-[env(safe-area-inset-top)] sm:px-3">
             
-            {/* Lado Esquerdo: Menu + Controles Dinâmicos */}
             <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
               <button type="button" onClick={() => setIsSidebarOpen(true)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" title={tr('Menu')}>
                 <Menu size={20} />
@@ -220,6 +234,9 @@ export default function App() {
               {/* CONTROLES DO TECLADO */}
               {activeTab === 'keyboard' && (
                 <div className="flex items-center gap-2">
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mr-2 px-1 shrink-0 hidden sm:block">
+                    Teclado / Pads
+                  </h2>
                   <div className="flex shrink-0 bg-[#0a0f1c] rounded-lg p-0.5 border border-[#1e293b]">
                     <button type="button" onClick={() => { setKeyboardViewMode('keyboard'); if (prefs.channel === 10 && keyboardRef.current) keyboardRef.current.setLastChannel(); }} className={`flex h-7 items-center gap-1.5 px-3 text-[10px] font-bold rounded-md transition-colors ${keyboardViewMode === 'keyboard' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><Piano size={12} /> PIANO</button>
                     <button type="button" onClick={() => { setKeyboardViewMode('pads'); if (prefs.channel !== 10) prefsStore.set({ channel: 10 }); }} className={`flex h-7 items-center gap-1.5 px-3 text-[10px] font-bold rounded-md transition-colors ${keyboardViewMode === 'pads' ? 'bg-cyan-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}><LayoutGrid size={12} /> PADS</button>
@@ -261,14 +278,14 @@ export default function App() {
               {/* CONTROLES DO ROTEADOR */}
               {activeTab === 'router' && (
                 <div className="flex items-center gap-3">
-                  <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400 shrink-0 hidden sm:flex">
+                  <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400 shrink-0 hidden sm:flex">
                     <GitBranch size={16} /> {tr('Roteador MIDI Matriz')}
                   </h2>
                   <div className="flex items-center gap-2 shrink-0">
                     <button type="button" aria-label={tr('Atualizar lista')} onClick={() => void handleRefreshRouter()} disabled={isRouterRefreshing} className={`${btnClass} w-8`}>
                       <RefreshCw size={14} className={isRouterRefreshing ? 'animate-spin' : ''} />
                     </button>
-                    <button type="button" onClick={addNewRoute} className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-cyan-900/50 transition hover:bg-cyan-500">
+                    <button type="button" onClick={addNewRoute} className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-emerald-900/50 transition hover:bg-emerald-500">
                       <Plus size={16} /> <span className="hidden sm:inline">{tr('Nova Rota')}</span>
                     </button>
                   </div>
@@ -278,11 +295,11 @@ export default function App() {
               {/* CONTROLES DO ESTÚDIO */}
               {activeTab === 'studio' && (
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-slate-300 mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400 mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button type="button" onClick={() => setStudioTab('synth')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'synth' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><AudioWaveform size={14} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
-                    <button type="button" onClick={() => setStudioTab('mixer')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'mixer' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><SlidersHorizontal size={14} /> <span className="hidden sm:inline">{tr('Mixer / CC')}</span></button>
-                    <button type="button" onClick={() => setStudioTab('tools')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'tools' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><Settings2 size={14} /> <span className="hidden sm:inline">{tr('Ferramentas')}</span></button>
+                    <button type="button" onClick={() => setStudioTab('synth')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'synth' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><AudioWaveform size={14} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
+                    <button type="button" onClick={() => setStudioTab('mixer')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'mixer' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><SlidersHorizontal size={14} /> <span className="hidden sm:inline">{tr('Mixer / CC')}</span></button>
+                    <button type="button" onClick={() => setStudioTab('tools')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'tools' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><Settings2 size={14} /> <span className="hidden sm:inline">{tr('Ferramentas')}</span></button>
                   </div>
                 </div>
               )}
@@ -297,7 +314,7 @@ export default function App() {
                         {monitorFilter === 'all' ? tr('Todos') : monitorFilter === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')} <ChevronDown size={12} />
                       </button>
                       {isFilterOpen && (
-                        <div className="absolute left-0 top-full z-50 mt-1 w-40 overflow-hidden rounded-lg border border-slate-700 bg-[#0f172a] shadow-2xl">
+                        <div className="fixed top-[60px] left-[60px] z-[999] w-40 overflow-hidden rounded-lg border border-slate-700 bg-[#0f172a] shadow-2xl">
                           {(['all', 'RX', 'TX'] as const).map((f) => (
                             <button type="button" key={f} onClick={() => { setMonitorFilter(f); setIsFilterOpen(false); }} className={`w-full px-3 py-2 text-left text-xs hover:bg-slate-800 ${monitorFilter === f ? 'font-bold text-fuchsia-400' : 'text-slate-300'}`}>
                               {f === 'all' ? tr('Todos') : f === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')}
@@ -317,7 +334,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Lado Direito: Status USB/BLE */}
             <div className="flex shrink-0 items-center gap-2">
               {isUsbConnected && (
                 <div className="flex items-center justify-center h-7 w-7 rounded-md bg-emerald-900/30 text-emerald-400 border border-emerald-800/50" title="USB Conectado">
@@ -358,6 +374,7 @@ export default function App() {
                     onActiveNotesChange={setActiveNotes}
                     isActive={keyboardEnabled}
                     isSustainActive={sustain}
+                    onToggleSustain={handleToggleSustain}
                     selectedVelocity={prefs.velocity}
                     onSelectVelocity={(velocity) => prefsStore.set({ velocity })}
                     selectedPaletteId={prefs.paletteId}
@@ -365,6 +382,7 @@ export default function App() {
                     onPitchBend={(val) => void midiManager.sendPitchBend(prefs.channel, val)}
                     onModWheel={(val) => void midiManager.sendControlChange(prefs.channel, 1, val)}
                     isFullscreen={isFullscreen}
+                    onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
                   />
                 </div>
                 {!isFullscreen && <div className="py-1"><VuMeter level={vuLevel} /></div>}
