@@ -19,6 +19,7 @@ type MidiPreset = {
 };
 
 const PRESETS_KEY = 'nexusmidi_controls_presets_v1';
+const STATE_KEY = 'nexusmidi_mixer_state';
 const DEFAULT_CONTROLS = {
   modWheel: 0,
   volume: 100,
@@ -28,6 +29,10 @@ const DEFAULT_CONTROLS = {
   program: 1,
   pitchBend: 8192,
   pressure: 0,
+  reverb: 40,
+  chorus: 15,
+  cutoff: 127,
+  resonance: 64,
 };
 
 interface Props {
@@ -50,33 +55,32 @@ function loadPresets(): MidiPreset[] {
 const errorText = (error: unknown): string => (error instanceof Error && error.message ? error.message : tr('erro desconhecido'));
 
 export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
-  const [modWheel, setModWheel] = useState(DEFAULT_CONTROLS.modWheel);
-  const [volume, setVolume] = useState(DEFAULT_CONTROLS.volume);
-  const [expression, setExpression] = useState(DEFAULT_CONTROLS.expression);
-  const [pan, setPan] = useState(DEFAULT_CONTROLS.pan);
-  const [sustain, setSustain] = useState(DEFAULT_CONTROLS.sustain);
-  const [program, setProgram] = useState(DEFAULT_CONTROLS.program);
-  const [pitchBend, setPitchBend] = useState(DEFAULT_CONTROLS.pitchBend);
-  const [pressure, setPressure] = useState(DEFAULT_CONTROLS.pressure);
-  
-  // Novos controles
-  const [reverb, setReverb] = useState(40);
-  const [chorus, setChorus] = useState(15);
-  const [cutoff, setCutoff] = useState(127);
-  const [resonance, setResonance] = useState(64);
+  const [state, setState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STATE_KEY);
+      return saved ? { ...DEFAULT_CONTROLS, ...JSON.parse(saved) } : DEFAULT_CONTROLS;
+    } catch {
+      return DEFAULT_CONTROLS;
+    }
+  });
+
+  const { modWheel, volume, expression, pan, sustain, program, pitchBend, pressure, reverb, chorus, cutoff, resonance } = state;
+
+  const updateState = (key: string, value: any) => setState((s: any) => ({ ...s, [key]: value }));
 
   const [presetName, setPresetName] = useState(() => tr('Meu preset'));
   const [presets, setPresets] = useState<MidiPreset[]>(loadPresets);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    try { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); } catch { /* armazenamento opcional */ }
+    try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch { /* */ }
+  }, [state]);
+
+  useEffect(() => {
+    try { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); } catch { /* */ }
   }, [presets]);
 
-  const controls = useMemo(() => ({ 
-    modWheel, volume, expression, pan, sustain, program, pitchBend, pressure,
-    reverb, chorus, cutoff, resonance
-  }), [modWheel, volume, expression, pan, sustain, program, pitchBend, pressure, reverb, chorus, cutoff, resonance]);
+  const controls = useMemo(() => state, [state]);
 
   const sendAction = async (action: () => Promise<unknown>, successMessage: string) => {
     if (!isConnected) {
@@ -101,9 +105,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     }
     setBusy(true);
     try {
-      setModWheel(preset.modWheel); setVolume(preset.volume); setExpression(preset.expression); setPan(preset.pan);
-      setSustain(preset.sustain); setProgram(preset.program); setPitchBend(preset.pitchBend); setPressure(preset.pressure);
-      // Reverb/Chorus/Cutoff/Resonance não estão no preset de salvamento antigo, mas aplicamos os atuais
+      setState((s: any) => ({ ...s, ...preset }));
       await midiManager.sendControlChange(channel, 1, preset.modWheel);
       await midiManager.sendControlChange(channel, 7, preset.volume);
       await midiManager.sendControlChange(channel, 11, preset.expression);
@@ -112,10 +114,6 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
       await midiManager.sendProgramChange(channel, preset.program - 1);
       await midiManager.sendPitchBend(channel, preset.pitchBend);
       await midiManager.sendChannelPressure(channel, preset.pressure);
-      await midiManager.sendControlChange(channel, 91, reverb);
-      await midiManager.sendControlChange(channel, 93, chorus);
-      await midiManager.sendControlChange(channel, 74, cutoff);
-      await midiManager.sendControlChange(channel, 71, resonance);
       
       onStatus(tr('Preset “{name}” aplicado no canal {channel}.', { name: preset.name, channel }), 'success');
     } catch (error) {
@@ -134,9 +132,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
   };
 
   const resetControls = () => {
-    setModWheel(DEFAULT_CONTROLS.modWheel); setVolume(DEFAULT_CONTROLS.volume); setExpression(DEFAULT_CONTROLS.expression);
-    setPan(DEFAULT_CONTROLS.pan); setSustain(false); setProgram(1); setPitchBend(8192); setPressure(0);
-    setReverb(40); setChorus(15); setCutoff(127); setResonance(64);
+    setState(DEFAULT_CONTROLS);
     onStatus(tr('Controles redefinidos localmente.'), 'info');
   };
 
@@ -145,7 +141,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     setBusy(true);
     try {
       await midiManager.sendPanic([channel]);
-      setSustain(false);
+      updateState('sustain', false);
       onStatus(tr('MIDI Panic enviado ao canal {channel}.', { channel }), 'success');
     } catch (error) {
       onStatus(tr('Falha no MIDI Panic: {message}', { message: errorText(error) }), 'error');
@@ -153,36 +149,32 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
   };
 
   return (
-    <section className="flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-[#0a0f1c] p-2 sm:p-3 space-y-3">
+    <section className="flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-[#0a0f1c] p-2 sm:p-3 space-y-3 flex flex-col">
       
-      {/* HEADER COMPACTO */}
-      <header className="flex items-center justify-between gap-3 border-b border-[#1e293b] pb-2">
-        <div className="flex items-center gap-2 text-cyan-400">
-          <SlidersHorizontal size={16} />
-          <span className="text-xs font-bold uppercase tracking-wider">{tr('Controles MIDI')}</span>
-        </div>
+      {/* HEADER COMPACTO: Canal e Reset */}
+      <header className="flex items-center justify-between gap-3 border-b border-[#1e293b] pb-2 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-slate-400 font-mono">CH {String(channel).padStart(2, '0')}</span>
-          <button onClick={resetControls} className="text-[10px] text-slate-400 hover:text-white transition flex items-center gap-1 bg-[#0f172a] border border-[#1e293b] rounded px-2 py-1">
-            <RotateCcw size={12} /> Reset
-          </button>
+          <span className="text-[10px] text-slate-400 font-mono bg-[#0f172a] border border-[#1e293b] px-2 py-1 rounded">CH {String(channel).padStart(2, '0')}</span>
         </div>
+        <button onClick={resetControls} className="text-[10px] text-slate-400 hover:text-white transition flex items-center gap-1 bg-[#0f172a] border border-[#1e293b] rounded px-2 py-1">
+          <RotateCcw size={12} /> Reset
+        </button>
       </header>
 
-      {/* MESA DE MIXAGEM - 8 FADERS ADAPTATIVOS */}
-      <div className="grid grid-cols-4 md:grid-cols-8 gap-1.5 sm:gap-2 bg-[#0a0f1c] p-1.5 sm:p-2 rounded-2xl border border-[#1e293b] shadow-inner h-[240px] sm:h-[280px]">
-        <StudioFader label="MOD" sublabel="CC 1" value={modWheel} onChange={setModWheel} onCommit={(v) => void sendCC(1, v, 'Modulação')} />
-        <StudioFader label="VOL" sublabel="CC 7" value={volume} onChange={setVolume} onCommit={(v) => void sendCC(7, v, 'Volume')} />
-        <StudioFader label="EXP" sublabel="CC 11" value={expression} onChange={setExpression} onCommit={(v) => void sendCC(11, v, 'Expressão')} />
-        <StudioFader label="PAN" sublabel="CC 10" value={pan} onChange={setPan} onCommit={(v) => void sendCC(10, v, 'Panorama')} />
+      {/* MESA DE MIXAGEM - Aumentada */}
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-1.5 sm:gap-2 bg-[#0a0f1c] p-1.5 sm:p-2 rounded-2xl border border-[#1e293b] shadow-inner h-[340px] sm:h-[380px] shrink-0">
+        <StudioFader label="MOD" sublabel="CC 1" value={modWheel} onChange={(v: any) => updateState('modWheel', v)} onCommit={(v) => void sendCC(1, v, 'Modulação')} />
+        <StudioFader label="VOL" sublabel="CC 7" value={volume} onChange={(v: any) => updateState('volume', v)} onCommit={(v) => void sendCC(7, v, 'Volume')} />
+        <StudioFader label="EXP" sublabel="CC 11" value={expression} onChange={(v: any) => updateState('expression', v)} onCommit={(v) => void sendCC(11, v, 'Expressão')} />
+        <StudioFader label="PAN" sublabel="CC 10" value={pan} onChange={(v: any) => updateState('pan', v)} onCommit={(v) => void sendCC(10, v, 'Panorama')} />
         
-        <StudioFader label="REV" sublabel="CC 91" value={reverb} onChange={setReverb} onCommit={(v) => void sendCC(91, v, 'Reverb')} />
-        <StudioFader label="CHO" sublabel="CC 93" value={chorus} onChange={setChorus} onCommit={(v) => void sendCC(93, v, 'Chorus')} />
-        <StudioFader label="CUT" sublabel="CC 74" value={cutoff} onChange={setCutoff} onCommit={(v) => void sendCC(74, v, 'Cutoff')} />
-        <StudioFader label="RES" sublabel="CC 71" value={resonance} onChange={setResonance} onCommit={(v) => void sendCC(71, v, 'Ressonância')} />
+        <StudioFader label="REV" sublabel="CC 91" value={reverb} onChange={(v: any) => updateState('reverb', v)} onCommit={(v) => void sendCC(91, v, 'Reverb')} />
+        <StudioFader label="CHO" sublabel="CC 93" value={chorus} onChange={(v: any) => updateState('chorus', v)} onCommit={(v) => void sendCC(93, v, 'Chorus')} />
+        <StudioFader label="CUT" sublabel="CC 74" value={cutoff} onChange={(v: any) => updateState('cutoff', v)} onCommit={(v) => void sendCC(74, v, 'Cutoff')} />
+        <StudioFader label="RES" sublabel="CC 71" value={resonance} onChange={(v: any) => updateState('resonance', v)} onCommit={(v) => void sendCC(71, v, 'Ressonância')} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0">
         
         {/* CARD PERFORMANCE */}
         <div className="rounded-xl border border-[#1e293b] bg-[#0f172a] p-3 space-y-2 shadow-sm flex flex-col">
@@ -197,7 +189,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
               </div>
               <button 
                 disabled={busy || !isConnected} 
-                onClick={() => { const next = !sustain; setSustain(next); void sendCC(64, next ? 127 : 0, next ? tr('Sustain ligado') : tr('Sustain desligado')); }} 
+                onClick={() => { const next = !sustain; updateState('sustain', next); void sendCC(64, next ? 127 : 0, next ? tr('Sustain ligado') : tr('Sustain desligado')); }} 
                 className={`w-full rounded-lg border px-2 py-2 text-[10px] font-bold transition-all disabled:opacity-40 ${sustain ? 'border-emerald-500 bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
               >
                 {sustain ? tr('Ligado') : tr('Desligado')}
@@ -211,7 +203,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
               <div className="flex gap-1">
                 <input 
                   type="number" min="1" max="128" value={program} 
-                  onChange={(event) => setProgram(Math.max(1, Math.min(128, Number(event.target.value) || 1)))} 
+                  onChange={(event) => updateState('program', Math.max(1, Math.min(128, Number(event.target.value) || 1)))} 
                   className="min-w-0 w-10 rounded-lg border border-slate-700 bg-[#0f172a] px-1 py-2 font-mono text-xs text-center text-cyan-300 outline-none focus:border-cyan-500" 
                 />
                 <button 
@@ -255,7 +247,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
                 aria-label="Pitch Bend" 
                 className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20" 
                 type="range" min="0" max="16383" value={pitchBend} 
-                onChange={(event) => setPitchBend(Number(event.target.value))} 
+                onChange={(event) => updateState('pitchBend', Number(event.target.value))} 
                 onPointerUp={(event) => void sendAction(() => midiManager.sendPitchBend(channel, Number((event.target as HTMLInputElement).value)), tr('Pitch Bend enviado • Canal {channel}', { channel }))} 
                 onKeyUp={(event) => void sendAction(() => midiManager.sendPitchBend(channel, Number((event.target as HTMLInputElement).value)), tr('Pitch Bend enviado • Canal {channel}', { channel }))} 
               />
@@ -271,7 +263,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
 
             <button 
               disabled={busy || !isConnected} 
-              onClick={() => { setPitchBend(8192); void sendAction(() => midiManager.sendPitchBend(channel, 8192), tr('Pitch Bend centralizado • Canal {channel}', { channel })); }} 
+              onClick={() => { updateState('pitchBend', 8192); void sendAction(() => midiManager.sendPitchBend(channel, 8192), tr('Pitch Bend centralizado • Canal {channel}', { channel })); }} 
               className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-300 disabled:opacity-40 hover:bg-slate-700 transition"
             >
               <RotateCcw size={12} /> {tr('Centralizar')}
@@ -289,7 +281,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
       </div>
 
       {/* PRESETS COMPACTOS */}
-      <div className="rounded-xl border border-[#1e293b] bg-[#0f172a] p-3 space-y-2 shadow-sm">
+      <div className="rounded-xl border border-[#1e293b] bg-[#0f172a] p-3 space-y-2 shadow-sm shrink-0 mb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Save size={14} className="text-cyan-400" />
