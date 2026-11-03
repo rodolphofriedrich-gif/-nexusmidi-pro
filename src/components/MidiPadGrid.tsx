@@ -111,7 +111,6 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
     };
   }, []);
 
-  // Ao trocar de banco (botões na barra superior), solta qualquer nota que esteja presa
   useEffect(() => {
     releaseAllNotes();
     setEditPadIndex(null);
@@ -126,7 +125,6 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
       label: String(formData.get('label')),
       color: String(formData.get('color')),
     };
-    // Cópia imutável (antes o código alterava o estado diretamente)
     const newBanks = banksData.map((b, bi) => (bi === bank ? b.map((p, pi) => (pi === editPadIndex ? newPad : p)) : b));
     setBanksData(newBanks);
     setEditPadIndex(null);
@@ -170,7 +168,7 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
         </div>
       )}
 
-      {/* GRADE DE PADS (a faixa "PADS / Banco 1-4" foi movida para a barra superior) */}
+      {/* GRADE DE PADS (Estilo Hardware/Maschine) */}
       <div className="grid min-h-0 w-full flex-1 grid-cols-4 grid-rows-2 gap-1 p-1 sm:gap-1.5 sm:p-1.5">
         {banksData[bank].map((pad, index) => {
           const isPressed = pressedPads.has(pad.note);
@@ -183,20 +181,31 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
               onLostPointerCapture={() => releasePad(pad.note, -1)}
               onContextMenu={(e) => { e.preventDefault(); setEditPadIndex(index); }}
               role="button"
-              className={`relative flex min-h-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-lg border-2 transition-all duration-75 ${isPressed ? `border-white/80 ${pad.color} z-10 scale-[0.96] shadow-[0_0_15px_rgba(255,255,255,0.4)]` : 'border-[#1e293b] bg-[#0f172a] shadow-md hover:bg-[#151e2e]'} ${!isActive ? 'cursor-not-allowed opacity-50 grayscale' : ''}`}
-              style={{ touchAction: 'none' }}>
-              <div className={`absolute inset-0 ${pad.color} transition-opacity ${isPressed ? 'opacity-50' : 'opacity-10'}`} />
+              className={`relative flex min-h-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-xl border-2 transition-all duration-100 ease-out ${
+                isPressed 
+                  ? 'scale-[0.97] z-10 border-white/80 shadow-[0_0_20px_rgba(255,255,255,0.4)]' 
+                  : 'border-[#0f172a] bg-gradient-to-b from-[#1e293b] to-[#0f172a] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_3px_5px_rgba(0,0,0,0.4)] hover:border-[#2d3748] hover:from-[#243044]'
+              } ${!isActive ? 'cursor-not-allowed opacity-50 grayscale' : ''}`}
+              style={{ touchAction: 'none' }}
+            >
+              {/* Fundo colorido: escuro normal, vibrante quando pressionado */}
+              <div 
+                className={`absolute inset-0 transition-opacity duration-100 ${pad.color} ${isPressed ? 'opacity-100' : 'opacity-10'}`} 
+              />
 
-              {/* Engrenagem só fora da tela cheia (em tela cheia: toque longo / botão direito) */}
+              {/* Brilho interno para simular profundidade */}
+              {isPressed && <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />}
+
+              {/* Engrenagem (só fora da tela cheia) */}
               {!isFullscreen && (
-                <button type="button" onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); }} className="absolute right-1 top-1 z-20 rounded bg-black/40 p-1 text-white/50 transition hover:bg-black/80 hover:text-white">
+                <button type="button" onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); }} className={`absolute right-1.5 top-1.5 z-20 rounded-md p-1 transition-all ${isPressed ? 'bg-black/20 text-white/80' : 'bg-black/40 text-white/50 hover:bg-black/80 hover:text-white'}`}>
                   <Settings2 size={10} />
                 </button>
               )}
 
               <div className="pointer-events-none z-10 flex h-full w-full flex-col items-center justify-center p-0.5">
-                <span className={`w-full truncate px-0.5 text-center text-[11px] font-extrabold leading-tight drop-shadow-md sm:text-[13px] ${isPressed ? 'text-white' : 'text-slate-200'}`}>{pad.label}</span>
-                <span className={`mt-0.5 font-mono text-[9px] font-bold ${isPressed ? 'text-white/80' : 'text-slate-500'}`}>N{pad.note}</span>
+                <span className={`w-full truncate px-0.5 text-center text-[11px] font-extrabold leading-tight drop-shadow-md sm:text-[13px] ${isPressed ? 'text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]' : 'text-slate-200'}`}>{pad.label}</span>
+                <span className={`mt-0.5 font-mono text-[9px] font-bold ${isPressed ? 'text-white/90' : 'text-slate-500'}`}>N{pad.note}</span>
               </div>
             </div>
           );
