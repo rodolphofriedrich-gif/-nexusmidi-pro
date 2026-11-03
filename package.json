@@ -25,6 +25,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@capacitor/app": "^8.0.0",
     "@capacitor/core": "^8.5.2",
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/share": "^8.0.0",
