@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useRef } from 'react';
 import {
   Activity, AudioWaveform, GitBranch, LogOut, Music2, Menu, X, Usb, Bluetooth, type LucideIcon,
-  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Maximize, Minimize, Power, Piano, LayoutGrid, SlidersHorizontal, ChevronLeft, ChevronRight
+  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Maximize, Minimize, Power, Piano, LayoutGrid, SlidersHorizontal
 } from 'lucide-react';
 import { ConnectionMenu } from './components/ConnectionMenu';
 import { ExitDialog } from './components/ExitDialog';
