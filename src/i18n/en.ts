@@ -325,5 +325,5 @@ export const en: Record<string, string> = {
     "Aparência": "Appearance",
   "Dark": "Dark",
   "Light": "Light",
-  "Auto": "Auto",
+  "Auto": "Auto"
 };
