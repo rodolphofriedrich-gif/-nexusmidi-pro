@@ -51,12 +51,12 @@ export function SynthSettingsPanel({ settings, onUpdateSetting, onReset }: Props
   const set = (key: keyof SynthSettings) => (value: number) => onUpdateSetting(key, value);
   const tabClass = (id: TabId, active: string) =>
     `flex h-7 items-center gap-1.5 rounded-md px-3 text-[10px] font-bold transition-colors ${activeTab === id ? active : 'text-slate-500 hover:text-slate-300'}`;
-  const sectionTitle = 'mb-3 border-b border-[#1e293b] pb-1 text-xs font-bold text-cyan-400';
+  const sectionTitle = 'mb-3 border-b border-[#2e323b] pb-1 text-xs font-bold text-cyan-400';
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-[#1e293b] bg-[#0f172a]">
-      <div className="flex shrink-0 items-center justify-between border-b border-[#1e293b] bg-[#0a0f1c] p-2">
-        <div className="flex rounded-lg border border-[#1e293b] bg-[#0f172a] p-0.5">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-[#2e323b] bg-[#1a1c21]">
+      <div className="flex shrink-0 items-center justify-between border-b border-[#2e323b] bg-[#121316] p-2">
+        <div className="flex rounded-lg border border-[#2e323b] bg-[#1a1c21] p-0.5">
           <button type="button" onClick={() => setActiveTab('fx')} className={tabClass('fx', 'bg-slate-700 text-white')}>
             <Zap size={12} /> {tr('EFEITOS')}
           </button>

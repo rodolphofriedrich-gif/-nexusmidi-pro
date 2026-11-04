@@ -131,12 +131,12 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
   };
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-[#1e293b] bg-[#0a0f1c]">
+    <div className="relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-[#2e323b] bg-[#121316]">
 
       {/* MODAL DE EDIÇÃO */}
       {editPadIndex !== null && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <form onSubmit={handleSavePad} className="max-h-[92vh] w-full max-w-sm space-y-4 overflow-y-auto rounded-xl border border-slate-700 bg-[#0f172a] p-4 shadow-2xl">
+          <form onSubmit={handleSavePad} className="max-h-[92vh] w-full max-w-sm space-y-4 overflow-y-auto rounded-xl border border-slate-700 bg-[#1a1c21] p-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <h3 className="text-sm font-bold text-white">Editar Pad</h3>
               <button type="button" onClick={() => setEditPadIndex(null)}><X size={16} className="text-slate-400" /></button>
@@ -144,11 +144,11 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
 
             <div>
               <label className="mb-1 block text-xs text-slate-400">Nome do Pad</label>
-              <input name="label" defaultValue={banksData[bank][editPadIndex].label} className="w-full rounded border border-slate-700 bg-[#0a0f1c] p-2 text-sm text-white" required />
+              <input name="label" defaultValue={banksData[bank][editPadIndex].label} className="w-full rounded border border-slate-700 bg-[#121316] p-2 text-sm text-white" required />
             </div>
             <div>
               <label className="mb-1 block text-xs text-slate-400">Nota MIDI (0-127)</label>
-              <input name="note" type="number" min="0" max="127" defaultValue={banksData[bank][editPadIndex].note} className="w-full rounded border border-slate-700 bg-[#0a0f1c] p-2 text-sm text-white" required />
+              <input name="note" type="number" min="0" max="127" defaultValue={banksData[bank][editPadIndex].note} className="w-full rounded border border-slate-700 bg-[#121316] p-2 text-sm text-white" required />
             </div>
             <div>
               <label className="mb-1 block text-xs text-slate-400">Cor</label>
@@ -184,7 +184,7 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
               className={`relative flex min-h-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-xl border-2 transition-all duration-100 ease-out ${
                 isPressed 
                   ? 'scale-[0.97] z-10 border-white/80 shadow-[0_0_20px_rgba(255,255,255,0.4)]' 
-                  : 'border-[#0f172a] bg-gradient-to-b from-[#1e293b] to-[#0f172a] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_3px_5px_rgba(0,0,0,0.4)] hover:border-[#2d3748] hover:from-[#243044]'
+                  : 'border-[#1a1c21] bg-gradient-to-b from-[#23262d] to-[#1a1c21] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_3px_5px_rgba(0,0,0,0.4)] hover:border-[#2e323b] hover:from-[#2a2d35]'
               } ${!isActive ? 'cursor-not-allowed opacity-50 grayscale' : ''}`}
               style={{ touchAction: 'none' }}
             >

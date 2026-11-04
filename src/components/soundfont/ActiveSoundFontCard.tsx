@@ -3,7 +3,10 @@ import { tr } from '../../i18n';
 import type { SoundFontPreset } from '../../types/soundfont';
 
 interface Props {
-  preset: SoundFontPreset;
+  /** Instrumento do canal ativo. `null` = ainda não escolhido (ou o SoundFont dele está desligado). */
+  preset: SoundFontPreset | null;
+  /** Há SoundFont ligado? Só então o botão "Ouvir" faz sentido. */
+  canPlay: boolean;
   volume: number;
   onVolumeChange: (value: number) => void;
   reverb: number;
@@ -15,6 +18,7 @@ interface Props {
 
 export function ActiveSoundFontCard({
   preset,
+  canPlay,
   volume,
   onVolumeChange,
   reverb,
@@ -24,21 +28,26 @@ export function ActiveSoundFontCard({
   onAudition,
 }: Props) {
   return (
-    <div className="relative overflow-hidden rounded-xl border-2 border-cyan-500/40 bg-gradient-to-b from-cyan-950/30 to-[#0f172a]/60 p-2.5 shadow-md backdrop-blur-sm sm:rounded-2xl sm:p-3">
+    <div className="relative overflow-hidden rounded-xl border-2 border-cyan-500/40 bg-gradient-to-b from-cyan-950/30 to-[#1a1c21]/60 p-2.5 shadow-md backdrop-blur-sm sm:rounded-2xl sm:p-3">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 truncate text-[9px] font-semibold uppercase tracking-wide text-cyan-400 sm:text-[10px]">
             <span className="shrink-0 rounded bg-cyan-900/80 px-1.5 font-mono text-[9px] font-bold text-cyan-300">
-              PRG #{String(preset.programNumber).padStart(3, '0')}
+              {preset ? `${preset.isDrum ? 'KIT' : 'PRG'} #${String(preset.programNumber).padStart(3, '0')}` : 'PRG #---'}
             </span>
-            <span aria-hidden="true" className="opacity-40">·</span>
-            <span className="shrink-0 text-slate-400">{tr(preset.category)}</span>
+            {preset && (
+              <>
+                <span aria-hidden="true" className="opacity-40">·</span>
+                <span className="shrink-0 text-slate-300">{tr(preset.category)}</span>
+              </>
+            )}
           </div>
-          <h2 className="mt-0.5 truncate text-base font-bold leading-tight tracking-tight text-white sm:text-lg">{preset.name}</h2>
+          <h2 className="mt-0.5 truncate text-base font-bold leading-tight tracking-tight text-white sm:text-lg">{preset ? preset.name : tr('Escolha um instrumento')}</h2>
         </div>
         <button
           type="button"
           onClick={onAudition}
+          disabled={!canPlay}
           className="flex shrink-0 items-center gap-1.5 rounded-lg bg-cyan-600 px-2.5 py-1 text-[10px] font-semibold text-white transition-all hover:bg-cyan-500 active:scale-95 sm:text-xs"
         >
           <Play className="h-3 w-3 fill-current" />
@@ -46,7 +55,7 @@ export function ActiveSoundFontCard({
         </button>
       </div>
 
-      <div className="grid grid-cols-[1fr_1fr_auto] gap-3 border-t border-[#1e293b] pt-2 text-xs">
+      <div className="grid grid-cols-[1fr_1fr_auto] gap-3 border-t border-[#2e323b] pt-2 text-xs">
         <div className="flex min-w-0 items-center gap-1">
           <Volume2 className="h-3 w-3 shrink-0 text-cyan-400" />
           <div className="min-w-0 flex-1">

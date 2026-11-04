@@ -8,7 +8,7 @@ const TYPE_COLORS: Partial<Record<MidiLogEntry['type'], string>> = {
   'Note Off': 'text-slate-400',
   'Control Change': 'text-amber-400',
   'Program Change': 'text-cyan-400',
-  'Pitch Bend': 'text-fuchsia-400',
+  'Pitch Bend': 'text-cyan-400',
   'Channel Pressure': 'text-rose-400',
   'Poly Aftertouch': 'text-rose-400',
   System: 'text-purple-400',
@@ -31,7 +31,7 @@ export function MidiMonitorScreen({ maxVisible = 150, filter, paused }: Props) {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#0a0f1c] text-slate-100">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#121316] text-slate-100">
       <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
         {visible.length === 0 ? (
           <div className="flex h-full items-center justify-center p-8 text-center text-xs text-slate-500">
@@ -39,7 +39,7 @@ export function MidiMonitorScreen({ maxVisible = 150, filter, paused }: Props) {
           </div>
         ) : (
           <table className="w-full text-left font-mono text-[11px]">
-            <thead className="sticky top-0 bg-[#0f172a] text-[10px] uppercase text-slate-500">
+            <thead className="sticky top-0 bg-[#1a1c21] text-[10px] uppercase text-slate-500">
               <tr>
                 <th className="px-3 py-2">{tr('Hora')}</th>
                 <th className="px-2 py-2">{tr('Dir.')}</th>

@@ -4,13 +4,17 @@ export interface SynthEngine {
   noteOn(channel: number, note: number, velocity: number): void;
   noteOff(channel: number, note: number): void;
   controlChange(channel: number, controller: number, value: number): void;
-  programChange(channel: number, program: number): void;
+  /** `bank`: 0–127 melódico; 128 = kit de bateria (o canal passa a tocar como percussão). */
+  programChange(channel: number, program: number, bank?: number): void;
   pitchBend(channel: number, value14: number): void;
   channelPressure(channel: number, pressure: number): void;
   polyPressure(channel: number, note: number, pressure: number): void;
   allSoundOff(): void;
-  /** Carrega (ou substitui) o banco de sons ativo. */
-  loadSoundBank(buffer: ArrayBuffer, name: string): Promise<void>;
+  /** Adiciona um banco de sons (vários podem ficar ativos ao mesmo tempo). */
+  addSoundBank(id: string, buffer: ArrayBuffer, name: string): Promise<void>;
+  removeSoundBank(id: string): Promise<void>;
+  /** Define a prioridade dos bancos: o primeiro da lista vence quando há instrumentos repetidos. */
+  setSoundBankOrder(ids: string[]): void;
   dispose(): void;
 }
 

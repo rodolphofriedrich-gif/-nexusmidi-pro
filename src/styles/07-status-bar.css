@@ -5,7 +5,7 @@
 .nexus-midi-status {
   min-height: 34px;
   color: var(--nexus-text-muted);
-  background: rgba(15, 23, 42, 0.38);
+  background: rgba(26, 28, 33, 0.38);
   border: 1px solid rgba(255, 255, 255, 0.035);
   border-radius: 10px;
 }
@@ -15,7 +15,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #475569;
+  background: #565b66;
 }
 
 .nexus-tx-indicator.is-active {
@@ -37,7 +37,7 @@
 }
 
 .nexus-studio-label {
-  color: #475569;
+  color: #565b66;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 1.15px;

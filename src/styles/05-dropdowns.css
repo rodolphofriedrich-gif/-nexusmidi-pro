@@ -4,7 +4,7 @@
 
 .nexus-dropdown {
   color: var(--nexus-text);
-  background: rgba(15, 23, 42, 0.98);
+  background: rgba(26, 28, 33, 0.98);
   border: 1px solid rgba(148, 163, 184, 0.18);
   box-shadow: var(--nexus-shadow-float);
   backdrop-filter: blur(22px);
@@ -83,12 +83,12 @@
 
 .nexus-device-option.is-selected {
   color: #e0f2fe;
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.2);
+  background: rgba(34, 211, 238, 0.1);
+  border-color: rgba(34, 211, 238, 0.2);
 }
 
 .nexus-success-icon { color: var(--nexus-success); }
-.nexus-muted-icon { color: #475569; }
+.nexus-muted-icon { color: #565b66; }
 
 .nexus-dropdown-action {
   display: flex;
@@ -142,11 +142,11 @@
 .nexus-action-primary {
   color: #fff;
   background: linear-gradient(120deg, var(--nexus-primary), var(--nexus-primary-end));
-  box-shadow: 0 3px 12px rgba(59, 130, 246, 0.12);
+  box-shadow: 0 3px 12px rgba(34, 211, 238, 0.12);
 }
 
 .nexus-action-primary:hover:not(:disabled) {
-  box-shadow: 0 4px 18px rgba(59, 130, 246, 0.23);
+  box-shadow: 0 4px 18px rgba(34, 211, 238, 0.23);
 }
 
 .nexus-action-secondary {

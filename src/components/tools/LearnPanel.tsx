@@ -14,7 +14,7 @@ export function LearnPanel() {
   const armed = useSyncExternalStore(subscribeLearn, getArmed, getArmed);
 
   return (
-    <Card title="MIDI Learn" Icon={Link2} accent="text-violet-400">
+    <Card title="MIDI Learn" Icon={Link2} accent="text-cyan-400">
       <p className="text-[11px] leading-snug text-slate-400">
         {tr('Toque em "Aprender" e mexa em um knob ou fader do seu controlador. Ele passa a controlar aquele parâmetro.')}
       </p>
@@ -23,10 +23,10 @@ export function LearnPanel() {
           const mapping = mappings.find((m) => m.targetId === target.id);
           const isArmed = armed === target.id;
           return (
-            <div key={target.id} className="flex items-center gap-2 rounded-lg border border-[#1e293b] bg-[#0a0f1c] px-3 py-2">
+            <div key={target.id} className="flex items-center gap-2 rounded-lg border border-[#2e323b] bg-[#121316] px-3 py-2">
               <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-200">{tr(target.label)}</span>
               {mapping && !isArmed && (
-                <span className="rounded bg-violet-950/60 px-1.5 py-0.5 font-mono text-[10px] text-violet-300">
+                <span className="rounded bg-cyan-950/60 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">
                   CC{mapping.cc}
                   {mapping.channel > 0 ? ` · CH${mapping.channel}` : ''}
                 </span>
@@ -34,7 +34,7 @@ export function LearnPanel() {
               <button
                 type="button"
                 onClick={() => (isArmed ? midiLearn.disarm() : midiLearn.arm(target.id))}
-                className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition ${isArmed ? 'animate-pulse bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+                className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition ${isArmed ? 'animate-pulse bg-cyan-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
               >
                 {isArmed ? tr('Mexa no controle...') : tr('Aprender')}
               </button>

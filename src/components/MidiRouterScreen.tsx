@@ -65,7 +65,7 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
   );
 
   return (
-    <div className="custom-scrollbar flex w-full flex-1 flex-col gap-4 overflow-y-auto bg-[#0a0f1c] p-3 pb-32 text-slate-100 sm:p-5">
+    <div className="custom-scrollbar flex w-full flex-1 flex-col gap-4 overflow-y-auto bg-[#121316] p-3 pb-32 text-slate-100 sm:p-5">
       {routes.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-800 py-20 text-slate-500">
           <ArrowRightLeft size={48} className="mb-4 opacity-20" />
@@ -79,9 +79,9 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
           {routes.map((route, index) => (
             <div
               key={route.id}
-              className={`relative z-20 flex flex-col gap-3 rounded-xl border border-[#1e293b] bg-[#0f172a] p-3 shadow-md transition-opacity sm:p-4 ${route.enabled ? '' : 'opacity-60'}`}
+              className={`relative z-20 flex flex-col gap-3 rounded-xl border border-[#2e323b] bg-[#1a1c21] p-3 shadow-md transition-opacity sm:p-4 ${route.enabled ? '' : 'opacity-60'}`}
             >
-              <div className="flex items-center justify-between border-b border-[#1e293b] pb-2">
+              <div className="flex items-center justify-between border-b border-[#2e323b] pb-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{tr('Rota {n}', { n: index + 1 })}</span>
                 <div className="flex items-center gap-3">
                   <button
@@ -111,7 +111,7 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
                   <button
                     type="button"
                     onClick={() => setOpenDropdown(openDropdown === `in-${route.id}` ? null : `in-${route.id}`)}
-                    className="flex w-full items-center justify-between rounded-lg border border-slate-700 bg-[#0a0f1c] p-2 text-xs font-semibold text-emerald-300 transition hover:border-emerald-500/50"
+                    className="flex w-full items-center justify-between rounded-lg border border-slate-700 bg-[#121316] p-2 text-xs font-semibold text-emerald-300 transition hover:border-emerald-500/50"
                   >
                     <div className="flex items-center gap-2 truncate">
                       <Download size={14} className="shrink-0 text-emerald-500" />
@@ -120,7 +120,7 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
                     <ChevronDown size={14} className={`transition-transform ${openDropdown === `in-${route.id}` ? 'rotate-180' : ''}`} />
                   </button>
                   {openDropdown === `in-${route.id}` && (
-                    <div className="custom-scrollbar absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-700 bg-[#0f172a] shadow-2xl">
+                    <div className="custom-scrollbar absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-700 bg-[#1a1c21] shadow-2xl">
                       {availableInputs.map((input) => (
                         <button
                           type="button"
@@ -145,7 +145,7 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
                     <button
                       type="button"
                       onClick={() => setOpenDropdown(openDropdown === `out-${route.id}` ? null : `out-${route.id}`)}
-                      className="flex w-full items-center justify-between rounded-lg border border-slate-700 bg-[#0a0f1c] p-2 text-xs font-semibold text-cyan-300 transition hover:border-cyan-500/50"
+                      className="flex w-full items-center justify-between rounded-lg border border-slate-700 bg-[#121316] p-2 text-xs font-semibold text-cyan-300 transition hover:border-cyan-500/50"
                     >
                       <div className="flex items-center gap-2 truncate">
                         <Upload size={14} className="shrink-0 text-cyan-500" />
@@ -157,7 +157,7 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
                     </button>
                   )}
                   {openDropdown === `out-${route.id}` && (
-                    <div className="custom-scrollbar absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-700 bg-[#0f172a] shadow-2xl">
+                    <div className="custom-scrollbar absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-700 bg-[#1a1c21] shadow-2xl">
                       {connectedDestinations.map((dest) => (
                         <button
                           type="button"
@@ -173,7 +173,7 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 rounded-lg border border-[#1e293b] bg-[#0a0f1c] p-2">
+              <div className="grid grid-cols-3 gap-2 rounded-lg border border-[#2e323b] bg-[#121316] p-2">
                 {(['inputChannel', 'outputChannel'] as const).map((field) => {
                   const key = `${field === 'inputChannel' ? 'chin' : 'chout'}-${route.id}`;
                   const value = route[field];
@@ -186,13 +186,13 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
                       <button
                         type="button"
                         onClick={() => setOpenDropdown(openDropdown === key ? null : key)}
-                        className="flex w-full items-center justify-between rounded border border-slate-700 bg-[#0f172a] px-2 py-1.5 text-center font-mono text-xs text-slate-300 transition hover:border-slate-500"
+                        className="flex w-full items-center justify-between rounded border border-slate-700 bg-[#1a1c21] px-2 py-1.5 text-center font-mono text-xs text-slate-300 transition hover:border-slate-500"
                       >
                         <span>{value === 0 ? zeroLabel : String(value).padStart(2, '0')}</span>
                         <ChevronDown size={12} className={`text-slate-500 transition-transform ${openDropdown === key ? 'rotate-180' : ''}`} />
                       </button>
                       {openDropdown === key && (
-                        <div className="custom-scrollbar absolute bottom-full left-0 right-0 z-50 mb-1 max-h-40 overflow-y-auto rounded-lg border border-slate-700 bg-[#0f172a] shadow-2xl">
+                        <div className="custom-scrollbar absolute bottom-full left-0 right-0 z-50 mb-1 max-h-40 overflow-y-auto rounded-lg border border-slate-700 bg-[#1a1c21] shadow-2xl">
                           {channelOptions(value, zeroLabel, field, route.id)}
                         </div>
                       )}
@@ -209,7 +209,7 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
                     value={route.transpose === 0 ? '' : route.transpose}
                     onChange={(e) => updateRoute(route.id, 'transpose', Math.max(-24, Math.min(24, Number(e.target.value) || 0)))}
                     placeholder="0"
-                    className="rounded border border-slate-700 bg-[#0f172a] px-2 py-1.5 text-center font-mono text-xs text-slate-300 outline-none transition focus:border-cyan-500"
+                    className="rounded border border-slate-700 bg-[#1a1c21] px-2 py-1.5 text-center font-mono text-xs text-slate-300 outline-none transition focus:border-cyan-500"
                   />
                 </div>
               </div>

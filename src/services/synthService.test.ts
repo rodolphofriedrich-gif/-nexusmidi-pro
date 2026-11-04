@@ -9,12 +9,14 @@ function makeBackend() {
       noteOn: (c, n, v) => calls.push(`on:${c}:${n}:${v}`),
       noteOff: (c, n) => calls.push(`off:${c}:${n}`),
       controlChange: (c, cc, v) => calls.push(`cc:${c}:${cc}:${v}`),
-      programChange: (c, p) => calls.push(`pc:${c}:${p}`),
+      programChange: (c, p, b) => calls.push(b ? `pc:${c}:${p}:b${b}` : `pc:${c}:${p}`),
       pitchBend: (c, v) => calls.push(`pb:${c}:${v}`),
       channelPressure: (c, v) => calls.push(`cp:${c}:${v}`),
       polyPressure: (c, n, v) => calls.push(`pp:${c}:${n}:${v}`),
       allSoundOff: () => calls.push('panic'),
-      loadSoundBank: async (_b, name) => void calls.push(`load:${name}`),
+      addSoundBank: async (id) => void calls.push(`add:${id}`),
+      removeSoundBank: async (id) => void calls.push(`remove:${id}`),
+      setSoundBankOrder: (ids) => void calls.push(`order:${ids.join(',')}`),
       dispose: () => calls.push('dispose'),
     },
     fx: {
@@ -41,7 +43,7 @@ describe('SynthService', () => {
       factoryCalls++;
       return made.backend;
     });
-    await synth.loadSoundFontBuffer(new ArrayBuffer(8), 'a.sf2');
+    await synth.addSoundBank('a', new ArrayBuffer(8), 'a.sf2');
     calls.length = 0;
   });
 
@@ -53,27 +55,50 @@ describe('SynthService', () => {
   });
 
   it('publica o estado (ready, fileName) para a interface', () => {
-    expect(synth.getSnapshot()).toEqual({ ready: true, loading: false, fileName: 'a.sf2' });
+    expect(synth.getSnapshot()).toEqual({ ready: true, loading: false, fileName: 'a.sf2', bankCount: 1 });
   });
 
-  it('cria o backend uma única vez, mesmo trocando de SoundFont', async () => {
-    await synth.loadSoundFontBuffer(new ArrayBuffer(8), 'b.sf2');
+  it('cria o backend uma única vez, mesmo carregando vários SoundFonts', async () => {
+    await synth.addSoundBank('b', new ArrayBuffer(8), 'b.sf2');
     expect(factoryCalls).toBe(1);
-    expect(synth.getCurrentFileName()).toBe('b.sf2');
+    expect(synth.getSnapshot()).toMatchObject({ ready: true, bankCount: 2, fileName: 'a.sf2 +1' });
   });
 
-  it('reaplica os programas por canal ao carregar outro SoundFont', async () => {
+  it('remover o último SoundFont deixa o sintetizador sem som (ready=false)', async () => {
+    await synth.removeSoundBank('a');
+    expect(synth.getSnapshot()).toMatchObject({ ready: false, bankCount: 0, fileName: null });
+    expect(calls).toContain('remove:a');
+  });
+
+  it('a ordem de prioridade muda o resumo e é repassada ao motor', async () => {
+    await synth.addSoundBank('b', new ArrayBuffer(8), 'b.sf2');
+    calls.length = 0;
+    synth.setSoundBankOrder(['b', 'a']);
+    expect(calls).toContain('order:b,a');
+    expect(synth.getCurrentFileName()).toBe('b.sf2 +1');
+  });
+
+  it('reaplica os programas por canal ao mudar os SoundFonts', async () => {
     synth.programChange(24, 3);
     calls.length = 0;
-    await synth.loadSoundFontBuffer(new ArrayBuffer(8), 'b.sf2');
+    await synth.addSoundBank('b', new ArrayBuffer(8), 'b.sf2');
     expect(calls).toContain('pc:2:24');
+  });
+
+  it('bateria (banco 128) é enviada com o banco e não é transposta em qualquer canal', () => {
+    synth.programChange(0, 4, 128);
+    expect(calls).toContain('pc:3:0:b128');
+    synth.setTranspose(5);
+    calls.length = 0;
+    synth.noteOn(36, 100, 4);
+    expect(calls).toEqual(['on:3:36:100']);
   });
 
   it('falha de carregamento não derruba o app e libera o estado de loading', async () => {
     const failing = new SynthService(async () => {
       throw new Error('sem áudio');
     });
-    expect(await failing.loadSoundFontBuffer(new ArrayBuffer(1), 'x.sf2')).toBe(false);
+    expect(await failing.addSoundBank('x', new ArrayBuffer(1), 'x.sf2')).toBe(false);
     expect(failing.getSnapshot().loading).toBe(false);
     expect(failing.getIsReady()).toBe(false);
   });

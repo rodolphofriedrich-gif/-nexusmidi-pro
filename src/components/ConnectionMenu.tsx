@@ -28,7 +28,7 @@ export function ConnectionMenu(props: Props) {
   const title = kind === 'usb' ? 'USB' : 'Bluetooth';
 
   const header: ReactNode = (
-    <div className="flex items-center justify-between border-b border-[#1e293b] px-4 py-3">
+    <div className="flex items-center justify-between border-b border-[#2e323b] px-4 py-3">
       <div>
         <p className="text-[10px] font-bold text-cyan-500">{kind === 'usb' ? tr('CONEXÃO USB') : tr('CONECTIVIDADE')}</p>
         <p className="mt-1 text-sm font-semibold text-white">{kind === 'usb' ? tr('Selecione múltiplos') : tr('Bluetooth MIDI')}</p>
@@ -50,7 +50,7 @@ export function ConnectionMenu(props: Props) {
         type="button"
         aria-expanded={isOpen}
         onClick={props.onToggleOpen}
-        className={`nexus-connection-button flex h-10 w-full items-center gap-2 rounded-lg border border-[#1e293b] bg-[#0a0f1c] px-3 transition-colors hover:bg-slate-800 ${isConnected ? 'text-emerald-400' : 'text-slate-300'}`}
+        className={`nexus-connection-button flex h-10 w-full items-center gap-2 rounded-lg border border-[#2e323b] bg-[#121316] px-3 transition-colors hover:bg-slate-800 ${isConnected ? 'text-emerald-400' : 'text-slate-300'}`}
       >
         <span className="flex items-center justify-center">
           <Icon size={18} strokeWidth={1.8} />
@@ -64,14 +64,14 @@ export function ConnectionMenu(props: Props) {
 
       {isOpen && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6" onClick={(e) => { if (e.target === e.currentTarget) props.onToggleOpen(); }}>
-          <div className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-[#1e293b] bg-[#0f172a] shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-[#2e323b] bg-[#1a1c21] shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {header}
             
             {showDisconnectAll && (
               <button
                 type="button"
                 onClick={props.onDisconnectAll}
-                className="flex w-full items-center justify-center gap-2 border-b border-[#1e293b] bg-red-950/20 px-4 py-2.5 text-xs font-bold uppercase text-red-400 transition-colors hover:bg-red-900/30"
+                className="flex w-full items-center justify-center gap-2 border-b border-[#2e323b] bg-red-950/20 px-4 py-2.5 text-xs font-bold uppercase text-red-400 transition-colors hover:bg-red-900/30"
               >
                 {tr('Desconectar Todos')}
               </button>
@@ -105,7 +105,7 @@ export function ConnectionMenu(props: Props) {
             </div>
 
             {kind === 'ble' && (
-              <div className="flex flex-col gap-2 border-t border-[#1e293b] bg-[#0a0f1c] p-3">
+              <div className="flex flex-col gap-2 border-t border-[#2e323b] bg-[#121316] p-3">
                 <button
                   type="button"
                   onClick={props.onScan}

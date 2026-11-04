@@ -156,10 +156,10 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
   };
 
   return (
-    <section className="flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-[#0a0f1c] p-2 sm:p-3 space-y-3 flex flex-col">
+    <section className="flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-[#121316] p-2 sm:p-3 space-y-3 flex flex-col">
       
       {/* MESA DE MIXAGEM - Aumentada */}
-      <div className="grid grid-cols-4 md:grid-cols-8 gap-1.5 sm:gap-2 bg-[#0a0f1c] p-1.5 sm:p-2 rounded-2xl border border-[#1e293b] shadow-inner h-[220px] sm:h-[260px] shrink-0">
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-1.5 sm:gap-2 bg-[#121316] p-1.5 sm:p-2 rounded-2xl border border-[#2e323b] shadow-inner h-[220px] sm:h-[260px] shrink-0">
         <StudioFader label="MOD" sublabel="CC 1" value={modWheel} onChange={(v: any) => updateState('modWheel', v)} onCommit={(v) => void sendCC(1, v, 'Modulação')} />
         <StudioFader label="VOL" sublabel="CC 7" value={volume} onChange={(v: any) => updateState('volume', v)} onCommit={(v) => void sendCC(7, v, 'Volume')} />
         <StudioFader label="EXP" sublabel="CC 11" value={expression} onChange={(v: any) => updateState('expression', v)} onCommit={(v) => void sendCC(11, v, 'Expressão')} />
@@ -174,13 +174,13 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0">
         
         {/* CARD PERFORMANCE */}
-        <div className="rounded-xl border border-[#1e293b] bg-[#0f172a] p-3 space-y-2 shadow-sm flex flex-col">
-          <h3 className="text-[10px] font-bold uppercase tracking-wide text-slate-400 flex items-center gap-2 border-b border-[#1e293b] pb-1">
+        <div className="rounded-xl border border-[#2e323b] bg-[#1a1c21] p-3 space-y-2 shadow-sm flex flex-col">
+          <h3 className="text-[10px] font-bold uppercase tracking-wide text-slate-400 flex items-center gap-2 border-b border-[#2e323b] pb-1">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span> {tr('Performance')}
           </h3>
           
           <div className="grid grid-cols-2 gap-2 flex-1">
-            <div className="flex flex-col justify-between gap-2 rounded-lg bg-[#0a0f1c] border border-[#1e293b] p-2">
+            <div className="flex flex-col justify-between gap-2 rounded-lg bg-[#121316] border border-[#2e323b] p-2">
               <div>
                 <div className="text-[10px] font-semibold text-slate-200">Sustain • CC64</div>
               </div>
@@ -193,7 +193,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
               </button>
             </div>
 
-            <div className="flex flex-col justify-between gap-2 rounded-lg bg-[#0a0f1c] border border-[#1e293b] p-2">
+            <div className="flex flex-col justify-between gap-2 rounded-lg bg-[#121316] border border-[#2e323b] p-2">
               <div>
                 <label className="block text-[10px] font-semibold text-slate-200">Program (1–128)</label>
               </div>
@@ -201,7 +201,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
                 <input 
                   type="number" min="1" max="128" value={program} 
                   onChange={(event) => updateState('program', Math.max(1, Math.min(128, Number(event.target.value) || 1)))} 
-                  className="min-w-0 w-10 rounded-lg border border-slate-700 bg-[#0f172a] px-1 py-2 font-mono text-xs text-center text-cyan-300 outline-none focus:border-cyan-500" 
+                  className="min-w-0 w-10 rounded-lg border border-slate-700 bg-[#1a1c21] px-1 py-2 font-mono text-xs text-center text-cyan-300 outline-none focus:border-cyan-500" 
                 />
                 <button 
                   disabled={busy || !isConnected} 
@@ -216,12 +216,12 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
         </div>
 
         {/* CARD PITCH BEND E PANIC */}
-        <div className="rounded-xl border border-[#1e293b] bg-[#0f172a] p-3 space-y-2 shadow-sm flex flex-col">
-          <h3 className="text-[10px] font-bold uppercase tracking-wide text-slate-400 flex items-center gap-2 border-b border-[#1e293b] pb-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-500"></span> {tr('Pitch Bend')}
+        <div className="rounded-xl border border-[#2e323b] bg-[#1a1c21] p-3 space-y-2 shadow-sm flex flex-col">
+          <h3 className="text-[10px] font-bold uppercase tracking-wide text-slate-400 flex items-center gap-2 border-b border-[#2e323b] pb-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span> {tr('Pitch Bend')}
           </h3>
           
-          <div className="rounded-lg bg-[#0a0f1c] border border-[#1e293b] p-2 flex flex-col justify-center gap-2">
+          <div className="rounded-lg bg-[#121316] border border-[#2e323b] p-2 flex flex-col justify-center gap-2">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase text-slate-500">
               <span>{tr('Grave (-)')}</span>
               <span className="font-mono text-cyan-400">{pitchBend - 8192 > 0 ? '+' : ''}{pitchBend - 8192}</span>
@@ -229,7 +229,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
             </div>
             
             <div className="relative w-full h-8 flex items-center group select-none">
-              <div className="absolute inset-x-0 h-3 bg-[#05080f] rounded-full border border-[#1e293b] shadow-inner overflow-hidden">
+              <div className="absolute inset-x-0 h-3 bg-[#0e0f12] rounded-full border border-[#2e323b] shadow-inner overflow-hidden">
                 <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-600 shadow-[0_0_4px_rgba(255,255,255,0.2)] z-0" />
                 <div 
                   className="absolute top-0 bottom-0 bg-cyan-600/30 z-0 transition-all duration-75 ease-out"
@@ -278,7 +278,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
       </div>
 
       {/* PRESETS COMPACTOS */}
-      <div className="rounded-xl border border-[#1e293b] bg-[#0f172a] p-3 space-y-2 shadow-sm shrink-0 mb-4">
+      <div className="rounded-xl border border-[#2e323b] bg-[#1a1c21] p-3 space-y-2 shadow-sm shrink-0 mb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Save size={14} className="text-cyan-400" />
@@ -290,7 +290,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
           <input 
             aria-label={tr('Nome do preset')} value={presetName} onChange={(event) => setPresetName(event.target.value)} 
             maxLength={40} placeholder={tr('Nome do preset')} 
-            className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-[#0a0f1c] px-2 py-1.5 text-[10px] text-slate-200 outline-none focus:border-cyan-500 transition" 
+            className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-[#121316] px-2 py-1.5 text-[10px] text-slate-200 outline-none focus:border-cyan-500 transition" 
           />
           <button onClick={savePreset} className="flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-cyan-600 transition">
             <Save size={12} /> {tr('Salvar')}
@@ -304,7 +304,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
             {presets.map((preset) => (
-              <div key={preset.id} className="flex min-w-0 items-center gap-1 rounded-lg border border-[#1e293b] bg-[#0a0f1c] p-1.5 hover:border-slate-600 transition group">
+              <div key={preset.id} className="flex min-w-0 items-center gap-1 rounded-lg border border-[#2e323b] bg-[#121316] p-1.5 hover:border-slate-600 transition group">
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[10px] font-bold text-slate-200">{preset.name}</div>
                 </div>

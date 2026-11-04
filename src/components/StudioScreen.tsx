@@ -9,7 +9,7 @@ interface StudioScreenProps {
 
 export function StudioScreen({ onStatus, activeTab }: StudioScreenProps) {
   return (
-    <div className="flex-1 w-full flex flex-col min-h-0 bg-[#0a0f1c]">
+    <div className="flex-1 w-full flex flex-col min-h-0 bg-[#121316]">
       <div className="flex-1 min-h-0 overflow-hidden relative">
         {activeTab === 'synth' && <SoundFontScreen onStatus={onStatus} />}
         {activeTab === 'mixer' && <MidiControlsScreen channel={1} isConnected={true} onStatus={onStatus} />}

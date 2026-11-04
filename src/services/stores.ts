@@ -51,7 +51,8 @@ export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
 export const synthSettingsStore = createStore<SynthSettings>('nexus_synth_settings', DEFAULT_SYNTH_SETTINGS);
 
 export interface ChannelState {
-  assignments: Record<number, number>; // canal → programa GM
+  assignments: Record<number, number>; // canal → programa (0–127)
+  banks: Record<number, number>; // canal → banco do SF2 (128 = bateria). Ausente = 0
   muted: Record<number, boolean>;
   solo: number | null;
 }
@@ -66,7 +67,7 @@ const parseJson = <T>(raw: string | null, fallback: T): T => {
 
 export const channelsStore = createStore<ChannelState>(
   'nexusmidi.channels',
-  { assignments: {}, muted: {}, solo: null },
+  { assignments: {}, banks: {}, muted: {}, solo: null },
   {
     legacy: (storage) => ({
       assignments: parseJson<Record<number, number>>(storage.getItem('nexus_sf_channels'), {}),

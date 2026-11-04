@@ -29,7 +29,7 @@ export function StudioFader({
   };
 
   return (
-    <div className="flex flex-col items-center gap-2 p-2 bg-[#0f172a] border border-[#1e293b] rounded-xl shadow-lg w-full max-w-[80px] mx-auto h-full">
+    <div className="flex flex-col items-center gap-2 p-2 bg-[#1a1c21] border border-[#2e323b] rounded-xl shadow-lg w-full max-w-[80px] mx-auto h-full">
       
       {/* Cabeçalho do Fader */}
       <div className="text-center w-full shrink-0">
@@ -41,7 +41,7 @@ export function StudioFader({
       <div className="relative flex-1 w-full flex justify-center select-none min-h-[80px]">
         
         {/* Trilho de Fundo (Sulco) */}
-        <div className="absolute top-2 bottom-2 w-2 bg-[#05080f] rounded-full border border-[#1e293b] overflow-hidden shadow-inner">
+        <div className="absolute top-2 bottom-2 w-2 bg-[#0e0f12] rounded-full border border-[#2e323b] overflow-hidden shadow-inner">
           <div 
             className={`absolute bottom-0 w-full rounded-full transition-all duration-75 ease-out ${getLedColor()}`}
             style={{ height: `${percent}%` }}
@@ -84,7 +84,7 @@ export function StudioFader({
       </div>
 
       {/* Visor do Valor */}
-      <div className="w-full shrink-0 bg-[#0a0f1c] border border-[#1e293b] rounded-md py-1 text-center shadow-inner">
+      <div className="w-full shrink-0 bg-[#121316] border border-[#2e323b] rounded-md py-1 text-center shadow-inner">
         <span className="font-mono text-[12px] font-bold text-cyan-400">
           {value}
           <span className="text-[9px] text-slate-500 ml-0.5">{unit}</span>

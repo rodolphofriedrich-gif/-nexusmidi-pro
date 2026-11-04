@@ -47,8 +47,8 @@ export function NavMenu({ items, activeId, isOpen, onToggle, onClose, onSelect }
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-[150] mt-2 flex max-h-[80vh] w-56 flex-col overflow-hidden rounded-xl border border-[#1e293b] bg-[#0f172a] shadow-2xl">
-          <div className="shrink-0 border-b border-[#1e293b] bg-[#0a0f1c] px-4 py-2">
+        <div className="absolute left-0 top-full z-[150] mt-2 flex max-h-[80vh] w-56 flex-col overflow-hidden rounded-xl border border-[#2e323b] bg-[#1a1c21] shadow-2xl">
+          <div className="shrink-0 border-b border-[#2e323b] bg-[#121316] px-4 py-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{tr('Navegação')}</p>
           </div>
           <div className="custom-scrollbar flex flex-col gap-0.5 overflow-y-auto p-1">
@@ -63,7 +63,7 @@ export function NavMenu({ items, activeId, isOpen, onToggle, onClose, onSelect }
                     selected ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                   }`}
                 >
-                  <div className={`rounded-md p-1.5 ${selected ? 'bg-slate-700' : 'bg-[#0a0f1c]'}`}>
+                  <div className={`rounded-md p-1.5 ${selected ? 'bg-slate-700' : 'bg-[#121316]'}`}>
                     <Icon size={16} className={selected ? textClass : ''} />
                   </div>
                   <span className={`text-xs font-semibold ${selected ? 'text-white' : ''}`}>{label}</span>

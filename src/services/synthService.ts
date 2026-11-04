@@ -4,10 +4,19 @@ import type { BackendFactory, SynthBackend, SynthSettings } from './synthTypes';
 export interface SynthSnapshot {
   ready: boolean;
   loading: boolean;
+  /** Resumo dos SoundFonts ativos: "a.sf2" ou "a.sf2 +2". */
   fileName: string | null;
+  /** Quantos SoundFonts estão carregados no motor. */
+  bankCount: number;
 }
 
 const DRUM_CHANNEL_INDEX = 9; // canal 10 (GM): percussão não deve ser transposta
+const DRUM_BANK = 128;
+
+interface ChannelProgram {
+  program: number;
+  bank: number;
+}
 const toCc = (percent: number): number => clampInt(Math.round(percent * 1.27), 0, 127);
 
 /**
@@ -17,12 +26,14 @@ const toCc = (percent: number): number => clampInt(Math.round(percent * 1.27), 0
 export class SynthService {
   private backend: SynthBackend | null = null;
   private backendPromise: Promise<SynthBackend> | null = null;
-  private snapshot: SynthSnapshot = { ready: false, loading: false, fileName: null };
+  private snapshot: SynthSnapshot = { ready: false, loading: false, fileName: null, bankCount: 0 };
   private readonly listeners = new Set<() => void>();
 
   /** `canal:nota` tocada → nota realmente enviada ao motor (mantém a ordem de chegada). */
   private readonly active = new Map<string, number>();
-  private readonly channelPrograms = new Map<number, number>();
+  private readonly channelPrograms = new Map<number, ChannelProgram>();
+  /** SoundFonts carregados no motor, em ordem de prioridade (id → nome). */
+  private readonly banks = new Map<string, string>();
   private maxPolyphony = 64;
   private transpose = 0;
 
@@ -72,25 +83,65 @@ export class SynthService {
     await this.backend?.resume();
   }
 
-  async loadSoundFontBuffer(buffer: ArrayBuffer, fileName: string): Promise<boolean> {
+  /** Resumo exibido na interface: o nome do primeiro SoundFont e quantos mais estão ativos. */
+  private bankSummary(): string | null {
+    const names = [...this.banks.values()];
+    if (names.length === 0) return null;
+    return names.length === 1 ? names[0] : `${names[0]} +${names.length - 1}`;
+  }
+
+  private publishBanks(patch: Partial<SynthSnapshot> = {}): void {
+    this.update({ ready: this.banks.size > 0, fileName: this.bankSummary(), bankCount: this.banks.size, ...patch });
+  }
+
+  /** Reaplica os programas por canal (o motor perde a seleção quando os bancos mudam). */
+  private reapplyPrograms(backend: SynthBackend): void {
+    for (const [channel, { program, bank }] of this.channelPrograms) backend.engine.programChange(channel, program, bank);
+  }
+
+  /** Adiciona um SoundFont. Vários podem ficar ativos ao mesmo tempo. */
+  async addSoundBank(id: string, buffer: ArrayBuffer, name: string): Promise<boolean> {
     this.update({ loading: true });
     try {
       const backend = await this.ensureBackend();
       this.allNotesOff();
-      await backend.engine.loadSoundBank(buffer, fileName);
-      // Reaplica os programas por canal (o novo banco começa do zero).
-      for (const [channel, program] of this.channelPrograms) backend.engine.programChange(channel, program);
-      this.update({ ready: true, loading: false, fileName });
+      await backend.engine.addSoundBank(id, buffer, name);
+      this.banks.set(id, name);
+      this.reapplyPrograms(backend);
+      this.publishBanks({ loading: false });
       return true;
     } catch (error) {
       console.error('Erro ao carregar SoundFont:', error);
-      this.update({ loading: false, ready: this.snapshot.ready });
+      this.update({ loading: false });
       return false;
     }
   }
 
-  async loadSoundFont(file: File): Promise<boolean> {
-    return this.loadSoundFontBuffer(await file.arrayBuffer(), file.name);
+  async removeSoundBank(id: string): Promise<void> {
+    if (!this.banks.has(id)) return;
+    this.allNotesOff();
+    this.banks.delete(id);
+    try {
+      await this.backend?.engine.removeSoundBank(id);
+    } catch (error) {
+      console.error('Erro ao remover SoundFont:', error);
+    }
+    if (this.backend) this.reapplyPrograms(this.backend);
+    this.publishBanks();
+  }
+
+  /** Define a prioridade dos SoundFonts carregados (o primeiro vence em instrumentos repetidos). */
+  setSoundBankOrder(ids: string[]): void {
+    const loaded = ids.filter((id) => this.banks.has(id));
+    if (loaded.length === 0) return;
+    const reordered = new Map<string, string>();
+    for (const id of loaded) reordered.set(id, this.banks.get(id) as string);
+    for (const [id, name] of this.banks) if (!reordered.has(id)) reordered.set(id, name);
+    this.banks.clear();
+    for (const [id, name] of reordered) this.banks.set(id, name);
+    this.backend?.engine.setSoundBankOrder([...this.banks.keys()]);
+    if (this.backend) this.reapplyPrograms(this.backend);
+    this.publishBanks();
   }
 
   dispose(): void {
@@ -98,12 +149,18 @@ export class SynthService {
     this.backend?.dispose();
     this.backend = null;
     this.backendPromise = null;
-    this.update({ ready: false, loading: false, fileName: null });
+    this.banks.clear();
+    this.update({ ready: false, loading: false, fileName: null, bankCount: 0 });
   }
 
   // ---- notas ----
   private index(channel: number): number {
     return clampInt(channel - 1, 0, 15);
+  }
+
+  /** Percussão não é transposta: vale para o canal 10 e para qualquer canal com kit de bateria. */
+  private isDrumChannel(ch: number): boolean {
+    return ch === DRUM_CHANNEL_INDEX || (this.channelPrograms.get(ch)?.bank ?? 0) >= DRUM_BANK;
   }
 
   noteOn(note: number, velocity: number, channel = 1): void {
@@ -131,7 +188,7 @@ export class SynthService {
       this.active.delete(oldKey);
     }
 
-    const shift = ch === DRUM_CHANNEL_INDEX ? 0 : this.transpose;
+    const shift = this.isDrumChannel(ch) ? 0 : this.transpose;
     const sounding = clampInt(original + shift, 0, 127);
     this.active.set(key, sounding);
     engine.noteOn(ch, sounding, clampInt(velocity, 1, 127));
@@ -165,11 +222,13 @@ export class SynthService {
     engine.controlChange(ch, clampInt(controller, 0, 127), clampInt(value, 0, 127));
   }
 
-  programChange(program: number, channel = 1): void {
+  /** `bank`: 0–127 melódico; 128 = kit de bateria. */
+  programChange(program: number, channel = 1, bank = 0): void {
     const ch = this.index(channel);
     const p = clampInt(program, 0, 127);
-    this.channelPrograms.set(ch, p);
-    if (this.snapshot.ready) this.backend?.engine.programChange(ch, p);
+    const b = clampInt(bank, 0, DRUM_BANK);
+    this.channelPrograms.set(ch, { program: p, bank: b });
+    if (this.snapshot.ready) this.backend?.engine.programChange(ch, p, b);
   }
 
   /** `value14`: 0–16383 (8192 = centro). */
@@ -189,9 +248,9 @@ export class SynthService {
   }
 
   /** Reaplica programas salvos (ex.: restaurados do armazenamento) sem exigir SoundFont carregado. */
-  setChannelPrograms(assignments: Record<number, number>): void {
+  setChannelPrograms(assignments: Record<number, number>, banks: Record<number, number> = {}): void {
     for (const [ch, program] of Object.entries(assignments)) {
-      this.programChange(program, Number(ch));
+      this.programChange(program, Number(ch), banks[Number(ch)] ?? 0);
     }
   }
 

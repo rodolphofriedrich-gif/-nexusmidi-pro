@@ -1,41 +1,42 @@
 /* =========================================================
-   SCROLLBARS (Barras de rolagem)
+   SCROLLBARS (barras de rolagem) — grossas e em ciano para ficarem fáceis de ver
    ========================================================= */
 
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #334155 transparent;
-}
-
+/*
+ * Atenção: no Chrome/WebView, declarar `scrollbar-width` ou `scrollbar-color` desativa os estilos
+ * `::-webkit-scrollbar` (e a barra volta a ser a fina e invisível do sistema). Por isso as propriedades
+ * padrão ficam só para navegadores sem suporte a ::-webkit-scrollbar (Firefox).
+ */
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 *::-webkit-scrollbar-track {
-  background: transparent;
+  background: #15171b;
+  border-radius: 999px;
 }
 
 *::-webkit-scrollbar-thumb {
-  background: #334155;
+  min-height: 36px;
+  min-width: 36px;
+  background: #0e7490;
+  border: 2px solid #15171b;
   border-radius: 999px;
 }
 
-*::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+*::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:active {
+  background: #22d3ee;
 }
 
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #334155 transparent;
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 999px;
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: #0e7490 #15171b;
+  }
 }

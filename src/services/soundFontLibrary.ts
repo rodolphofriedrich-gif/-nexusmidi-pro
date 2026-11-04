@@ -1,32 +1,50 @@
 import { createStore, type Store } from '../lib/storeCore';
+import { parseSf2Presets, summarizePresets, type Sf2Preset } from '../lib/sf2';
 import { storageService, type SoundFontMeta, type SoundFontStorage } from './storageService';
 import { synthService } from './synthService';
 
 export interface LibrarySnapshot {
   items: SoundFontMeta[];
-  activeId: string | null;
+  /** Bibliotecas ligadas, em ordem de prioridade (a primeira vence em instrumentos repetidos). */
+  activeIds: string[];
+  /** Instrumentos lidos de cada SoundFont já carregado nesta sessão. */
+  presets: Record<string, Sf2Preset[]>;
   busy: boolean;
   error: string | null;
 }
 
 interface SynthLoader {
-  loadSoundFontBuffer(buffer: ArrayBuffer, name: string): Promise<boolean>;
+  addSoundBank(id: string, buffer: ArrayBuffer, name: string): Promise<boolean>;
+  removeSoundBank(id: string): Promise<void>;
+  setSoundBankOrder(ids: string[]): void;
 }
 
-/** Biblioteca de SoundFonts: importar, trocar, remover e restaurar o último usado ao abrir o app. */
+interface LibraryPrefs {
+  /** `null` = nunca escolhido (primeira execução): liga o primeiro SoundFont da lista. */
+  activeIds: string[] | null;
+  /** Formato antigo (um único SoundFont ativo). Só lido na migração. */
+  activeId?: string | null;
+}
+
+/**
+ * Biblioteca de SoundFonts: importar, remover e escolher QUAIS ficam ligados ao mesmo tempo.
+ * Os ligados são carregados no motor de áudio; a ordem define a prioridade entre eles.
+ */
 export class SoundFontLibrary {
-  private snapshot: LibrarySnapshot = { items: [], activeId: null, busy: false, error: null };
+  private snapshot: LibrarySnapshot = { items: [], activeIds: [], presets: {}, busy: false, error: null };
   private readonly listeners = new Set<() => void>();
-  private readonly prefs: Store<{ activeId: string | null }>;
+  private readonly prefs: Store<LibraryPrefs>;
   private onLoaded?: () => void;
   private restored: Promise<boolean> | null = null;
+  /** O que realmente está carregado no motor (pode diferir momentaneamente de `activeIds`). */
+  private readonly loaded = new Set<string>();
 
   constructor(
     private readonly storage: SoundFontStorage,
     private readonly synth: SynthLoader,
-    prefs?: Store<{ activeId: string | null }>,
+    prefs?: Store<LibraryPrefs>,
   ) {
-    this.prefs = prefs ?? createStore('nexusmidi.soundfonts', { activeId: null as string | null });
+    this.prefs = prefs ?? createStore<LibraryPrefs>('nexusmidi.soundfonts', { activeIds: null });
   }
 
   getSnapshot = (): LibrarySnapshot => this.snapshot;
@@ -36,7 +54,7 @@ export class SoundFontLibrary {
     return () => this.listeners.delete(listener);
   };
 
-  /** Chamado sempre que um SoundFont termina de carregar (para reaplicar configurações). */
+  /** Chamado sempre que o conjunto de SoundFonts carregados muda (para reaplicar configurações). */
   setOnLoaded(callback: () => void): void {
     this.onLoaded = callback;
   }
@@ -46,7 +64,11 @@ export class SoundFontLibrary {
     this.listeners.forEach((l) => l());
   }
 
-  /** Lista a biblioteca e carrega o SoundFont ativo. Seguro chamar várias vezes. */
+  private fail(error: unknown, fallback: string): void {
+    this.update({ busy: false, error: error instanceof Error ? error.message : fallback });
+  }
+
+  /** Lista a biblioteca e carrega os SoundFonts ligados. Seguro chamar várias vezes. */
   restore(): Promise<boolean> {
     if (!this.restored) this.restored = this.doRestore();
     return this.restored;
@@ -56,12 +78,16 @@ export class SoundFontLibrary {
     try {
       const items = await this.storage.list();
       this.update({ items });
-      const wanted = this.prefs.get().activeId;
-      const target = items.find((i) => i.id === wanted) ?? items[0];
-      if (!target) return false;
-      return await this.activate(target.id);
+      if (items.length === 0) return false;
+
+      const saved = this.prefs.get();
+      const wanted = saved.activeIds ?? (saved.activeId ? [saved.activeId] : null);
+      const valid = (wanted ?? [items[0].id]).filter((id) => items.some((i) => i.id === id));
+      // Preferência salva apontando para itens que não existem mais → cai para o primeiro.
+      const ids = valid.length > 0 || (wanted !== null && wanted.length === 0) ? valid : [items[0].id];
+      return await this.apply(ids);
     } catch (error) {
-      this.update({ error: error instanceof Error ? error.message : String(error) });
+      this.fail(error, 'Falha ao abrir a biblioteca de SoundFonts.');
       return false;
     }
   }
@@ -74,46 +100,108 @@ export class SoundFontLibrary {
     this.update({ busy: true, error: null });
     try {
       const data = await file.arrayBuffer();
-      const meta = await this.storage.add(file.name, data);
-      this.update({ items: await this.storage.list() });
-      return await this.activate(meta.id, data);
+      const presets = parseSf2Presets(data);
+      const { total, drums } = summarizePresets(presets);
+      const meta = await this.storage.add(file.name, data, { presetCount: total, drumKitCount: drums });
+      this.update({
+        items: await this.storage.list(),
+        presets: { ...this.snapshot.presets, [meta.id]: presets },
+      });
+      // O SoundFont novo entra ligado e com a maior prioridade.
+      return await this.apply([meta.id, ...this.snapshot.activeIds], new Map([[meta.id, data]]));
     } catch (error) {
-      this.update({ busy: false, error: error instanceof Error ? error.message : 'Falha ao importar o SoundFont.' });
+      this.fail(error, 'Falha ao importar o SoundFont.');
       return false;
     }
   }
 
-  async activate(id: string, preloaded?: ArrayBuffer): Promise<boolean> {
-    this.update({ busy: true, error: null });
-    try {
-      let name: string | undefined = this.snapshot.items.find((i) => i.id === id)?.name;
-      let data = preloaded;
-      if (!data) {
-        const record = await this.storage.get(id);
-        if (!record) throw new Error('SoundFont não encontrado na biblioteca.');
-        data = record.data;
-        name = record.meta.name;
-      }
-      const ok = await this.synth.loadSoundFontBuffer(data, name ?? id);
-      if (!ok) throw new Error('O motor de áudio não conseguiu carregar este arquivo.');
-      this.prefs.set({ activeId: id });
-      this.update({ activeId: id, busy: false });
-      this.onLoaded?.();
-      return true;
-    } catch (error) {
-      this.update({ busy: false, error: error instanceof Error ? error.message : 'Falha ao carregar o SoundFont.' });
-      return false;
-    }
+  /** Liga ou desliga uma biblioteca. Ao ligar, ela passa a ter a maior prioridade. */
+  async toggle(id: string): Promise<boolean> {
+    const { activeIds } = this.snapshot;
+    const next = activeIds.includes(id) ? activeIds.filter((x) => x !== id) : [id, ...activeIds];
+    return this.apply(next);
+  }
+
+  /** Sobe (-1) ou desce (+1) a prioridade de uma biblioteca ligada. */
+  move(id: string, delta: -1 | 1): void {
+    const ids = [...this.snapshot.activeIds];
+    const from = ids.indexOf(id);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= ids.length) return;
+    [ids[from], ids[to]] = [ids[to], ids[from]];
+    this.prefs.set({ activeIds: ids });
+    this.update({ activeIds: ids });
+    this.synth.setSoundBankOrder(ids);
+    this.onLoaded?.();
   }
 
   async remove(id: string): Promise<void> {
-    await this.storage.remove(id);
-    const items = await this.storage.list();
-    const wasActive = this.snapshot.activeId === id;
-    this.update({ items, activeId: wasActive ? null : this.snapshot.activeId });
-    if (wasActive) {
-      this.prefs.set({ activeId: null });
-      if (items[0]) await this.activate(items[0].id);
+    try {
+      await this.storage.remove(id);
+      const items = await this.storage.list();
+      const presets = { ...this.snapshot.presets };
+      delete presets[id];
+      this.update({ items, presets });
+      if (this.snapshot.activeIds.includes(id) || this.loaded.has(id)) {
+        await this.apply(this.snapshot.activeIds.filter((x) => x !== id));
+      }
+    } catch (error) {
+      this.fail(error, 'Falha ao remover o SoundFont.');
+    }
+  }
+
+  /**
+   * Faz o motor de áudio refletir a lista `ids`: remove o que saiu, carrega o que entrou
+   * (lendo do armazenamento, ou de `preloaded` quando o dado acabou de ser importado) e aplica a ordem.
+   */
+  private async apply(ids: string[], preloaded?: Map<string, ArrayBuffer>): Promise<boolean> {
+    this.update({ busy: true, error: null });
+    let allOk = true;
+    const finalIds: string[] = [];
+    try {
+      for (const id of [...this.loaded]) {
+        if (!ids.includes(id)) {
+          await this.synth.removeSoundBank(id);
+          this.loaded.delete(id);
+        }
+      }
+
+      const presets = { ...this.snapshot.presets };
+      for (const id of ids) {
+        if (this.loaded.has(id)) {
+          finalIds.push(id);
+          continue;
+        }
+        let data = preloaded?.get(id);
+        let name = this.snapshot.items.find((i) => i.id === id)?.name;
+        if (!data) {
+          const record = await this.storage.get(id);
+          if (!record) {
+            allOk = false;
+            this.update({ error: 'SoundFont não encontrado na biblioteca.' });
+            continue;
+          }
+          data = record.data;
+          name = record.meta.name;
+        }
+        if (!(await this.synth.addSoundBank(id, data, name ?? id))) {
+          allOk = false;
+          this.update({ error: 'O motor de áudio não conseguiu carregar este arquivo.' });
+          continue;
+        }
+        this.loaded.add(id);
+        presets[id] ??= parseSf2Presets(data);
+        finalIds.push(id);
+      }
+
+      this.synth.setSoundBankOrder(finalIds);
+      this.prefs.set({ activeIds: finalIds });
+      this.update({ activeIds: finalIds, presets, busy: false });
+      this.onLoaded?.();
+      return allOk;
+    } catch (error) {
+      this.fail(error, 'Falha ao carregar o SoundFont.');
+      return false;
     }
   }
 }

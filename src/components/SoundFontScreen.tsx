@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
 import { AlertCircle, CheckCircle2, Library, Layers, UploadCloud, X, Settings2, ChevronLeft, ChevronRight, Save } from 'lucide-react';
-import { GM_PRESETS } from '../constants/gm';
+import { channelColor } from '../constants/channelColors';
 import { useStore } from '../hooks/useStore';
 import type { ToastType } from '../hooks/useToast';
 import { tr } from '../i18n';
+import { buildInstrumentList } from '../lib/instruments';
 import { soundFontLibrary } from '../services/soundFontLibrary';
 import { channelsStore, prefsStore, synthSettingsStore } from '../services/stores';
 import type { SynthSettings } from '../services/synthTypes';
@@ -32,10 +33,10 @@ function Popup({ title, onClose, children, widthClass = 'max-w-2xl' }: { title: 
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={`flex max-h-[92vh] w-full ${widthClass} flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0f172a] shadow-2xl`}>
+      <div className={`flex max-h-[92vh] w-full ${widthClass} flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#1a1c21] shadow-2xl`}>
         <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-2.5">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">{title}</h3>
-          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-[#0a0f1c] text-slate-400 transition hover:text-white">
+          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-[#121316] text-slate-400 transition hover:text-white">
             <X size={16} />
           </button>
         </div>
@@ -78,14 +79,12 @@ export function SoundFontScreen({ onStatus }: Props) {
     if (!file) return;
     onStatus(tr('Carregando e salvando SoundFont...'), 'info');
     if (await soundFontLibrary.importFile(file)) {
-      channelsStore.set({ assignments: {}, muted: {}, solo: null });
       onStatus(tr('SoundFont "{name}" carregado!', { name: file.name }), 'success');
     }
   };
 
-  const handleActivate = async (id: string) => {
-    if (await soundFontLibrary.activate(id)) onStatus(tr('SoundFont carregado!'), 'success');
-  };
+  const handleToggleLibrary = (id: string) => void soundFontLibrary.toggle(id);
+  const handleMoveLibrary = (id: string, delta: -1 | 1) => soundFontLibrary.move(id, delta);
 
   const handleRemove = async (id: string) => {
     await soundFontLibrary.remove(id);
@@ -97,8 +96,12 @@ export function SoundFontScreen({ onStatus }: Props) {
       onStatus(tr('Importe um arquivo SF2 primeiro.'), 'warn');
       return;
     }
-    synthService.programChange(preset.programNumber, activeChannel);
-    channelsStore.set((s) => ({ ...s, assignments: { ...s.assignments, [activeChannel]: preset.programNumber } }));
+    synthService.programChange(preset.programNumber, activeChannel, preset.bankNumber);
+    channelsStore.set((s) => ({
+      ...s,
+      assignments: { ...s.assignments, [activeChannel]: preset.programNumber },
+      banks: { ...s.banks, [activeChannel]: preset.bankNumber },
+    }));
   };
 
   const updateSetting = (key: keyof SynthSettings, value: number) => synthSettingsStore.set({ [key]: value });
@@ -111,15 +114,24 @@ export function SoundFontScreen({ onStatus }: Props) {
   const toggleMute = (ch: number) => channelsStore.set((s) => ({ ...s, muted: { ...s.muted, [ch]: !s.muted[ch] } }));
   const toggleSolo = (ch: number) => channelsStore.set((s) => ({ ...s, solo: s.solo === ch ? null : ch }));
 
-  const activePreset = (): SoundFontPreset =>
-    GM_PRESETS.find((p) => p.programNumber === channels.assignments[activeChannel]) ?? GM_PRESETS[0];
+  // Instrumentos REAIS: só os dos SoundFonts importados e ligados (vários podem estar ligados).
+  const instruments = useMemo(
+    () => buildInstrumentList(library.activeIds, library.presets, library.items),
+    [library.activeIds, library.presets, library.items],
+  );
+
+  const channelBanks = channels.banks ?? {};
+  const activePreset: SoundFontPreset | null =
+    instruments.find(
+      (p) => p.programNumber === channels.assignments[activeChannel] && p.bankNumber === (channelBanks[activeChannel] ?? 0),
+    ) ?? null;
 
   const handleAudition = () => {
     if (!synth.ready) {
       onStatus(tr('Carregue um arquivo .sf2 primeiro.'), 'warn');
       return;
     }
-    const chord = [60, 64, 67, 72];
+    const chord = activePreset?.isDrum ? [36, 38, 42, 46] : [60, 64, 67, 72];
     chord.forEach((note) => synthService.noteOn(note, 100, activeChannel));
     setTimeout(() => chord.forEach((note) => synthService.noteOff(note, activeChannel)), 1000);
   };
@@ -128,8 +140,10 @@ export function SoundFontScreen({ onStatus }: Props) {
   const loadScene = (scene: string) => {
     setActiveScene(scene);
     if (scenes[scene]) {
-      channelsStore.set(scenes[scene].channels);
+      const sceneChannels = { banks: {}, ...scenes[scene].channels };
+      channelsStore.set(sceneChannels);
       synthSettingsStore.set(scenes[scene].settings);
+      synthService.setChannelPrograms(sceneChannels.assignments ?? {}, sceneChannels.banks);
       onStatus(tr('Cena {scene} carregada.', { scene }), 'info');
     } else {
       onStatus(tr('Cena {scene} está vazia.', { scene }), 'warn');
@@ -144,13 +158,14 @@ export function SoundFontScreen({ onStatus }: Props) {
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-row overflow-hidden bg-[#0a0f1c] p-2 text-slate-100 gap-2">
+    <div className="flex h-full min-h-0 w-full flex-row overflow-hidden bg-[#121316] p-2 text-slate-100 gap-2">
       
       {/* COLUNA ESQUERDA (Card + Canais MIDI) */}
       <div className="flex min-h-0 w-[38%] max-w-[420px] min-w-[300px] shrink-0 flex-col gap-2">
         <div className="w-full shrink-0 flex flex-col">
           <ActiveSoundFontCard
-            preset={activePreset()}
+            preset={activePreset}
+            canPlay={synth.ready}
             volume={settings.volume}
             onVolumeChange={(v) => updateSetting('volume', v)}
             reverb={settings.reverb}
@@ -162,7 +177,7 @@ export function SoundFontScreen({ onStatus }: Props) {
         </div>
 
         {/* BLOCO DE CANAIS MIDI */}
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col rounded-xl border border-[#2e323b] bg-[#1a1c21] p-2">
           <div className="flex items-center justify-between mb-2 shrink-0">
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Canais MIDI</span>
             <div className="flex items-center gap-1">
@@ -178,23 +193,28 @@ export function SoundFontScreen({ onStatus }: Props) {
               const isSoloed = channels.solo === ch;
               const isActive = activeChannel === ch;
               return (
-                <div key={ch} className={`flex flex-col gap-1 rounded-lg border p-1 transition-colors ${isActive ? 'border-cyan-600/60 bg-cyan-900/30' : 'border-[#1e293b] bg-[#0a0f1c]'}`}>
+                <div
+                  key={ch}
+                  className={`flex flex-col gap-1 rounded-lg border p-1 transition-colors ${isActive ? 'bg-[#23262D]' : 'border-[#2E323B] bg-[#121316]'}`}
+                  style={isActive ? { borderColor: channelColor(ch) } : undefined}
+                >
                   <button
                     type="button"
                     onClick={() => setActiveChannel(ch)}
-                    className={`h-7 w-full rounded font-mono text-xs font-bold transition-colors ${isActive ? 'bg-cyan-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}
+                    className={`h-7 w-full rounded font-mono text-xs font-bold transition-colors ${isActive ? 'text-[#121316]' : 'hover:bg-[#2E323B]'}`}
+                    style={isActive ? { backgroundColor: channelColor(ch) } : { color: channelColor(ch) }}
                   >
                     {ch}
                   </button>
                   <button
                     type="button"
                     onClick={() => toggleMute(ch)}
-                    className={`h-7 w-full rounded text-[10px] font-bold ${isMuted ? 'bg-rose-600 text-white' : 'bg-[#1e293b] text-slate-400 hover:bg-slate-700'}`}
+                    className={`h-7 w-full rounded text-[10px] font-bold ${isMuted ? 'bg-amber-400 text-[#121316]' : 'bg-[#23262D] text-slate-400 hover:bg-[#2E323B]'}`}
                   >M</button>
                   <button
                     type="button"
                     onClick={() => toggleSolo(ch)}
-                    className={`h-7 w-full rounded text-[10px] font-bold ${isSoloed ? 'bg-amber-500 text-white' : 'bg-[#1e293b] text-slate-400 hover:bg-slate-700'}`}
+                    className={`h-7 w-full rounded text-[10px] font-bold ${isSoloed ? 'bg-sky-500 text-white' : 'bg-[#23262D] text-slate-400 hover:bg-[#2E323B]'}`}
                   >S</button>
                 </div>
               );
@@ -204,10 +224,10 @@ export function SoundFontScreen({ onStatus }: Props) {
       </div>
 
       {/* COLUNA DIREITA (Mais larga) */}
-      <div className="flex-1 min-w-0 min-h-0 flex flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col rounded-xl border border-[#2e323b] bg-[#1a1c21] p-2">
         
         {/* BARRA SUPERIOR: CENAS + BIBLIOTECA + CONFIG + SF2 */}
-        <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-[#1e293b] pb-2">
+        <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-[#2e323b] pb-2">
           <button
             type="button"
             onClick={() => setIsScenesOpen(true)}
@@ -220,7 +240,7 @@ export function SoundFontScreen({ onStatus }: Props) {
           <button
             type="button"
             onClick={() => setViewMode((m) => (m === 'library' ? 'presets' : 'library'))}
-            className={`flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold transition ${viewMode === 'library' ? 'border-cyan-600 bg-cyan-600 text-white shadow-sm' : 'border-[#1e293b] bg-[#0a0f1c] text-slate-400 hover:text-white'}`}
+            className={`flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold transition ${viewMode === 'library' ? 'border-cyan-600 bg-cyan-600 text-white shadow-sm' : 'border-[#2e323b] bg-[#121316] text-slate-400 hover:text-white'}`}
           >
             <Library size={14} /> BIBLIOTECA
           </button>
@@ -228,7 +248,7 @@ export function SoundFontScreen({ onStatus }: Props) {
           <button
             type="button"
             onClick={() => setIsConfigOpen(true)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-[#0a0f1c] text-slate-400 transition hover:text-white"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-[#121316] text-slate-400 transition hover:text-white"
             title={tr('Configurações')}
           >
             <Settings2 size={16} />
@@ -252,7 +272,7 @@ export function SoundFontScreen({ onStatus }: Props) {
               title={synth.fileName ?? 'Sem SF2'}
               className="relative flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-cyan-600 px-3 text-xs font-bold text-white shadow transition hover:bg-cyan-500 disabled:opacity-50"
             >
-              <span className={`absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-[#0f172a] ${synth.fileName ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+              <span className={`absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-[#1a1c21] ${synth.ready ? 'bg-emerald-400' : 'bg-slate-500'}`} />
               <UploadCloud size={16} /> {busy ? '...' : 'Importar SF2'}
             </button>
           </div>
@@ -261,17 +281,22 @@ export function SoundFontScreen({ onStatus }: Props) {
         <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
           {viewMode === 'presets' && (
             <SoundFontList
-              soundFonts={GM_PRESETS}
+              instruments={instruments}
               activeChannel={activeChannel}
               channelAssignments={channels.assignments}
+              channelBanks={channelBanks}
               onAssignProgram={handleAssignProgram}
+              hasLibrary={library.items.length > 0}
+              showLibraryName={library.activeIds.length > 1}
+              onOpenLibrary={() => setViewMode('library')}
             />
           )}
           {viewMode === 'library' && (
             <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
               <SoundFontLibraryPanel
                 library={library}
-                onActivate={(id) => void handleActivate(id)}
+                onToggle={handleToggleLibrary}
+                onMove={handleMoveLibrary}
                 onRemove={(id) => void handleRemove(id)}
               />
             </div>
@@ -290,7 +315,7 @@ export function SoundFontScreen({ onStatus }: Props) {
                   key={sc}
                   type="button"
                   onClick={() => loadScene(sc)}
-                  className={`relative flex h-14 items-center justify-center rounded-xl border text-lg font-bold transition-colors ${isActive ? 'border-amber-500 bg-amber-600 text-white shadow' : 'border-[#1e293b] bg-[#0a0f1c] text-slate-300 hover:bg-slate-800'}`}
+                  className={`relative flex h-14 items-center justify-center rounded-xl border text-lg font-bold transition-colors ${isActive ? 'border-amber-500 bg-amber-600 text-white shadow' : 'border-[#2e323b] bg-[#121316] text-slate-300 hover:bg-slate-800'}`}
                 >
                   {sc}
                   {hasData && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-emerald-400" />}

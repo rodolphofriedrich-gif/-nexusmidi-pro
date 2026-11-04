@@ -6,44 +6,49 @@
 :root {
   color-scheme: dark;
 
-  --nexus-bg-top: #0a0e1a;
-  --nexus-bg-bottom: #05070d;
-  --nexus-panel: #111827;
-  --nexus-panel-raised: #151e2e;
-  --nexus-panel-hover: #1b2638;
+  /* Superfícies: grafite neutro (como uma DAW), em 4 níveis */
+  --nexus-bg-top: #17191d;
+  --nexus-bg-bottom: #0e0f12;
+  --nexus-panel: #1a1c21;
+  --nexus-panel-raised: #23262d;
+  --nexus-panel-hover: #2a2d35;
 
-  --nexus-primary: #3b82f6;
-  --nexus-primary-end: #6366f1;
+  /* Uma única cor de destaque: ciano */
+  --nexus-primary: #0891b2;
+  --nexus-primary-end: #0e7490;
   --nexus-accent: #22d3ee;
 
-  --nexus-text: #f1f5f9;
-  --nexus-text-secondary: #94a3b8;
-  --nexus-text-muted: #64748b;
+  --nexus-text: #e6e8ec;
+  --nexus-text-secondary: #9aa0ab;
+  --nexus-text-muted: #868c98;
 
-  --nexus-success: #10b981;
+  /* Cores de função (padrão das DAWs): só aparecem com significado */
+  --nexus-success: #34d399;
   --nexus-success-end: #059669;
-  --nexus-warning: #f59e0b;
-  --nexus-danger: #f43f5e;
+  --nexus-warning: #fbbf24; /* mute */
+  --nexus-danger: #ef4444; /* gravação / perigo */
+  --nexus-solo: #0ea5e9; /* solo */
 
-  --nexus-border: rgba(255, 255, 255, 0.07);
-  --nexus-border-strong: rgba(255, 255, 255, 0.12);
-  --nexus-glass: rgba(255, 255, 255, 0.045);
+  --nexus-border: rgba(255, 255, 255, 0.08);
+  --nexus-border-strong: rgba(255, 255, 255, 0.14);
+  --nexus-glass: rgba(255, 255, 255, 0.04);
 
-  --nexus-radius-sm: 10px;
-  --nexus-radius-md: 14px;
-  --nexus-radius-lg: 16px;
-  --nexus-radius-xl: 20px;
+  /* Cantos menores: aparência de equipamento, não de app genérico */
+  --nexus-radius-sm: 6px;
+  --nexus-radius-md: 8px;
+  --nexus-radius-lg: 10px;
+  --nexus-radius-xl: 12px;
 
   --nexus-shadow-card:
-    0 4px 24px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+    0 2px 10px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   --nexus-shadow-float:
-    0 18px 48px rgba(0, 0, 0, 0.48),
-    0 4px 12px rgba(0, 0, 0, 0.25);
+    0 18px 48px rgba(0, 0, 0, 0.55),
+    0 4px 12px rgba(0, 0, 0, 0.3);
 
   --nexus-shadow-primary:
-    0 4px 18px rgba(59, 130, 246, 0.2);
+    0 2px 12px rgba(34, 211, 238, 0.18);
 
   font-family:
     Inter,
@@ -63,4 +68,19 @@
 /* Breakpoint extra usado nas classes `xs:` (antes não existia e essas classes eram ignoradas). */
 @theme {
   --breakpoint-xs: 30rem;
+}
+
+/* Escala "slate" do Tailwind trocada por grafite neutro: todas as classes slate-* do app seguem a paleta DAW. */
+@theme {
+  --color-slate-50: #f2f3f5;
+  --color-slate-100: #e6e8ec;
+  --color-slate-200: #d0d3da;
+  --color-slate-300: #b4b9c4;
+  --color-slate-400: #9aa0ab;
+  --color-slate-500: #868c98;
+  --color-slate-600: #565b66;
+  --color-slate-700: #3a3e47;
+  --color-slate-800: #2a2d35;
+  --color-slate-900: #1e2025;
+  --color-slate-950: #15171b;
 }

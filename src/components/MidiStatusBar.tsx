@@ -14,7 +14,7 @@ export function MidiStatusBar({ connectedCount, canPlay, activeNotes }: Props) {
   const lastTx = log.find((entry) => entry.direction === 'TX');
 
   return (
-    <div className="nexus-midi-status flex shrink-0 items-center justify-between gap-3 rounded-lg border border-[#1e293b] bg-[#0a0f1c] px-3 py-1">
+    <div className="nexus-midi-status flex shrink-0 items-center justify-between gap-3 rounded-lg border border-[#2e323b] bg-[#121316] px-3 py-1">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <span

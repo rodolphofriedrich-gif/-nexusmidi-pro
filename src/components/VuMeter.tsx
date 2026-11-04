@@ -28,7 +28,7 @@ export function VuMeter({ level }: VuMeterProps) {
   const percent = Math.max(0, Math.min(100, (displayLevel / 127) * 100));
 
   return (
-    <div className="w-3 h-full bg-[#05080f] border border-[#1e293b] rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col justify-end p-[2px]">
+    <div className="w-3 h-full bg-[#0e0f12] border border-[#2e323b] rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col justify-end p-[2px]">
       <div
         className="w-full rounded-full transition-all duration-75 ease-out"
         style={{

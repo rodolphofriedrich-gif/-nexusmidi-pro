@@ -24,17 +24,7 @@ html {
 body {
   overflow: hidden;
   color: var(--nexus-text);
-  background:
-    radial-gradient(
-      ellipse at 50% -18%,
-      rgba(59, 130, 246, 0.105),
-      transparent 56%
-    ),
-    linear-gradient(
-      180deg,
-      var(--nexus-bg-top) 0%,
-      var(--nexus-bg-bottom) 100%
-    );
+  background: linear-gradient(180deg, var(--nexus-bg-top) 0%, var(--nexus-bg-bottom) 100%);
 }
 
 body,
@@ -70,7 +60,7 @@ button:disabled {
 
 ::selection {
   color: white;
-  background: rgba(59, 130, 246, 0.45);
+  background: rgba(34, 211, 238, 0.35);
 }
 
 /* Safe Area para Notch */

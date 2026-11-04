@@ -9,7 +9,7 @@
 .nexus-toast {
   width: fit-content;
   border: 1px solid var(--nexus-border-strong);
-  background: rgba(15, 23, 42, 0.97);
+  background: rgba(26, 28, 33, 0.97);
   box-shadow: var(--nexus-shadow-float);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);

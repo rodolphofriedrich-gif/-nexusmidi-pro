@@ -33,7 +33,7 @@ export function RecorderPanel({ onStatus }: { onStatus: (message: string, type?:
 
   return (
     <Card title={tr('Gravador MIDI')} Icon={Mic} accent="text-rose-400">
-      <div className="flex items-center justify-between rounded-lg border border-[#1e293b] bg-[#0a0f1c] px-3 py-2">
+      <div className="flex items-center justify-between rounded-lg border border-[#2e323b] bg-[#121316] px-3 py-2">
         <div className="flex items-center gap-2">
           <span className={`h-2.5 w-2.5 rounded-full ${snap.recording ? 'animate-pulse bg-rose-500' : snap.playing ? 'bg-emerald-400' : 'bg-slate-600'}`} />
           <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
@@ -66,10 +66,10 @@ export function RecorderPanel({ onStatus }: { onStatus: (message: string, type?:
       </div>
 
       <div className="flex gap-2">
-        <button type="button" disabled={!hasTake || snap.recording || exporting} onClick={() => void handleExport()} className={`${btn} border border-slate-700 bg-[#0a0f1c] text-slate-200 hover:bg-slate-800`}>
+        <button type="button" disabled={!hasTake || snap.recording || exporting} onClick={() => void handleExport()} className={`${btn} border border-slate-700 bg-[#121316] text-slate-200 hover:bg-slate-800`}>
           <Download size={14} /> {exporting ? tr('Exportando...') : tr('Exportar .mid')}
         </button>
-        <button type="button" disabled={!hasTake && !snap.recording} onClick={() => recorderService.clear()} className={`${btn} border border-slate-700 bg-[#0a0f1c] text-slate-300 hover:bg-red-950/40 hover:text-red-400`}>
+        <button type="button" disabled={!hasTake && !snap.recording} onClick={() => recorderService.clear()} className={`${btn} border border-slate-700 bg-[#121316] text-slate-300 hover:bg-red-950/40 hover:text-red-400`}>
           <Trash2 size={14} /> {tr('Limpar')}
         </button>
       </div>

@@ -14,7 +14,7 @@ export function ExitDialog({ onCancel, onConfirm }: Props) {
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <section role="dialog" aria-modal="true" className="nexus-modal w-full max-w-sm rounded-2xl border border-slate-700 bg-[#0f172a] p-5 shadow-2xl sm:p-6">
+      <section role="dialog" aria-modal="true" className="nexus-modal w-full max-w-sm rounded-2xl border border-slate-700 bg-[#1a1c21] p-5 shadow-2xl sm:p-6">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-500">
           <LogOut size={27} />
         </div>

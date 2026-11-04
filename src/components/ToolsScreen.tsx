@@ -18,15 +18,15 @@ export function ToolsScreen({ onStatus }: { onStatus: (message: string, type?: T
     }`;
 
   return (
-    <div className="flex w-full h-full flex-col bg-[#0a0f1c]">
+    <div className="flex w-full h-full flex-col bg-[#121316]">
       
       {/* SUB-ABAS DE FERRAMENTAS */}
-      <div className="flex items-center gap-2 p-2 border-b border-[#1e293b] bg-[#0f172a] shrink-0">
+      <div className="flex items-center gap-2 p-2 border-b border-[#2e323b] bg-[#1a1c21] shrink-0">
         <button onClick={() => setActiveTool('performance')} className={btnClass(activeTool === 'performance')}>
           <Sparkles size={14} className="text-cyan-400" /> {tr('PERFORMANCE')}
         </button>
         <button onClick={() => setActiveTool('arp')} className={btnClass(activeTool === 'arp')}>
-          <Music size={14} className="text-fuchsia-400" /> {tr('ARRANJADOR')}
+          <Music size={14} className="text-cyan-400" /> {tr('ARRANJADOR')}
         </button>
         <button onClick={() => setActiveTool('metronome')} className={btnClass(activeTool === 'metronome')}>
           <Timer size={14} className="text-emerald-400" /> {tr('Metrônomo e MIDI Clock')}

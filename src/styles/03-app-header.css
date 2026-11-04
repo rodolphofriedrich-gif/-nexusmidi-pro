@@ -12,7 +12,7 @@
   background:
     radial-gradient(
       ellipse at 50% -20%,
-      rgba(59, 130, 246, 0.09),
+      rgba(34, 211, 238, 0.09),
       transparent 58%
     ),
     linear-gradient(
@@ -46,7 +46,7 @@
     var(--nexus-primary),
     var(--nexus-primary-end)
   );
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.22);
+  box-shadow: 0 4px 16px rgba(34, 211, 238, 0.22);
 }
 
 .nexus-brand-name {
@@ -103,7 +103,7 @@
     var(--nexus-primary-end)
   );
   border-color: rgba(147, 197, 253, 0.16);
-  box-shadow: 0 3px 14px rgba(59, 130, 246, 0.22);
+  box-shadow: 0 3px 14px rgba(34, 211, 238, 0.22);
 }
 
 .nexus-nav-button.is-active svg {

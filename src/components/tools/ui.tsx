@@ -3,8 +3,8 @@ import type { LucideIcon } from 'lucide-react';
 
 export function Card({ title, Icon, accent = 'text-cyan-400', children }: { title: string; Icon: LucideIcon; accent?: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-[#1e293b] bg-[#0f172a] p-4 shadow-md">
-      <h3 className={`mb-3 flex items-center gap-2 border-b border-[#1e293b] pb-2 text-xs font-bold uppercase tracking-wider ${accent}`}>
+    <section className="rounded-2xl border border-[#2e323b] bg-[#1a1c21] p-4 shadow-md">
+      <h3 className={`mb-3 flex items-center gap-2 border-b border-[#2e323b] pb-2 text-xs font-bold uppercase tracking-wider ${accent}`}>
         <Icon size={15} /> {title}
       </h3>
       <div className="flex flex-col gap-3">{children}</div>
@@ -29,7 +29,7 @@ interface SegmentedProps<T extends string | number> {
 
 export function Segmented<T extends string | number>({ value, options, onChange }: SegmentedProps<T>) {
   return (
-    <div className="flex flex-wrap gap-1 rounded-lg border border-[#1e293b] bg-[#0a0f1c] p-0.5">
+    <div className="flex flex-wrap gap-1 rounded-lg border border-[#2e323b] bg-[#121316] p-0.5">
       {options.map((option) => (
         <button
           key={String(option.id)}
@@ -84,4 +84,4 @@ export function RangeRow({ label, value, min, max, step = 1, unit = '', onChange
 }
 
 export const selectClass =
-  'w-full rounded-lg border border-slate-700 bg-[#0a0f1c] px-2 py-2 text-xs font-semibold text-slate-200 outline-none focus:border-cyan-500';
+  'w-full rounded-lg border border-slate-700 bg-[#121316] px-2 py-2 text-xs font-semibold text-slate-200 outline-none focus:border-cyan-500';

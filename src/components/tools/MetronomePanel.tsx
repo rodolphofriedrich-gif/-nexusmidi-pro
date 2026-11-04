@@ -34,7 +34,7 @@ export function MetronomePanel() {
           const bpm = tapper.current.tap(performance.now());
           if (bpm) setBpm(bpm);
         }}
-        className="rounded-lg border border-slate-700 bg-[#0a0f1c] py-2 text-xs font-bold uppercase tracking-wider text-slate-200 transition hover:bg-slate-800 active:scale-[0.98]"
+        className="rounded-lg border border-slate-700 bg-[#121316] py-2 text-xs font-bold uppercase tracking-wider text-slate-200 transition hover:bg-slate-800 active:scale-[0.98]"
       >
         {tr('Tap tempo')}
       </button>

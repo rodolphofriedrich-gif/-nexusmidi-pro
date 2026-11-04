@@ -13,6 +13,8 @@ interface SpessaSynthLike {
   noteOff(channel: number, note: number): void;
   controllerChange(channel: number, controller: number, value: number): void;
   programChange(channel: number, program: number): void;
+  /** Marca o canal como percussão (ou melódico). */
+  setDrums?(channel: number, isDrum: boolean): void;
   pitchWheel?(channel: number, value14: number): void;
   channelPressure?(channel: number, pressure: number): void;
   polyPressure?(channel: number, note: number, pressure: number): void;
@@ -22,11 +24,16 @@ interface SpessaSynthLike {
   soundBankManager: {
     addSoundBank(buffer: ArrayBuffer, id: string, bankOffset?: number): unknown;
     deleteSoundBank?(id: string): unknown;
+    /** Reordena os bancos (o primeiro da lista tem a maior prioridade). */
+    rearrangeSoundBanks?(ids: string[]): unknown;
   };
 }
 
+const DEFAULT_DRUM_CHANNEL = 9; // canal 10 (GM) começa como percussão
+
 class SpessaEngine implements SynthEngine {
-  private currentBankId: string | null = null;
+  /** Canais atualmente em modo percussão (kits de bateria). */
+  private readonly drumChannels = new Set<number>([DEFAULT_DRUM_CHANNEL]);
 
   constructor(private readonly synth: SpessaSynthLike) {}
 
@@ -39,7 +46,22 @@ class SpessaEngine implements SynthEngine {
   controlChange(channel: number, controller: number, value: number): void {
     this.synth.controllerChange(channel, controller, value);
   }
-  programChange(channel: number, program: number): void {
+  programChange(channel: number, program: number, bank = 0): void {
+    if (bank >= 128) {
+      // Kit de bateria: o canal vira percussão e o programa escolhe o kit.
+      this.synth.setDrums?.(channel, true);
+      this.drumChannels.add(channel);
+    } else {
+      if (this.drumChannels.has(channel) && channel !== DEFAULT_DRUM_CHANNEL) {
+        this.synth.setDrums?.(channel, false);
+        this.drumChannels.delete(channel);
+      }
+      // Seleção de banco (CC 0 / CC 32) antes do program change. Em percussão não se aplica.
+      if (!this.drumChannels.has(channel)) {
+        this.synth.controllerChange(channel, 0, Math.min(bank, 127));
+        this.synth.controllerChange(channel, 32, 0);
+      }
+    }
     this.synth.programChange(channel, program);
   }
   pitchBend(channel: number, value14: number): void {
@@ -55,19 +77,20 @@ class SpessaEngine implements SynthEngine {
     this.synth.stopAll?.(true);
   }
 
-  async loadSoundBank(buffer: ArrayBuffer, name: string): Promise<void> {
-    const previous = this.currentBankId;
-    // O id precisa ser único para o banco novo coexistir brevemente com o antigo.
-    const id = `${name}#${Date.now()}`;
+  async addSoundBank(id: string, buffer: ArrayBuffer, _name: string): Promise<void> {
     await this.synth.soundBankManager.addSoundBank(buffer, id);
-    if (previous) {
-      try {
-        await this.synth.soundBankManager.deleteSoundBank?.(previous);
-      } catch {
-        /* o banco antigo já pode ter sido removido */
-      }
+  }
+
+  async removeSoundBank(id: string): Promise<void> {
+    try {
+      await this.synth.soundBankManager.deleteSoundBank?.(id);
+    } catch {
+      /* o banco já pode ter sido removido */
     }
-    this.currentBankId = id;
+  }
+
+  setSoundBankOrder(ids: string[]): void {
+    if (ids.length > 1) this.synth.soundBankManager.rearrangeSoundBanks?.(ids);
   }
 
   dispose(): void {

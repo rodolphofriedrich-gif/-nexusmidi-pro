@@ -1,17 +1,14 @@
+/** Um instrumento (preset) realmente presente em um SoundFont importado. */
 export interface SoundFontPreset {
+  /** `${idDaBiblioteca}:${banco}:${programa}` */
   id: string;
-  programNumber: number; // 0-127
+  libraryId: string;
+  libraryName: string;
+  /** Programa MIDI (0–127). */
+  programNumber: number;
+  /** Banco do SF2: 0–127 melódico, 128 = kit de bateria. */
   bankNumber: number;
   name: string;
   category: string;
-  format: string;
-  fileSizeMb: number;
-  authorOrOrigin: string;
-  velocityLayers: number;
-  attack: number;
-  decay: number;
-  sustain: number;
-  release: number;
-  filterCutoff: number;
-  waveformType: string;
+  isDrum: boolean;
 }

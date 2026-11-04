@@ -16,12 +16,17 @@ export interface SoundFontMeta {
   name: string;
   size: number;
   addedAt: number;
+  /** Quantidade de instrumentos e de kits de bateria (preenchido na importação). */
+  presetCount?: number;
+  drumKitCount?: number;
 }
+
+export type SoundFontExtras = Pick<SoundFontMeta, 'presetCount' | 'drumKitCount'>;
 
 /** Contrato usado pela biblioteca (permite um falso em memória nos testes). */
 export interface SoundFontStorage {
   list(): Promise<SoundFontMeta[]>;
-  add(name: string, data: ArrayBuffer): Promise<SoundFontMeta>;
+  add(name: string, data: ArrayBuffer, extras?: SoundFontExtras): Promise<SoundFontMeta>;
   get(id: string): Promise<{ meta: SoundFontMeta; data: ArrayBuffer } | null>;
   remove(id: string): Promise<void>;
 }
@@ -90,9 +95,9 @@ class IndexedDbSoundFontStorage implements SoundFontStorage {
     return metas.sort((a, b) => b.addedAt - a.addedAt);
   }
 
-  async add(name: string, data: ArrayBuffer): Promise<SoundFontMeta> {
+  async add(name: string, data: ArrayBuffer, extras: SoundFontExtras = {}): Promise<SoundFontMeta> {
     const db = await this.open();
-    const meta: SoundFontMeta = { id: uid('sf-'), name, size: data.byteLength, addedAt: Date.now() };
+    const meta: SoundFontMeta = { id: uid('sf-'), name, size: data.byteLength, addedAt: Date.now(), ...extras };
     const tx = db.transaction([META_STORE, DATA_STORE], 'readwrite');
     tx.objectStore(META_STORE).put(meta);
     tx.objectStore(DATA_STORE).put(data, meta.id);
