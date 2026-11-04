@@ -50,7 +50,7 @@ export function ActiveSoundFontCard({
         <div className="flex min-w-0 items-center gap-1">
           <Volume2 className="h-3 w-3 shrink-0 text-cyan-400" />
           <div className="min-w-0 flex-1">
-            <div className="mb-0.5 flex justify-between text-[9px] font-medium leading-none text-slate-400">
+            <div className="mb-1 flex justify-between text-[10px] font-medium leading-none text-slate-400">
               <span>{tr('Vol')}</span>
               <span className="font-mono">{volume}%</span>
             </div>
@@ -61,14 +61,14 @@ export function ActiveSoundFontCard({
               max="100"
               value={volume}
               onChange={(e) => onVolumeChange(Number(e.target.value))}
-              className="block h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#0a0f1c] accent-cyan-500"
+              className="block h-4 w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-slate-700 [&::-webkit-slider-thumb]:-mt-[5px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400"
             />
           </div>
         </div>
         <div className="flex min-w-0 items-center gap-1">
           <Sparkles className="h-3 w-3 shrink-0 text-amber-500" />
           <div className="min-w-0 flex-1">
-            <div className="mb-0.5 flex justify-between text-[9px] font-medium leading-none text-slate-400">
+            <div className="mb-1 flex justify-between text-[10px] font-medium leading-none text-slate-400">
               <span>{tr('Rev')}</span>
               <span className="font-mono">{reverb}%</span>
             </div>
@@ -79,7 +79,7 @@ export function ActiveSoundFontCard({
               max="100"
               value={reverb}
               onChange={(e) => onReverbChange(Number(e.target.value))}
-              className="block h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#0a0f1c] accent-amber-500"
+              className="block h-4 w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-slate-700 [&::-webkit-slider-thumb]:-mt-[5px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-400"
             />
           </div>
         </div>
