@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
-import { AlertCircle, CheckCircle2, Library, List, UploadCloud, X, Settings2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Library, List, UploadCloud, X, Settings2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { GM_PRESETS } from '../constants/gm';
 import { useStore } from '../hooks/useStore';
 import type { ToastType } from '../hooks/useToast';
@@ -53,6 +53,7 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const [viewMode, setViewMode] = useState<ViewMode>('presets');
   const [activeChannel, setActiveChannel] = useState(() => prefsStore.get().channel);
+  const [channelGroup, setChannelGroup] = useState(0); // 0: 1-4 e 5-8, 1: 9-12 e 13-16
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const busy = library.busy || synth.loading;
@@ -142,14 +143,19 @@ export function SoundFontScreen({ onStatus }: Props) {
   };
 
   const tabClass = (mode: ViewMode, active: string) =>
-    `flex h-8 items-center justify-center gap-1.5 px-3 text-[10px] font-bold rounded-lg transition-colors ${viewMode === mode ? active : 'text-slate-500 hover:text-slate-300'}`;
+    `flex h-9 items-center justify-center gap-1.5 px-4 text-xs font-bold rounded-lg transition-colors ${viewMode === mode ? active : 'text-slate-500 hover:text-slate-300'}`;
+
+  const getChannelBlock = (offset: number) => {
+    const start = (channelGroup * 8 + offset * 4) % 16 + 1;
+    return [start, start + 1, start + 2, start + 3];
+  };
 
   return (
     <div className="flex w-full flex-1 flex-row overflow-hidden bg-[#0a0f1c] p-2 text-slate-100 gap-2">
       
-      {/* COLUNA ESQUERDA (Reduzida, sem duplicar canais) */}
-      <div className="flex w-[25%] max-w-[280px] min-w-[200px] shrink-0 flex-col gap-2">
-        <div className="w-full shrink-0 h-48 flex flex-col">
+      {/* COLUNA ESQUERDA (Card + Canais MIDI) */}
+      <div className="flex w-[30%] max-w-[320px] min-w-[240px] shrink-0 flex-col gap-2">
+        <div className="w-full shrink-0 h-56 flex flex-col">
           <ActiveSoundFontCard
             preset={activePreset()}
             volume={settings.volume}
@@ -161,6 +167,54 @@ export function SoundFontScreen({ onStatus }: Props) {
             onAudition={handleAudition}
           />
         </div>
+
+        {/* BLOCO DE CANAIS MIDI */}
+        <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-[#1e293b] bg-[#0f172a] p-2">
+          <div className="flex items-center justify-between mb-2 shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Canais MIDI</span>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setChannelGroup(g => (g + 3) % 2)} className="p-1 text-slate-400 hover:text-white"><ChevronLeft size={14} /></button>
+              <span className="text-[10px] font-mono text-cyan-400">{channelGroup === 0 ? '1-8' : '9-16'}</span>
+              <button onClick={() => setChannelGroup(g => (g + 1) % 2)} className="p-1 text-slate-400 hover:text-white"><ChevronRight size={14} /></button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {[0, 1].map((offset) => {
+              const block = getChannelBlock(offset);
+              return (
+                <div key={offset} className="flex flex-col gap-1 p-1.5 rounded-lg bg-[#0a0f1c] border border-[#1e293b]">
+                  {block.map((ch) => {
+                    const isMuted = channels.muted[ch];
+                    const isSoloed = channels.solo === ch;
+                    const isActive = activeChannel === ch;
+                    return (
+                      <div key={ch} className={`flex items-center gap-1 rounded-md p-1 transition-colors ${isActive ? 'bg-cyan-900/30 border border-cyan-600/50' : 'border border-transparent hover:bg-slate-800'}`}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveChannel(ch)}
+                          className={`w-6 h-6 rounded font-mono text-[10px] font-bold transition-colors ${isActive ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:bg-slate-700'}`}
+                        >
+                          {ch}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleMute(ch)}
+                          className={`flex-1 h-5 rounded text-[8px] font-bold ${isMuted ? 'bg-rose-600 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
+                        >M</button>
+                        <button
+                          type="button"
+                          onClick={() => toggleSolo(ch)}
+                          className={`flex-1 h-5 rounded text-[8px] font-bold ${isSoloed ? 'bg-amber-500 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
+                        >S</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* COLUNA DIREITA (Mais larga) */}
@@ -171,12 +225,12 @@ export function SoundFontScreen({ onStatus }: Props) {
           <div className="flex items-center gap-2">
             <div className="flex bg-[#0a0f1c] rounded-lg p-0.5 border border-[#1e293b]">
               {SCENES.map((s) => (
-                <button key={s} type="button" onClick={() => loadScene(s)} className={`flex h-8 items-center justify-center px-3 text-[10px] font-bold rounded-md transition-colors ${activeScene === s ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'}`}>
+                <button key={s} type="button" onClick={() => loadScene(s)} className={`flex h-9 items-center justify-center px-4 text-xs font-bold rounded-md transition-colors ${activeScene === s ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'}`}>
                   {s}
                 </button>
               ))}
             </div>
-            <button onClick={saveScene} className="flex h-8 items-center gap-1.5 rounded-lg border border-amber-600/50 bg-amber-900/20 px-3 text-[10px] font-bold text-amber-400 hover:bg-amber-900/40 transition">
+            <button onClick={saveScene} className="flex h-9 items-center gap-1.5 rounded-lg border border-amber-600/50 bg-amber-900/20 px-4 text-xs font-bold text-amber-400 hover:bg-amber-900/40 transition">
               {tr('Salvar Cena')}
             </button>
           </div>
@@ -184,20 +238,20 @@ export function SoundFontScreen({ onStatus }: Props) {
           <div className="flex items-center gap-2">
             <div className="flex bg-[#0a0f1c] rounded-lg p-0.5 border border-[#1e293b]">
               <button type="button" onClick={() => setViewMode('presets')} className={tabClass('presets', 'bg-cyan-600 text-white shadow-sm')}>
-                <List size={12} /> PRESETS
+                <List size={14} /> PRESETS
               </button>
               <button type="button" onClick={() => setViewMode('library')} className={tabClass('library', 'bg-cyan-600 text-white shadow-sm')}>
-                <Library size={12} /> BIBLIOTECA
+                <Library size={14} /> BIBLIOTECA
               </button>
             </div>
 
             <button
               type="button"
               onClick={() => setIsConfigOpen(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-[#0a0f1c] text-slate-400 hover:text-white transition"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-[#0a0f1c] text-slate-400 hover:text-white transition"
               title={tr('Configurações')}
             >
-              <Settings2 size={14} />
+              <Settings2 size={16} />
             </button>
 
             {synth.fileName ? (
@@ -214,14 +268,14 @@ export function SoundFontScreen({ onStatus }: Props) {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={busy}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-[10px] font-bold text-white shadow transition hover:bg-cyan-500 disabled:opacity-50"
+              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-cyan-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:bg-cyan-500 disabled:opacity-50"
             >
-              <UploadCloud size={14} /> {busy ? '...' : 'Importar SF2'}
+              <UploadCloud size={16} /> {busy ? '...' : 'Importar SF2'}
             </button>
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 w-full overflow-hidden">
+        <div className="flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar">
           {viewMode === 'presets' && (
             <SoundFontList
               soundFonts={GM_PRESETS}
