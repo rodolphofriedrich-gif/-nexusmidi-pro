@@ -20,9 +20,23 @@ type MidiPreset = {
   pressure: number;
 };
 
+interface MixerState {
+  modWheel: number;
+  volume: number;
+  expression: number;
+  pan: number;
+  program: number;
+  pitchBend: number;
+  pressure: number;
+  reverb: number;
+  chorus: number;
+  cutoff: number;
+  resonance: number;
+}
+
 const PRESETS_KEY = 'nexusmidi_controls_presets_v1';
 const STATE_KEY = 'nexusmidi_mixer_state';
-const DEFAULT_CONTROLS = {
+const DEFAULT_CONTROLS: MixerState = {
   modWheel: 0,
   volume: 100,
   expression: 127,
@@ -58,7 +72,7 @@ const errorText = (error: unknown): string => (error instanceof Error && error.m
 export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
   const prefs = useStore(prefsStore);
 
-  const [state, setState] = useState(() => {
+  const [state, setState] = useState<MixerState>(() => {
     try {
       const saved = localStorage.getItem(STATE_KEY);
       return saved ? { ...DEFAULT_CONTROLS, ...JSON.parse(saved) } : DEFAULT_CONTROLS;
@@ -69,7 +83,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
 
   const { modWheel, volume, expression, pan, program, pitchBend, reverb, chorus, cutoff, resonance } = state;
 
-  const updateState = <K extends keyof typeof state>(key: K, value: typeof state[K]) => 
+  const updateState = <K extends keyof MixerState>(key: K, value: MixerState[K]) => 
     setState((s) => ({ ...s, [key]: value }));
 
   const [presetName, setPresetName] = useState(() => tr('Meu preset'));
@@ -120,7 +134,18 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     }
     setBusy(true);
     try {
-      setState((s) => ({ ...s, ...preset }));
+      setState((s) => ({
+        ...s,
+        modWheel: preset.modWheel,
+        volume: preset.volume,
+        expression: preset.expression,
+        pan: preset.pan,
+        program: preset.program,
+        pitchBend: preset.pitchBend,
+        pressure: preset.pressure
+      }));
+      prefsStore.set({ sustain: preset.sustain });
+      
       await midiManager.sendControlChange(channel, 1, preset.modWheel);
       await midiManager.sendControlChange(channel, 7, preset.volume);
       await midiManager.sendControlChange(channel, 11, preset.expression);
