@@ -29,7 +29,7 @@ export function ToolsScreen({ onStatus }: { onStatus: (message: string, type?: T
           <Music size={14} className="text-fuchsia-400" /> {tr('ARRANJADOR')}
         </button>
         <button onClick={() => setActiveTool('metronome')} className={btnClass(activeTool === 'metronome')}>
-          <Timer size={14} className="text-emerald-400" /> {tr('Metrônomo e midi Clock')}
+          <Timer size={14} className="text-emerald-400" /> {tr('Metrônomo e MIDI Clock')}
         </button>
       </div>
 
