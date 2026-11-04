@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Activity, X, Maximize, MoveHorizontal, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
-import { MidiPadGrid } from './MidiPadGrid';
+import { Activity, X, Maximize, Minimize, MoveHorizontal, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { tr } from '../i18n';
 
 export interface MidiKeyboardHandle {
