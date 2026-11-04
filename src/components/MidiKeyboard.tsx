@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Activity, X, Maximize, Minimize, MoveHorizontal, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
-import { MidiPadGrid } from './MidiPadGrid';
 import { KEYBOARD_PALETTES } from '../constants/palettes';
 import { tr } from '../i18n';
 
@@ -11,9 +10,7 @@ export interface MidiKeyboardHandle {
 }
 
 interface MidiKeyboardProps {
-  viewMode: 'keyboard' | 'pads';
   startOctave: number;
-  padBank: number;
   isConnected: boolean;
   selectedChannel: number;
   onSelectChannel: (channel: number) => void;
@@ -97,7 +94,7 @@ function Popup({ title, onClose, children, widthClass = 'max-w-md' }: PopupProps
 }
 
 export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
-  viewMode, startOctave, padBank,
+  startOctave,
   isConnected, selectedChannel, onSelectChannel, onNoteOn, onNoteOff, onDisabledPress,
   customWhiteKeyColor, customBlackKeyColor, onActiveNotesChange,
   isActive, isSustainActive, onToggleSustain,
@@ -144,7 +141,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   useEffect(() => {
     const updateMinSize = () => {
       const container = containerRef.current;
-      if (!container || viewMode === 'pads') return;
+      if (!container) return;
       const availableWidth = Math.max(0, container.clientWidth - 12);
       const calculatedMin = Math.max(MIN_KEY_WIDTH, Math.floor(availableWidth / TOTAL_WHITE_KEYS));
       setMinKeyWidth(Math.min(MAX_KEY_WIDTH, calculatedMin));
@@ -161,7 +158,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
       observer?.disconnect();
       window.removeEventListener('resize', updateMinSize);
     };
-  }, [viewMode, isFullscreen]);
+  }, [isFullscreen]);
 
   const updateScrollState = useCallback(() => {
     const el = scrollViewportRef.current;
@@ -183,7 +180,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
       observer?.disconnect();
       window.removeEventListener('resize', updateScrollState);
     };
-  }, [keyWidth, startOctave, isScrollLocked, viewMode, isFullscreen, updateScrollState]);
+  }, [keyWidth, startOctave, isScrollLocked, isFullscreen, updateScrollState]);
 
   const scrollKeyboard = (direction: 'left' | 'right') => {
     if (scrollViewportRef.current) {
@@ -308,7 +305,6 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   return (
     <section className="nexus-midi-keyboard flex min-h-0 min-w-0 w-full flex-1 flex-col gap-1 rounded-2xl border p-1 sm:p-1.5 relative" style={{ background: 'linear-gradient(145deg, rgba(17,24,39,0.98), rgba(8,13,25,0.99))', borderColor: 'rgba(148,163,184,0.16)', boxShadow: '0 18px 50px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.035)' }}>
       
-      {/* BOTOES FLUTUANTES NO MODO FULLSCREEN */}
       {isFullscreen && (
         <>
           <div className="fixed top-4 right-4 z-[9999]">
@@ -390,90 +386,78 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
               </div>
             </div>
 
-            {viewMode === 'keyboard' ? (
-              <div className="flex flex-col gap-4">
-                <div>
-                  <label className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase text-slate-400"><span>{tr('Zoom do Teclado')}</span><span className="font-mono text-cyan-300">{keyWidth}px</span></label>
-                  <input type="range" min={minKeyWidth} max={MAX_KEY_WIDTH} value={keyWidth} onChange={(e) => setKeyWidth(Number(e.target.value))} className="h-1.5 w-full cursor-pointer accent-cyan-400" />
-                </div>
-
-                <button type="button" onClick={() => setIsScrollLocked(!isScrollLocked)} className={`flex w-full items-center justify-between rounded-lg border p-2.5 transition-colors ${isScrollLocked ? 'bg-amber-900/20 border-amber-700/50 text-amber-400' : 'bg-[#0a0f1c] border-slate-800 text-slate-400'}`}>
-                  <span className="flex items-center gap-2 text-xs font-bold">{isScrollLocked ? <Maximize size={14} /> : <MoveHorizontal size={14} />} {tr('Travar Rolagem')}</span>
-                  <div className={`relative h-4 w-8 rounded-full transition-colors ${isScrollLocked ? 'bg-amber-500' : 'bg-slate-700'}`}><div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${isScrollLocked ? 'left-4' : 'left-0.5'}`} /></div>
-                </button>
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase text-slate-400"><span>{tr('Zoom do Teclado')}</span><span className="font-mono text-cyan-300">{keyWidth}px</span></label>
+                <input type="range" min={minKeyWidth} max={MAX_KEY_WIDTH} value={keyWidth} onChange={(e) => setKeyWidth(Number(e.target.value))} className="h-1.5 w-full cursor-pointer accent-cyan-400" />
               </div>
-            ) : (
-              <div className="hidden sm:block" />
-            )}
+
+              <button type="button" onClick={() => setIsScrollLocked(!isScrollLocked)} className={`flex w-full items-center justify-between rounded-lg border p-2.5 transition-colors ${isScrollLocked ? 'bg-amber-900/20 border-amber-700/50 text-amber-400' : 'bg-[#0a0f1c] border-slate-800 text-slate-400'}`}>
+                <span className="flex items-center gap-2 text-xs font-bold">{isScrollLocked ? <Maximize size={14} /> : <MoveHorizontal size={14} />} {tr('Travar Rolagem')}</span>
+                <div className={`relative h-4 w-8 rounded-full transition-colors ${isScrollLocked ? 'bg-amber-500' : 'bg-slate-700'}`}><div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${isScrollLocked ? 'left-4' : 'left-0.5'}`} /></div>
+              </button>
+            </div>
           </div>
         </Popup>
       )}
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-row gap-1">
-        {viewMode === 'keyboard' && (
-          <div className="relative flex w-10 shrink-0 flex-col justify-between gap-1 rounded-xl border border-[#1e293b] bg-[#0f172a] p-1">
-            <div className="relative flex w-full flex-1 flex-col items-center">
-              <span className="absolute top-0 z-10 text-[7px] font-bold text-slate-500">PB</span>
-              <div className="relative my-auto h-[80%] w-2.5 rounded-full border border-[#1e293b] bg-[#05080f] shadow-inner">
-                <div className="absolute top-1/2 left-0 right-0 z-10 h-px bg-slate-600" />
-                <div className="absolute top-1/2 left-0 right-0 h-1/2 bg-fuchsia-600/50 opacity-50" style={{ bottom: '50%' }} />
-                <div className="absolute left-1/2 z-30 h-4 w-6 -translate-x-1/2 rounded-sm bg-gradient-to-b from-gray-300 via-gray-400 to-gray-600 border border-gray-500 shadow-[0_2px_5px_rgba(0,0,0,0.8)]"
-                     style={{ bottom: `calc(${(pbValue / 16383) * 100}% - 8px)` }} />
-              </div>
-              <input
-                type="range" min="0" max="16383" value={pbValue}
-                onChange={(e) => { const val = Number(e.target.value); setPbValue(val); onPitchBend(val); }}
-                onPointerUp={() => { setPbValue(8192); onPitchBend(8192); }}
-                className="absolute top-4 bottom-4 z-40 h-full w-8 cursor-ns-resize opacity-0"
-                style={{ WebkitAppearance: 'slider-vertical', writingMode: 'vertical-lr', direction: 'rtl' }}
-              />
+        <div className="relative flex w-10 shrink-0 flex-col justify-between gap-1 rounded-xl border border-[#1e293b] bg-[#0f172a] p-1">
+          <div className="relative flex w-full flex-1 flex-col items-center">
+            <span className="absolute top-0 z-10 text-[7px] font-bold text-slate-500">PB</span>
+            <div className="relative my-auto h-[80%] w-2.5 rounded-full border border-[#1e293b] bg-[#05080f] shadow-inner">
+              <div className="absolute top-1/2 left-0 right-0 z-10 h-px bg-slate-600" />
+              <div className="absolute top-1/2 left-0 right-0 h-1/2 bg-fuchsia-600/50 opacity-50" style={{ bottom: '50%' }} />
+              <div className="absolute left-1/2 z-30 h-4 w-6 -translate-x-1/2 rounded-sm bg-gradient-to-b from-gray-300 via-gray-400 to-gray-600 border border-gray-500 shadow-[0_2px_5px_rgba(0,0,0,0.8)]"
+                    style={{ bottom: `calc(${(pbValue / 16383) * 100}% - 8px)` }} />
             </div>
-            <div className="relative flex w-full flex-1 flex-col items-center">
-              <span className="absolute top-0 z-10 text-[7px] font-bold text-slate-500">MOD</span>
-              <div className="relative my-auto h-[80%] w-2.5 rounded-full border border-[#1e293b] bg-[#05080f] shadow-inner">
-                <div className="absolute bottom-0 left-0 right-0 z-10 bg-cyan-500/50" style={{ height: `${(modValue / 127) * 100}%` }} />
-                <div className="absolute left-1/2 z-30 h-4 w-6 -translate-x-1/2 rounded-sm bg-gradient-to-b from-gray-300 via-gray-400 to-gray-600 border border-gray-500 shadow-[0_2px_5px_rgba(0,0,0,0.8)]"
-                     style={{ bottom: `calc(${(modValue / 127) * 100}% - 8px)` }} />
-              </div>
-              <input
-                type="range" min="0" max="127" value={modValue}
-                onChange={(e) => { const val = Number(e.target.value); setModValue(val); onModWheel(val); }}
-                className="absolute top-4 bottom-4 z-40 h-full w-8 cursor-ns-resize opacity-0"
-                style={{ WebkitAppearance: 'slider-vertical', writingMode: 'vertical-lr', direction: 'rtl' }}
-              />
-            </div>
+            <input
+              type="range" min="0" max="16383" value={pbValue}
+              onChange={(e) => { const val = Number(e.target.value); setPbValue(val); onPitchBend(val); }}
+              onPointerUp={() => { setPbValue(8192); onPitchBend(8192); }}
+              className="absolute top-4 bottom-4 z-40 h-full w-8 cursor-ns-resize opacity-0"
+              style={{ WebkitAppearance: 'slider-vertical', writingMode: 'vertical-lr', direction: 'rtl' }}
+            />
           </div>
-        )}
+          <div className="relative flex w-full flex-1 flex-col items-center">
+            <span className="absolute top-0 z-10 text-[7px] font-bold text-slate-500">MOD</span>
+            <div className="relative my-auto h-[80%] w-2.5 rounded-full border border-[#1e293b] bg-[#05080f] shadow-inner">
+              <div className="absolute bottom-0 left-0 right-0 z-10 bg-cyan-500/50" style={{ height: `${(modValue / 127) * 100}%` }} />
+              <div className="absolute left-1/2 z-30 h-4 w-6 -translate-x-1/2 rounded-sm bg-gradient-to-b from-gray-300 via-gray-400 to-gray-600 border border-gray-500 shadow-[0_2px_5px_rgba(0,0,0,0.8)]"
+                    style={{ bottom: `calc(${(modValue / 127) * 100}% - 8px)` }} />
+            </div>
+            <input
+              type="range" min="0" max="127" value={modValue}
+              onChange={(e) => { const val = Number(e.target.value); setModValue(val); onModWheel(val); }}
+              className="absolute top-4 bottom-4 z-40 h-full w-8 cursor-ns-resize opacity-0"
+              style={{ WebkitAppearance: 'slider-vertical', writingMode: 'vertical-lr', direction: 'rtl' }}
+            />
+          </div>
+        </div>
 
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-          {viewMode === 'keyboard' ? (
-            <div ref={containerRef} className="relative flex min-w-0 flex-1 overflow-hidden rounded-xl border border-[#1e293b]">
-              {!isScrollLocked && (
-                <button type="button" aria-label={tr('Rolar para a esquerda')} disabled={!canScrollLeft} onClick={() => scrollKeyboard('left')} className="flex w-10 shrink-0 items-center justify-center border-r border-[#1e293b] bg-[#0f172a] text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:opacity-20 disabled:hover:bg-[#0f172a]">
-                  <ChevronLeft size={24} />
-                </button>
-              )}
-              <div
-                ref={scrollViewportRef}
-                onScroll={updateScrollState}
-                className={`nexus-midi-viewport relative z-0 min-w-0 flex-1 ${isScrollLocked ? 'overflow-hidden' : 'overflow-x-auto overflow-y-hidden'}`}
-                style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(30,41,59,0.72), rgba(2,6,23,0.98) 78%)', touchAction: isScrollLocked ? 'none' : 'pan-x', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
-              >
-                <div className="relative flex h-full items-stretch p-0.5" style={{ width: `${keyboardWidth}px`, minWidth: `${keyboardWidth}px`, marginInline: isScrollLocked ? 'auto' : undefined }}>
-                  {renderKeys()}
-                </div>
+          <div ref={containerRef} className="relative flex min-w-0 flex-1 overflow-hidden rounded-xl border border-[#1e293b]">
+            {!isScrollLocked && (
+              <button type="button" aria-label={tr('Rolar para a esquerda')} disabled={!canScrollLeft} onClick={() => scrollKeyboard('left')} className="flex w-10 shrink-0 items-center justify-center border-r border-[#1e293b] bg-[#0f172a] text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:opacity-20 disabled:hover:bg-[#0f172a]">
+                <ChevronLeft size={24} />
+              </button>
+            )}
+            <div
+              ref={scrollViewportRef}
+              onScroll={updateScrollState}
+              className={`nexus-midi-viewport relative z-0 min-w-0 flex-1 ${isScrollLocked ? 'overflow-hidden' : 'overflow-x-auto overflow-y-hidden'}`}
+              style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(30,41,59,0.72), rgba(2,6,23,0.98) 78%)', touchAction: isScrollLocked ? 'none' : 'pan-x', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+            >
+              <div className="relative flex h-full items-stretch p-0.5" style={{ width: `${keyboardWidth}px`, minWidth: `${keyboardWidth}px`, marginInline: isScrollLocked ? 'auto' : undefined }}>
+                {renderKeys()}
               </div>
-              {!isScrollLocked && (
-                <button type="button" aria-label={tr('Rolar para a direita')} disabled={!canScrollRight} onClick={() => scrollKeyboard('right')} className="flex w-10 shrink-0 items-center justify-center border-l border-[#1e293b] bg-[#0f172a] text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:opacity-20 disabled:hover:bg-[#0f172a]">
-                  <ChevronRight size={24} />
-                </button>
-              )}
             </div>
-          ) : (
-            <div className="h-full min-h-0 w-full flex-1 py-0.5">
-              <MidiPadGrid bank={padBank} isActive={isActive} isConnected={isConnected} onNoteOn={onNoteOn} onNoteOff={onNoteOff} onDisabledPress={onDisabledPress} isFullscreen={isFullscreen} />
-            </div>
-          )}
+            {!isScrollLocked && (
+              <button type="button" aria-label={tr('Rolar para a direita')} disabled={!canScrollRight} onClick={() => scrollKeyboard('right')} className="flex w-10 shrink-0 items-center justify-center border-l border-[#1e293b] bg-[#0f172a] text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:opacity-20 disabled:hover:bg-[#0f172a]">
+                <ChevronRight size={24} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </section>
