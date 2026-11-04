@@ -163,7 +163,7 @@ export const en: Record<string, string> = {
   "Menu de navegação": "Navigation menu",
   "Metais": "Brass",
   "Metrônomo (clique)": "Metronome (click)",
-  "Metrônomo e midi Clock": "Metronome & MIDI Clock",
+  "Metrônomo e MIDI Clock": "Metronome & MIDI Clock",
   "Meu preset": "My preset",
   "Mexa no controle...": "Move the control...",
   "Mix (Nível)": "Mix (Level)",
