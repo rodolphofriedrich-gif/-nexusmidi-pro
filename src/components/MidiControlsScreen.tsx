@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Play, Save, Trash2, RotateCcw, ShieldAlert } from 'lucide-react';
+import { Play, Save, Trash2, ShieldAlert, RotateCcw } from 'lucide-react';
 import { tr } from '../i18n';
 import { uid } from '../lib/id';
 import { midiManager } from '../services/midiService';
@@ -80,6 +80,18 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     try { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); } catch { /* */ }
   }, [presets]);
 
+  const resetControls = () => {
+    setState(DEFAULT_CONTROLS);
+    onStatus(tr('Controles redefinidos localmente.'), 'info');
+  };
+
+  // Ouve o evento global do botão RESET no cabeçalho
+  useEffect(() => {
+    const handleReset = () => resetControls();
+    window.addEventListener('resetMixer', handleReset);
+    return () => window.removeEventListener('resetMixer', handleReset);
+  }, []);
+
   const controls = useMemo(() => state, [state]);
 
   const sendAction = async (action: () => Promise<unknown>, successMessage: string) => {
@@ -131,11 +143,6 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     onStatus(tr('Preset “{name}” salvo neste dispositivo.', { name }), 'success');
   };
 
-  const resetControls = () => {
-    setState(DEFAULT_CONTROLS);
-    onStatus(tr('Controles redefinidos localmente.'), 'info');
-  };
-
   const panic = async () => {
     if (!isConnected) { onStatus(tr('Conecte um destino MIDI ou carregue um SoundFont antes de executar o MIDI Panic.'), 'warn'); return; }
     setBusy(true);
@@ -151,18 +158,8 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
   return (
     <section className="flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-[#0a0f1c] p-2 sm:p-3 space-y-3 flex flex-col">
       
-      {/* HEADER COMPACTO: Canal e Reset */}
-      <header className="flex items-center justify-between gap-3 border-b border-[#1e293b] pb-2 shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-slate-400 font-mono bg-[#0f172a] border border-[#1e293b] px-2 py-1 rounded">CH {String(channel).padStart(2, '0')}</span>
-        </div>
-        <button onClick={resetControls} className="text-[10px] text-slate-400 hover:text-white transition flex items-center gap-1 bg-[#0f172a] border border-[#1e293b] rounded px-2 py-1">
-          <RotateCcw size={12} /> Reset
-        </button>
-      </header>
-
       {/* MESA DE MIXAGEM - Aumentada */}
-      <div className="grid grid-cols-4 md:grid-cols-8 gap-1.5 sm:gap-2 bg-[#0a0f1c] p-1.5 sm:p-2 rounded-2xl border border-[#1e293b] shadow-inner h-[340px] sm:h-[380px] shrink-0">
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-1.5 sm:gap-2 bg-[#0a0f1c] p-1.5 sm:p-2 rounded-2xl border border-[#1e293b] shadow-inner h-[220px] sm:h-[260px] shrink-0">
         <StudioFader label="MOD" sublabel="CC 1" value={modWheel} onChange={(v: any) => updateState('modWheel', v)} onCommit={(v) => void sendCC(1, v, 'Modulação')} />
         <StudioFader label="VOL" sublabel="CC 7" value={volume} onChange={(v: any) => updateState('volume', v)} onCommit={(v) => void sendCC(7, v, 'Volume')} />
         <StudioFader label="EXP" sublabel="CC 11" value={expression} onChange={(v: any) => updateState('expression', v)} onCommit={(v) => void sendCC(11, v, 'Expressão')} />
