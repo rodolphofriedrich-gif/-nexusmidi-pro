@@ -57,6 +57,8 @@ export const en: Record<string, string> = {
   "Cena {scene} carregada.": "Scene {scene} loaded.",
   "Cena {scene} está vazia.": "Scene {scene} is empty.",
   "Cena {scene} salva com sucesso.": "Scene {scene} saved successfully.",
+  "CENAS": "SCENES",
+  "Cenas": "Scenes",
   "Champagne": "Champagne",
   "Chimbal F.": "Closed H.H.",
   "Chimbal A.": "Open H.H.",
@@ -170,7 +172,6 @@ export const en: Record<string, string> = {
   "Mixer / CC": "Mixer / CC",
   "Mixolídia": "Mixolydian",
   "Modo BLE MIDI visível ativado.": "Visible BLE MIDI mode enabled.",
-  "Mute": "Mute",
   "Máx.": "Max",
   "Máximo": "Maximum",
   "Médio": "Medium",
@@ -245,7 +246,6 @@ export const en: Record<string, string> = {
   "Selecione...": "Select...",
   "Sintetizador": "Synthesizer",
   "Sobe/Desce": "Up/Down",
-  "Solo": "Solo",
   "SoundFont \"{name}\" carregado!": "SoundFont \"{name}\" loaded!",
   "SoundFont carregado!": "SoundFont loaded!",
   "SoundFont removido da biblioteca.": "SoundFont removed from the library.",
@@ -304,5 +304,7 @@ export const en: Record<string, string> = {
   "{count} eventos": "{count} events",
   "{count} notas ativas": "{count} active notes",
   "{label}: {value} • Canal {channel}": "{label}: {value} • Channel {channel}",
-  "Órgão": "Organ"
+  "Órgão": "Organ",
+  "Toque em uma cena para carregá-la. O ponto verde indica cena salva.": "Tap a scene to load it. A green dot means the scene is saved.",
+  "Transpor": "Transpose"
 };
