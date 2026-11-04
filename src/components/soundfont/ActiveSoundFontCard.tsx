@@ -24,7 +24,7 @@ export function ActiveSoundFontCard({
   onAudition,
 }: Props) {
   return (
-    <div className="relative overflow-hidden rounded-xl border-2 border-cyan-500/40 bg-gradient-to-b from-cyan-950/30 to-[#0f172a]/60 p-2 shadow-md backdrop-blur-sm sm:rounded-2xl sm:p-2.5">
+    <div className="relative overflow-hidden rounded-xl border-2 border-cyan-500/40 bg-gradient-to-b from-cyan-950/30 to-[#0f172a]/60 p-2.5 shadow-md backdrop-blur-sm sm:rounded-2xl sm:p-3">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 truncate text-[9px] font-semibold uppercase tracking-wide text-cyan-400 sm:text-[10px]">
@@ -34,7 +34,7 @@ export function ActiveSoundFontCard({
             <span aria-hidden="true" className="opacity-40">·</span>
             <span className="shrink-0 text-slate-400">{tr(preset.category)}</span>
           </div>
-          <h2 className="mt-0.5 truncate text-sm font-bold leading-tight tracking-tight text-white sm:text-base">{preset.name}</h2>
+          <h2 className="mt-0.5 truncate text-base font-bold leading-tight tracking-tight text-white sm:text-lg">{preset.name}</h2>
         </div>
         <button
           type="button"
@@ -46,7 +46,7 @@ export function ActiveSoundFontCard({
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 border-t border-[#1e293b] pt-1.5 text-xs">
+      <div className="grid grid-cols-[1fr_1fr_auto] gap-3 border-t border-[#1e293b] pt-2 text-xs">
         <div className="flex min-w-0 items-center gap-1">
           <Volume2 className="h-3 w-3 shrink-0 text-cyan-400" />
           <div className="min-w-0 flex-1">
@@ -61,7 +61,7 @@ export function ActiveSoundFontCard({
               max="100"
               value={volume}
               onChange={(e) => onVolumeChange(Number(e.target.value))}
-              className="block h-1 w-full cursor-pointer appearance-none rounded-lg bg-[#0a0f1c] accent-cyan-500"
+              className="block h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#0a0f1c] accent-cyan-500"
             />
           </div>
         </div>
@@ -79,29 +79,29 @@ export function ActiveSoundFontCard({
               max="100"
               value={reverb}
               onChange={(e) => onReverbChange(Number(e.target.value))}
-              className="block h-1 w-full cursor-pointer appearance-none rounded-lg bg-[#0a0f1c] accent-amber-500"
+              className="block h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-[#0a0f1c] accent-amber-500"
             />
           </div>
         </div>
         <div className="flex min-w-0 items-center justify-end gap-1">
-          <Sliders className="hidden h-2.5 w-2.5 shrink-0 text-emerald-500 xs:inline" />
+          <Sliders className="h-3 w-3 shrink-0 text-emerald-500" aria-label={tr('Transpor')} />
           <div className="flex items-center gap-0.5">
             <button
               type="button"
               aria-label={tr('Transpor para baixo')}
               onClick={() => onTransposeChange(Math.max(-12, transpose - 1))}
-              className="flex h-4 w-4 items-center justify-center rounded bg-slate-800 text-[10px] text-slate-200 hover:bg-slate-700"
+              className="flex h-6 w-6 items-center justify-center rounded bg-slate-800 text-xs text-slate-200 hover:bg-slate-700"
             >
               -
             </button>
-            <span className="w-5 text-center font-mono text-[10px] font-semibold tabular-nums text-white">
+            <span className="w-6 text-center font-mono text-[11px] font-semibold tabular-nums text-white">
               {transpose > 0 ? `+${transpose}` : transpose}
             </span>
             <button
               type="button"
               aria-label={tr('Transpor para cima')}
               onClick={() => onTransposeChange(Math.min(12, transpose + 1))}
-              className="flex h-4 w-4 items-center justify-center rounded bg-slate-800 text-[10px] text-slate-200 hover:bg-slate-700"
+              className="flex h-6 w-6 items-center justify-center rounded bg-slate-800 text-xs text-slate-200 hover:bg-slate-700"
             >
               +
             </button>
