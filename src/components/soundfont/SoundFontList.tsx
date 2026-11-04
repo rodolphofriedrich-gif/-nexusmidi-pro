@@ -36,7 +36,7 @@ export function SoundFontList({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 h-full w-full overflow-hidden">
+    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
       
       <div className="flex flex-col gap-1.5 pb-2 shrink-0">
         <div className="flex items-center justify-between gap-2">
@@ -48,7 +48,7 @@ export function SoundFontList({
             <span className="font-semibold text-slate-300">{filteredPresets.length}</span> {tr('sons')}
           </div>
         </div>
-        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar">
+        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {categories.map((cat) => (
             <button type="button" key={cat} onClick={() => setSelectedCategory(cat)} className={`px-2 py-0.5 rounded-md text-[10px] font-medium whitespace-nowrap transition-colors ${selectedCategory === cat ? 'bg-cyan-600 text-white shadow-xs font-semibold' : 'bg-[#0a0f1c] text-slate-400 hover:bg-slate-800'}`}>
               {tr(cat)}
