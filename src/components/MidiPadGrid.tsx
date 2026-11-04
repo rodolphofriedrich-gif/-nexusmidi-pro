@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Settings2, X, Save } from 'lucide-react';
 
 interface MidiPadGridProps {
-  /** Banco ativo (0 a 3). Agora é controlado pela barra superior do MidiKeyboard. */
   bank: number;
   isActive: boolean;
   isConnected: boolean;
@@ -131,45 +130,43 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
   };
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-[#2e323b] bg-[#121316]">
+    <div className="relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)]">
 
-      {/* MODAL DE EDIÇÃO */}
       {editPadIndex !== null && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <form onSubmit={handleSavePad} className="max-h-[92vh] w-full max-w-sm space-y-4 overflow-y-auto rounded-xl border border-slate-700 bg-[#1a1c21] p-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <h3 className="text-sm font-bold text-white">Editar Pad</h3>
-              <button type="button" onClick={() => setEditPadIndex(null)}><X size={16} className="text-slate-400" /></button>
+          <form onSubmit={handleSavePad} className="max-h-[92vh] w-full max-w-sm space-y-4 overflow-y-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+              <h3 className="text-sm font-bold text-[var(--text-main)]">Editar Pad</h3>
+              <button type="button" onClick={() => setEditPadIndex(null)} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-main)]"><X size={18} /></button>
             </div>
 
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Nome do Pad</label>
-              <input name="label" defaultValue={banksData[bank][editPadIndex].label} className="w-full rounded border border-slate-700 bg-[#121316] p-2 text-sm text-white" required />
+              <label className="mb-1 block text-xs text-[var(--text-muted)]">Nome do Pad</label>
+              <input name="label" defaultValue={banksData[bank][editPadIndex].label} className="w-full h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 text-sm text-[var(--text-main)]" required />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Nota MIDI (0-127)</label>
-              <input name="note" type="number" min="0" max="127" defaultValue={banksData[bank][editPadIndex].note} className="w-full rounded border border-slate-700 bg-[#121316] p-2 text-sm text-white" required />
+              <label className="mb-1 block text-xs text-[var(--text-muted)]">Nota MIDI (0-127)</label>
+              <input name="note" type="number" min="0" max="127" defaultValue={banksData[bank][editPadIndex].note} className="w-full h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 text-sm text-[var(--text-main)]" required />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Cor</label>
-              <div className="flex flex-wrap gap-2">
+              <label className="mb-1 block text-xs text-[var(--text-muted)]">Cor</label>
+              <div className="flex flex-wrap gap-3">
                 {COLORS.map((c) => (
                   <label key={c} className="cursor-pointer">
                     <input type="radio" name="color" value={c} defaultChecked={banksData[bank][editPadIndex].color === c} className="peer sr-only" />
-                    <div className={`h-6 w-6 rounded-full ${c} ring-white peer-checked:ring-2`} />
+                    <div className={`h-8 w-8 rounded-full ${c} ring-white peer-checked:ring-2`} />
                   </label>
                 ))}
               </div>
             </div>
-            <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-600 py-2 font-bold text-white hover:bg-cyan-500">
-              <Save size={16} /> Salvar Pad
+            <button type="submit" className="flex w-full h-11 items-center justify-center gap-2 rounded-lg bg-cyan-600 text-sm font-bold text-white hover:bg-cyan-500 mt-2">
+              <Save size={18} /> Salvar Pad
             </button>
           </form>
         </div>
       )}
 
-      {/* GRADE DE PADS (Estilo Hardware/Maschine) */}
-      <div className="grid min-h-0 w-full flex-1 grid-cols-4 grid-rows-2 gap-1 p-1 sm:gap-1.5 sm:p-1.5">
+      <div className="grid min-h-0 w-full flex-1 grid-cols-4 grid-rows-2 gap-2 p-2">
         {banksData[bank].map((pad, index) => {
           const isPressed = pressedPads.has(pad.note);
           return (
@@ -184,28 +181,25 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
               className={`relative flex min-h-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-xl border-2 transition-all duration-100 ease-out ${
                 isPressed 
                   ? 'scale-[0.97] z-10 border-white/80 shadow-[0_0_20px_rgba(255,255,255,0.4)]' 
-                  : 'border-[#1a1c21] bg-gradient-to-b from-[#23262d] to-[#1a1c21] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_3px_5px_rgba(0,0,0,0.4)] hover:border-[#2e323b] hover:from-[#2a2d35]'
+                  : 'border-[var(--border-color)] bg-[var(--bg-elevated)] shadow-sm hover:border-slate-400'
               } ${!isActive ? 'cursor-not-allowed opacity-50 grayscale' : ''}`}
               style={{ touchAction: 'none' }}
             >
-              {/* Fundo colorido: escuro normal, vibrante quando pressionado */}
               <div 
                 className={`absolute inset-0 transition-opacity duration-100 ${pad.color} ${isPressed ? 'opacity-100' : 'opacity-10'}`} 
               />
 
-              {/* Brilho interno para simular profundidade */}
               {isPressed && <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />}
 
-              {/* Engrenagem (só fora da tela cheia) */}
               {!isFullscreen && (
-                <button type="button" onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); }} className={`absolute right-1.5 top-1.5 z-20 rounded-md p-1 transition-all ${isPressed ? 'bg-black/20 text-white/80' : 'bg-black/40 text-white/50 hover:bg-black/80 hover:text-white'}`}>
-                  <Settings2 size={10} />
+                <button type="button" onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); }} className={`absolute right-2 top-2 z-20 rounded-md p-2 transition-all ${isPressed ? 'bg-black/20 text-white/80' : 'bg-black/10 text-black/50 hover:bg-black/30 dark:bg-black/40 dark:text-white/50 dark:hover:bg-black/80 dark:hover:text-white'}`}>
+                  <Settings2 size={14} />
                 </button>
               )}
 
-              <div className="pointer-events-none z-10 flex h-full w-full flex-col items-center justify-center p-0.5">
-                <span className={`w-full truncate px-0.5 text-center text-[11px] font-extrabold leading-tight drop-shadow-md sm:text-[13px] ${isPressed ? 'text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]' : 'text-slate-200'}`}>{pad.label}</span>
-                <span className={`mt-0.5 font-mono text-[9px] font-bold ${isPressed ? 'text-white/90' : 'text-slate-500'}`}>N{pad.note}</span>
+              <div className="pointer-events-none z-10 flex h-full w-full flex-col items-center justify-center p-1">
+                <span className={`w-full truncate px-1 text-center text-xs font-extrabold leading-tight drop-shadow-md sm:text-sm ${isPressed ? 'text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]' : 'text-[var(--text-main)]'}`}>{pad.label}</span>
+                <span className={`mt-1 font-mono text-[10px] font-bold ${isPressed ? 'text-white/90' : 'text-[var(--text-muted)]'}`}>N{pad.note}</span>
               </div>
             </div>
           );
