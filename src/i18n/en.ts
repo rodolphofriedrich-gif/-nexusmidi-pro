@@ -322,4 +322,8 @@ export const en: Record<string, string> = {
   "de": "of",
   "instrumentos": "instruments",
   "ligadas": "on"
+    "Aparência": "Appearance",
+  "Dark": "Dark",
+  "Light": "Light",
+  "Auto": "Auto",
 };
