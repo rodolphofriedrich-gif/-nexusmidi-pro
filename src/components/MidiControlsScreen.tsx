@@ -156,12 +156,12 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
   };
 
   return (
-    <section className="flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-[#121316] p-2 sm:p-3 space-y-3 flex flex-col">
+    <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto custom-scrollbar bg-[#121316] p-2 sm:p-3 md:flex-row md:overflow-hidden">
       
       {/* MESA DE MIXAGEM - Aumentada */}
-      <div className="grid grid-cols-4 md:grid-cols-8 gap-1.5 sm:gap-2 bg-[#121316] p-1.5 sm:p-2 rounded-2xl border border-[#2e323b] shadow-inner h-[220px] sm:h-[260px] shrink-0">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 bg-[#121316] p-1.5 sm:p-2 rounded-2xl border border-[#2e323b] shadow-inner h-[220px] sm:h-[260px] shrink-0 md:h-auto md:min-h-0 md:min-w-0 md:flex-1 md:shrink md:grid-cols-8 md:grid-rows-1">
         <StudioFader label="MOD" sublabel="CC 1" value={modWheel} onChange={(v: any) => updateState('modWheel', v)} onCommit={(v) => void sendCC(1, v, 'Modulação')} />
-        <StudioFader label="VOL" sublabel="CC 7" value={volume} onChange={(v: any) => updateState('volume', v)} onCommit={(v) => void sendCC(7, v, 'Volume')} />
+        <StudioFader tone="level" label="VOL" sublabel="CC 7" value={volume} onChange={(v: any) => updateState('volume', v)} onCommit={(v) => void sendCC(7, v, 'Volume')} />
         <StudioFader label="EXP" sublabel="CC 11" value={expression} onChange={(v: any) => updateState('expression', v)} onCommit={(v) => void sendCC(11, v, 'Expressão')} />
         <StudioFader label="PAN" sublabel="CC 10" value={pan} onChange={(v: any) => updateState('pan', v)} onCommit={(v) => void sendCC(10, v, 'Panorama')} />
         
@@ -171,7 +171,8 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
         <StudioFader label="RES" sublabel="CC 71" value={resonance} onChange={(v: any) => updateState('resonance', v)} onCommit={(v) => void sendCC(71, v, 'Ressonância')} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0">
+      {/* Painel lateral (em telas largas fica ao lado dos faders, com rolagem própria) */}
+      <div className="flex shrink-0 flex-col gap-3 md:min-h-0 md:w-[320px] md:overflow-y-auto md:pr-1 custom-scrollbar">
         
         {/* CARD PERFORMANCE */}
         <div className="rounded-xl border border-[#2e323b] bg-[#1a1c21] p-3 space-y-2 shadow-sm flex flex-col">
@@ -275,9 +276,8 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
             <ShieldAlert size={14} /> {tr('MIDI Panic')}
           </button>
         </div>
-      </div>
 
-      {/* PRESETS COMPACTOS */}
+        {/* PRESETS COMPACTOS */}
       <div className="rounded-xl border border-[#2e323b] bg-[#1a1c21] p-3 space-y-2 shadow-sm shrink-0 mb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -302,7 +302,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
             <p className="text-[10px] text-slate-500">{tr('Nenhum preset salvo.')}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-2">
             {presets.map((preset) => (
               <div key={preset.id} className="flex min-w-0 items-center gap-1 rounded-lg border border-[#2e323b] bg-[#121316] p-1.5 hover:border-slate-600 transition group">
                 <div className="min-w-0 flex-1">
@@ -326,6 +326,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
             ))}
           </div>
         )}
+      </div>
       </div>
     </section>
   );

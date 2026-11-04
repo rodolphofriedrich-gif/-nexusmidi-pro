@@ -7,6 +7,8 @@ interface StudioFaderProps {
   onChange: (value: number) => void;
   onCommit: (value: number) => void;
   unit?: string;
+  /** `level` = medidor de nível (verde → amarelo → vermelho, só para volume). `accent` = ciano. */
+  tone?: 'accent' | 'level';
 }
 
 export function StudioFader({
@@ -17,15 +19,17 @@ export function StudioFader({
   min = 0,
   onChange,
   onCommit,
-  unit = ''
+  unit = '',
+  tone = 'accent',
 }: StudioFaderProps) {
 
   const percent = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
 
   const getLedColor = () => {
+    if (tone === 'accent') return 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.35)]';
     if (percent > 85) return 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.6)]';
     if (percent > 65) return 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.6)]';
-    return 'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.4)]';
+    return 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.4)]';
   };
 
   return (
@@ -37,49 +41,52 @@ export function StudioFader({
         {sublabel && <span className="block text-[9px] text-slate-500 font-mono mt-0.5">{sublabel}</span>}
       </div>
 
-      {/* Área do Fader Vertical (Flexível) */}
-      <div className="relative flex-1 w-full flex justify-center select-none min-h-[80px]">
-        
-        {/* Trilho de Fundo (Sulco) */}
-        <div className="absolute top-2 bottom-2 w-2 bg-[#0e0f12] rounded-full border border-[#2e323b] overflow-hidden shadow-inner">
-          <div 
-            className={`absolute bottom-0 w-full rounded-full transition-all duration-75 ease-out ${getLedColor()}`}
-            style={{ height: `${percent}%` }}
+      {/* Área do Fader Vertical (Flexível). A "pista" fica 16px mais curta em cima e embaixo:
+          assim o cabo (32px) nunca passa por cima do nome nem do valor. */}
+      <div className="relative w-full flex-1 select-none min-h-[88px]">
+        <div className="absolute inset-x-0 top-4 bottom-4">
+          {/* Trilho de Fundo (Sulco) */}
+          <div className="absolute inset-y-0 left-1/2 w-2 -translate-x-1/2 overflow-hidden rounded-full border border-[#2e323b] bg-[#0e0f12] shadow-inner">
+            <div
+              className={`absolute bottom-0 w-full rounded-full transition-all duration-75 ease-out ${getLedColor()}`}
+              style={{ height: `${percent}%` }}
+            />
+          </div>
+
+          {/* Marcações de Escala (Ticks) */}
+          <div className="absolute inset-y-0 right-0 flex w-1.5 flex-col justify-between">
+            {[0, 32, 64, 96, 127].map((tick) => (
+              <div key={tick} className="h-px w-1.5 bg-slate-600/60" />
+            ))}
+          </div>
+
+          {/* Input invisível: ocupa a pista +8px de cada lado, que é o curso do polegar nativo */}
+          <input
+            type="range"
+            aria-label={label}
+            min={min}
+            max={max}
+            value={value}
+            onChange={(e) => onChange(Number(e.target.value))}
+            onPointerUp={(e) => onCommit(Number((e.target as HTMLInputElement).value))}
+            onKeyUp={(e) => onCommit(Number((e.target as HTMLInputElement).value))}
+            className="absolute inset-x-0 -bottom-2 -top-2 z-20 h-[calc(100%+16px)] w-full cursor-ns-resize opacity-0"
+            style={{
+              WebkitAppearance: 'slider-vertical',
+              writingMode: 'vertical-lr',
+              direction: 'rtl',
+            }}
           />
-        </div>
 
-        {/* Marcações de Escala (Ticks) */}
-        <div className="absolute top-2 bottom-2 right-0 w-1.5 flex flex-col justify-between">
-          {[0, 32, 64, 96, 127].map((tick) => (
-            <div key={tick} className="w-1.5 h-px bg-slate-600/50" />
-          ))}
-        </div>
-
-        {/* Input Invisível */}
-        <input
-          type="range"
-          min={min}
-          max={max}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          onPointerUp={(e) => onCommit(Number((e.target as HTMLInputElement).value))}
-          onKeyUp={(e) => onCommit(Number((e.target as HTMLInputElement).value))}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-ns-resize z-20"
-          style={{
-            WebkitAppearance: 'slider-vertical',
-            writingMode: 'vertical-lr',
-            direction: 'rtl'
-          }}
-        />
-
-        {/* Cabo do Fader - Maior e mais tátil */}
-        <div 
-          className="absolute left-1/2 -translate-x-1/2 w-8 h-10 bg-gradient-to-b from-slate-500 via-slate-600 to-slate-800 border border-slate-400/80 rounded-md shadow-[0_4px_8px_rgba(0,0,0,0.8)] z-10 pointer-events-none flex flex-col items-center justify-center gap-[3px]"
-          style={{ bottom: `calc(${percent}% - 20px)` }}
-        >
-          <div className="w-5 h-[1.5px] bg-slate-900/90 shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
-          <div className="w-5 h-[1.5px] bg-slate-900/90 shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
-          <div className="w-5 h-[1.5px] bg-slate-900/90 shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
+          {/* Cabo do Fader: o centro dele acompanha exatamente o fim do preenchimento */}
+          <div
+            className="pointer-events-none absolute left-1/2 z-10 flex h-8 w-9 -translate-x-1/2 flex-col items-center justify-center gap-[3px] rounded-md border border-slate-400/60 bg-gradient-to-b from-slate-500 via-slate-600 to-slate-800 shadow-[0_3px_6px_rgba(0,0,0,0.7)]"
+            style={{ bottom: `calc(${percent}% - 16px)` }}
+          >
+            <div className="h-[1.5px] w-5 bg-slate-900/90 shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
+            <div className="h-[1.5px] w-5 bg-slate-900/90 shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
+            <div className="h-[1.5px] w-5 bg-slate-900/90 shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
+          </div>
         </div>
       </div>
 
