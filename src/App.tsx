@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import {
   Activity, AudioWaveform, GitBranch, LogOut, Music2, Menu, X, Usb, Bluetooth, type LucideIcon,
-  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Maximize, Minimize, Power, LayoutGrid, SlidersHorizontal, Globe, RotateCcw
+  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Maximize, Minimize, Power, LayoutGrid, SlidersHorizontal, Globe, RotateCcw, Moon, Sun, Monitor
 } from 'lucide-react';
 import { ConnectionMenu } from './components/ConnectionMenu';
 import { ExitDialog } from './components/ExitDialog';
@@ -16,7 +16,6 @@ import { MidiStatusBar } from './components/MidiStatusBar';
 import { StatusToast } from './components/StatusToast';
 import { StudioScreen } from './components/StudioScreen';
 import { VuMeter } from './components/VuMeter';
-import { KEYBOARD_PALETTES } from './constants/palettes';
 import { useMidiDevices } from './hooks/useMidiDevices';
 import { useStore } from './hooks/useStore';
 import { useToast, type ToastType } from './hooks/useToast';
@@ -51,7 +50,6 @@ export default function App() {
   const [vuLevel, setVuLevel] = useState(0);
   const [activeNotes, setActiveNotes] = useState(0);
   const [keyboardEnabled, setKeyboardEnabled] = useState(true);
-  const [sustain, setSustain] = useState(false);
   const { isFullscreen, exit: exitFullscreen, toggle: toggleFullscreen } = useAppFullscreen();
   
   const [startOctave, setStartOctave] = useState(3);
@@ -63,6 +61,20 @@ export default function App() {
   const [monitorFilter, setMonitorFilter] = useState<'all' | 'RX' | 'TX'>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [monitorPaused, setMonitorPaused] = useState(false);
+
+  // Gerenciamento de Tema
+  useEffect(() => {
+    const root = document.documentElement;
+    const applyTheme = (theme: string) => {
+      if (theme === 'system') {
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        root.classList.toggle('dark', isDark);
+      } else {
+        root.classList.toggle('dark', theme === 'dark');
+      }
+    };
+    applyTheme(prefs.theme || 'dark');
+  }, [prefs.theme]);
 
   // BOTÃO VOLTAR DO ANDROID
   useEffect(() => {
@@ -108,8 +120,6 @@ export default function App() {
   const isBleConnected = devices.connected.some((d) => d.type === 'ble');
   const canPlay = devices.connected.length > 0 || devices.bleServerActive || synth.ready;
 
-  const palette = KEYBOARD_PALETTES.find((p) => p.id === prefs.paletteId) ?? KEYBOARD_PALETTES[1];
-
   const handleNoteOn = useCallback((note: number) => performanceEngine.noteOn(prefsStore.get().channel, note, prefsStore.get().velocity), []);
   const handleNoteOff = useCallback((note: number) => performanceEngine.noteOff(prefsStore.get().channel, note), []);
 
@@ -118,15 +128,15 @@ export default function App() {
   }, [keyboardEnabled, showMessage]);
 
   const handleToggleSustain = useCallback(async () => {
-    const next = !sustain;
-    setSustain(next);
+    const next = !prefs.sustain;
+    prefsStore.set({ sustain: next });
     try {
       await midiManager.sendControlChange(prefsStore.get().channel, 64, next ? 127 : 0);
       showMessage(next ? tr('Sustain Ligado') : tr('Sustain Desligado'), 'info', 1500);
     } catch (error) {
       showMessage(tr('Erro ao enviar Sustain: {message}', { message: error instanceof Error ? error.message : '' }), 'error', 2500);
     }
-  }, [sustain, showMessage]);
+  }, [prefs.sustain, showMessage]);
 
   const handleConfirmExit = async () => {
     setShowExit(false);
@@ -159,23 +169,23 @@ export default function App() {
     window.dispatchEvent(new Event('resetMixer'));
   };
 
-  const btnClass = "flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#2e323b] bg-[#1a1c21] text-slate-400 transition-all hover:bg-slate-800 hover:text-slate-200 active:scale-95 px-2.5 text-[10px] font-bold";
-  const btnActiveClass = "border-cyan-700/50 bg-cyan-900/30 text-cyan-400 shadow-[0_0_10px_rgba(8,145,178,0.2)]";
+  const btnClass = "flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] active:scale-95 px-3 text-xs font-bold";
+  const btnActiveClass = "border-cyan-700/50 bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 shadow-[0_0_10px_rgba(8,145,178,0.2)]";
 
   return (
-    <div className={`nexus-app fixed inset-0 flex h-[100dvh] w-full select-none overflow-hidden font-sans antialiased ${isFullscreen ? 'is-fullscreen' : ''}`}>
+    <div className={`nexus-app fixed inset-0 flex h-[100dvh] w-full select-none overflow-hidden font-sans antialiased bg-[var(--bg-app)] text-[var(--text-main)] ${isFullscreen ? 'is-fullscreen' : ''}`}>
       
       {isSidebarOpen && !isFullscreen && (
         <div className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setIsSidebarOpen(false)} />
       )}
 
       {!isFullscreen && (
-        <aside className={`fixed inset-y-0 left-0 z-[100] flex w-64 flex-col border-r border-[#2e323b] bg-[#121316] transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="flex h-12 items-center justify-between px-4 border-b border-[#2e323b] shrink-0">
-            <span className="text-sm font-extrabold tracking-wider text-slate-200">
-              NEXUSMIDI <span className="text-cyan-400">Pro</span>
+        <aside className={`fixed inset-y-0 left-0 z-[100] flex w-64 flex-col border-r border-[var(--border-color)] bg-[var(--bg-panel)] transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="flex h-14 items-center justify-between px-4 border-b border-[var(--border-color)] shrink-0">
+            <span className="text-sm font-extrabold tracking-wider text-[var(--text-main)]">
+              NEXUSMIDI <span className="text-cyan-500">Pro</span>
             </span>
-            <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400 hover:text-white transition">
+            <button onClick={() => setIsSidebarOpen(false)} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition">
               <X size={20} />
             </button>
           </div>
@@ -189,31 +199,43 @@ export default function App() {
                     key={id}
                     type="button"
                     onClick={() => { setActiveTab(id); setIsSidebarOpen(false); setOpenMenu(null); }}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${selected ? `bg-slate-800/80 ${color} font-bold` : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-3 transition-colors ${selected ? `bg-cyan-900/10 dark:bg-cyan-900/20 ${color} font-bold` : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]'}`}
                   >
-                    <Icon size={18} className={selected ? color : ''} />
+                    <Icon size={20} className={selected ? color : ''} />
                     <span className="text-sm">{tr(label)}</span>
                   </button>
                 );
               })}
             </div>
 
-            <div className="h-px w-full bg-[#23262d]" />
+            <div className="h-px w-full bg-[var(--border-color)]" />
 
             <div className="flex flex-col gap-2">
-              <span className="text-[10px] font-bold uppercase text-slate-500 px-3">Conexões</span>
+              <span className="text-xs font-bold uppercase text-[var(--text-muted)] px-3">Conexões</span>
               <ConnectionMenu kind="usb" isOpen={openMenu === 'usb'} isConnected={isUsbConnected} statusLabel={isUsbConnected ? tr('Conectado') : tr('Desconectado')} devices={usbDevices} connectedIds={connectedIds} showDisconnectAll={isUsbConnected} onToggleOpen={() => toggleMenu('usb')} onRefresh={() => void devices.refresh()} onToggleDevice={(d) => void devices.toggleConnect(d)} onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }} />
               <ConnectionMenu kind="ble" isOpen={openMenu === 'ble'} isConnected={isBleConnected || devices.bleServerActive} statusLabel={devices.bleServerActive ? tr('Visível') : isBleConnected ? tr('Conectado') : tr('Desconectado')} devices={bleDevices} connectedIds={connectedIds} showDisconnectAll={devices.connected.length > 0 || devices.bleServerActive} onToggleOpen={() => toggleMenu('ble')} onRefresh={() => void devices.refresh()} onToggleDevice={(d) => void devices.toggleConnect(d)} onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }} isScanning={devices.scanningBle} isServerActive={devices.bleServerActive} onScan={() => void devices.scanBle()} onStartServer={() => void devices.startBleServer()} />
             </div>
+            
+            <div className="h-px w-full bg-[var(--border-color)]" />
+
+            {/* SELETOR DE TEMA */}
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-bold uppercase text-[var(--text-muted)] px-3">{tr('Aparência')}</span>
+              <div className="grid grid-cols-3 gap-1 bg-[var(--bg-app)] p-1 rounded-lg border border-[var(--border-color)]">
+                <button onClick={() => prefsStore.set({ theme: 'dark' })} className={`flex flex-col items-center justify-center py-2 rounded-md transition ${prefs.theme === 'dark' ? 'bg-[var(--bg-panel)] shadow text-cyan-500' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}><Moon size={16} /><span className="text-[10px] font-bold mt-1">Dark</span></button>
+                <button onClick={() => prefsStore.set({ theme: 'light' })} className={`flex flex-col items-center justify-center py-2 rounded-md transition ${prefs.theme === 'light' ? 'bg-[var(--bg-panel)] shadow text-cyan-500' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}><Sun size={16} /><span className="text-[10px] font-bold mt-1">Light</span></button>
+                <button onClick={() => prefsStore.set({ theme: 'system' })} className={`flex flex-col items-center justify-center py-2 rounded-md transition ${prefs.theme === 'system' ? 'bg-[var(--bg-panel)] shadow text-cyan-500' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}><Monitor size={16} /><span className="text-[10px] font-bold mt-1">Auto</span></button>
+              </div>
+            </div>
           </div>
 
-          <div className="p-3 border-t border-[#2e323b] shrink-0 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => prefsStore.set({ language: prefs.language === 'pt-BR' ? 'en' : 'pt-BR' })} className="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-slate-400 bg-slate-800/50 hover:bg-slate-800 transition-colors">
-              <Globe size={16} />
+          <div className="p-3 border-t border-[var(--border-color)] shrink-0 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => prefsStore.set({ language: prefs.language === 'pt-BR' ? 'en' : 'pt-BR' })} className="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-3 text-[var(--text-muted)] bg-[var(--bg-app)] hover:bg-[var(--bg-elevated)] transition-colors">
+              <Globe size={18} />
               <span className="text-xs font-bold">{tr('Idioma')}</span>
             </button>
-            <button type="button" onClick={() => { setIsSidebarOpen(false); setShowExit(true); }} className="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 transition-colors">
-              <LogOut size={16} />
+            <button type="button" onClick={() => { setIsSidebarOpen(false); setShowExit(true); }} className="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-3 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 transition-colors">
+              <LogOut size={18} />
               <span className="text-xs font-bold">{tr('Sair')}</span>
             </button>
           </div>
@@ -222,39 +244,39 @@ export default function App() {
 
       <div className="flex h-full flex-1 flex-col overflow-hidden">
         {!isFullscreen && (
-          <header className="relative z-[80] flex h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-[#2e323b] bg-[#121316] px-2 pt-[env(safe-area-inset-top)] sm:px-3">
+          <header className="relative z-[80] flex h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-panel)] px-2 pt-[env(safe-area-inset-top)] sm:px-3">
             
             <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
-              <button type="button" onClick={() => setIsSidebarOpen(true)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" title={tr('Menu')}>
-                <Menu size={20} />
+              <button type="button" onClick={() => setIsSidebarOpen(true)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] transition-colors" title={tr('Menu')}>
+                <Menu size={22} />
               </button>
 
               {/* CONTROLES DO TECLADO */}
               {activeTab === 'keyboard' && (
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mr-2 px-1 shrink-0 hidden sm:block">
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-cyan-500 mr-2 px-1 shrink-0 hidden sm:block">
                     Teclado
                   </h2>
 
                   <div className="flex shrink-0 items-center gap-1">
-                    <button type="button" disabled={startOctave <= 1} onClick={() => setStartOctave(v => Math.max(1, v - 1))} className={`${btnClass} w-8 text-lg`}>−</button>
-                    <div className="flex h-8 min-w-[44px] items-center justify-center rounded-lg border border-[#2e323b] bg-[#121316] px-2 font-mono text-xs font-bold text-cyan-300">C{startOctave}</div>
-                    <button type="button" disabled={startOctave >= 6} onClick={() => setStartOctave(v => Math.min(6, v + 1))} className={`${btnClass} w-8 text-lg`}>+</button>
+                    <button type="button" disabled={startOctave <= 1} onClick={() => setStartOctave(v => Math.max(1, v - 1))} className={`${btnClass} w-11 text-xl`}>−</button>
+                    <div className="flex h-11 min-w-[44px] items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-2 font-mono text-sm font-bold text-cyan-500">C{startOctave}</div>
+                    <button type="button" disabled={startOctave >= 6} onClick={() => setStartOctave(v => Math.min(6, v + 1))} className={`${btnClass} w-11 text-xl`}>+</button>
                   </div>
-                  <button type="button" onClick={handleToggleSustain} className={`${btnClass} ${sustain ? btnActiveClass : ''} hidden sm:flex`}><Pause size={14} /> SUSTAIN</button>
+                  <button type="button" onClick={handleToggleSustain} className={`${btnClass} ${prefs.sustain ? btnActiveClass : ''} hidden sm:flex`}><Pause size={16} /> SUSTAIN</button>
 
-                  <button type="button" onClick={() => { setKeyboardEnabled(!keyboardEnabled); showMessage(!keyboardEnabled ? tr('Teclado Virtual Ligado') : tr('Teclado Virtual Desligado'), 'info', 1500); }} className={`${btnClass} ${keyboardEnabled ? btnActiveClass : ''} hidden md:flex`}><Power size={14} /><span className="hidden lg:inline">{keyboardEnabled ? 'ON' : 'OFF'}</span></button>
-                  <button type="button" onClick={toggleFullscreen} className={`${btnClass} ${isFullscreen ? 'bg-cyan-600 border-cyan-500 text-white' : ''} w-8 hidden md:flex`}>{isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}</button>
+                  <button type="button" onClick={() => { setKeyboardEnabled(!keyboardEnabled); showMessage(!keyboardEnabled ? tr('Teclado Virtual Ligado') : tr('Teclado Virtual Desligado'), 'info', 1500); }} className={`${btnClass} ${keyboardEnabled ? btnActiveClass : ''} hidden md:flex`}><Power size={16} /><span className="hidden lg:inline">{keyboardEnabled ? 'ON' : 'OFF'}</span></button>
+                  <button type="button" onClick={toggleFullscreen} className={`${btnClass} ${isFullscreen ? 'bg-cyan-600 border-cyan-500 text-white' : ''} w-11 hidden md:flex`}>{isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}</button>
 
-                  <div className="h-6 w-px bg-slate-700 shrink-0 hidden sm:block mx-1" />
+                  <div className="h-6 w-px bg-[var(--border-color)] shrink-0 hidden sm:block mx-1" />
 
                   <button type="button" onClick={() => keyboardRef.current?.openChannelPopup()} className={`${btnClass}`}>
-                    <span className="text-[10px] font-bold uppercase">CH</span>
-                    <span className="min-w-[16px] text-center font-mono text-xs font-bold text-cyan-300">{String(prefs.channel).padStart(2, '0')}</span>
-                    <ChevronDown size={12} />
+                    <span className="text-xs font-bold uppercase">CH</span>
+                    <span className="min-w-[16px] text-center font-mono text-sm font-bold text-cyan-500">{String(prefs.channel).padStart(2, '0')}</span>
+                    <ChevronDown size={14} />
                   </button>
-                  <button type="button" onClick={() => keyboardRef.current?.openSettingsPopup()} className={`${btnClass} w-8`}>
-                    <SlidersHorizontal size={14} />
+                  <button type="button" onClick={() => keyboardRef.current?.openSettingsPopup()} className={`${btnClass} w-11`}>
+                    <SlidersHorizontal size={16} />
                   </button>
                 </div>
               )}
@@ -262,12 +284,12 @@ export default function App() {
               {/* CONTROLES DO PADS */}
               {activeTab === 'pads' && (
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mr-2 px-1 shrink-0 hidden sm:block">
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-cyan-500 mr-2 px-1 shrink-0 hidden sm:block">
                     {tr('PADS')}
                   </h2>
-                  <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[#2e323b] bg-[#121316] p-0.5">
+                  <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
                     {[0, 1, 2, 3].map((b) => (
-                      <button key={b} type="button" onClick={() => setPadBank(b)} className={`h-7 whitespace-nowrap rounded-md px-3 text-[10px] font-bold transition-colors ${padBank === b ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}>{tr('BANCO {n}', { n: b + 1 })}</button>
+                      <button key={b} type="button" onClick={() => setPadBank(b)} className={`h-10 whitespace-nowrap rounded-md px-4 text-xs font-bold transition-colors ${padBank === b ? 'bg-cyan-600 text-white shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]'}`}>{tr('BANCO {n}', { n: b + 1 })}</button>
                     ))}
                   </div>
                   <button
@@ -275,9 +297,9 @@ export default function App() {
                     onClick={toggleFullscreen}
                     aria-label={tr('Tela cheia')}
                     title={tr('Tela cheia')}
-                    className={`${btnClass} w-9`}
+                    className={`${btnClass} w-11`}
                   >
-                    <Maximize size={15} />
+                    <Maximize size={18} />
                   </button>
                 </div>
               )}
@@ -285,15 +307,15 @@ export default function App() {
               {/* CONTROLES DO ROTEADOR */}
               {activeTab === 'router' && (
                 <div className="flex items-center gap-3">
-                  <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400 shrink-0 hidden sm:flex">
-                    <GitBranch size={16} /> {tr('Roteador MIDI Matriz')}
+                  <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-cyan-500 shrink-0 hidden sm:flex">
+                    <GitBranch size={18} /> {tr('Roteador MIDI Matriz')}
                   </h2>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button type="button" aria-label={tr('Atualizar lista')} onClick={() => void handleRefreshRouter()} disabled={isRouterRefreshing} className={`${btnClass} w-8`}>
-                      <RefreshCw size={14} className={isRouterRefreshing ? 'animate-spin' : ''} />
+                    <button type="button" aria-label={tr('Atualizar lista')} onClick={() => void handleRefreshRouter()} disabled={isRouterRefreshing} className={`${btnClass} w-11`}>
+                      <RefreshCw size={16} className={isRouterRefreshing ? 'animate-spin' : ''} />
                     </button>
-                    <button type="button" onClick={addNewRoute} className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-black/40 transition hover:bg-cyan-500">
-                      <Plus size={16} /> <span className="hidden sm:inline">{tr('Nova Rota')}</span>
+                    <button type="button" onClick={addNewRoute} className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-4 h-11 text-xs font-bold text-white shadow-lg shadow-black/20 transition hover:bg-cyan-500">
+                      <Plus size={18} /> <span className="hidden sm:inline">{tr('Nova Rota')}</span>
                     </button>
                   </div>
                 </div>
@@ -302,11 +324,11 @@ export default function App() {
               {/* CONTROLES DO ESTÚDIO */}
               {activeTab === 'studio' && (
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-cyan-500 mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button type="button" onClick={() => setStudioTab('synth')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'synth' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><AudioWaveform size={14} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
-                    <button type="button" onClick={() => setStudioTab('mixer')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'mixer' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><SlidersHorizontal size={14} /> <span className="hidden sm:inline">{tr('Mixer / CC')}</span></button>
-                    <button type="button" onClick={() => setStudioTab('tools')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'tools' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><Settings2 size={14} /> <span className="hidden sm:inline">{tr('Ferramentas')}</span></button>
+                    <button type="button" onClick={() => setStudioTab('synth')} className={`flex items-center gap-2 px-4 h-11 rounded-lg text-xs font-bold transition-colors ${studioTab === 'synth' ? 'bg-cyan-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><AudioWaveform size={16} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
+                    <button type="button" onClick={() => setStudioTab('mixer')} className={`flex items-center gap-2 px-4 h-11 rounded-lg text-xs font-bold transition-colors ${studioTab === 'mixer' ? 'bg-cyan-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><SlidersHorizontal size={16} /> <span className="hidden sm:inline">{tr('Mixer / CC')}</span></button>
+                    <button type="button" onClick={() => setStudioTab('tools')} className={`flex items-center gap-2 px-4 h-11 rounded-lg text-xs font-bold transition-colors ${studioTab === 'tools' ? 'bg-cyan-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><Settings2 size={16} /> <span className="hidden sm:inline">{tr('Ferramentas')}</span></button>
                   </div>
                 </div>
               )}
@@ -314,27 +336,27 @@ export default function App() {
               {/* CONTROLES DO MONITOR */}
               {activeTab === 'monitor' && (
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-cyan-400 shrink-0 hidden sm:block">{tr('MIDI Monitor')}</h2>
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-cyan-500 shrink-0 hidden sm:block">{tr('MIDI Monitor')}</h2>
                   <div className="flex items-center gap-2 shrink-0">
                     <div className="relative">
-                      <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} className="flex h-8 items-center gap-2 rounded-lg border border-slate-700 bg-[#1a1c21] px-3 text-xs text-slate-300 hover:bg-slate-800">
-                        {monitorFilter === 'all' ? tr('Todos') : monitorFilter === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')} <ChevronDown size={12} />
+                      <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} className={`${btnClass} h-11`}>
+                        {monitorFilter === 'all' ? tr('Todos') : monitorFilter === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')} <ChevronDown size={14} />
                       </button>
                       {isFilterOpen && (
-                        <div className="fixed top-[60px] left-[60px] z-[999] w-40 overflow-hidden rounded-lg border border-slate-700 bg-[#1a1c21] shadow-2xl">
+                        <div className="fixed top-[60px] left-[60px] z-[999] w-44 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl">
                           {(['all', 'RX', 'TX'] as const).map((f) => (
-                            <button type="button" key={f} onClick={() => { setMonitorFilter(f); setIsFilterOpen(false); }} className={`w-full px-3 py-2 text-left text-xs hover:bg-slate-800 ${monitorFilter === f ? 'font-bold text-cyan-400' : 'text-slate-300'}`}>
+                            <button type="button" key={f} onClick={() => { setMonitorFilter(f); setIsFilterOpen(false); }} className={`w-full px-3 py-3 text-left text-xs hover:bg-[var(--bg-elevated)] ${monitorFilter === f ? 'font-bold text-cyan-500' : 'text-[var(--text-main)]'}`}>
                               {f === 'all' ? tr('Todos') : f === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')}
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
-                    <button type="button" onClick={() => setMonitorPaused(!monitorPaused)} className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${monitorPaused ? 'border-amber-600/60 bg-amber-900/30 text-amber-400' : 'border-slate-700 bg-[#1a1c21] text-slate-300 hover:bg-slate-800'}`}>
-                      {monitorPaused ? <Play size={14} /> : <Pause size={14} />}
+                    <button type="button" onClick={() => setMonitorPaused(!monitorPaused)} className={`flex h-11 w-11 items-center justify-center rounded-lg border transition ${monitorPaused ? 'border-amber-600/60 bg-amber-900/30 text-amber-500' : 'border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
+                      {monitorPaused ? <Play size={16} /> : <Pause size={16} />}
                     </button>
-                    <button type="button" onClick={() => { midiManager.clearLog(); setMonitorPaused(false); }} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-[#1a1c21] text-slate-300 transition hover:bg-red-950/50 hover:text-red-400">
-                      <Trash2 size={14} />
+                    <button type="button" onClick={() => { midiManager.clearLog(); setMonitorPaused(false); }} className={`${btnClass} w-11 hover:bg-red-950/50 hover:text-red-500`}>
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
@@ -344,18 +366,18 @@ export default function App() {
             <div className="flex shrink-0 items-center gap-2">
               {/* RESET DO MIXER NO TOPO DIREITO */}
               {activeTab === 'studio' && studioTab === 'mixer' && (
-                <button type="button" onClick={handleResetMixer} className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[10px] font-bold text-slate-400 hover:text-white transition-colors">
-                  <RotateCcw size={12} /> {tr('RESET')}
+                <button type="button" onClick={handleResetMixer} className="flex h-11 items-center gap-1.5 rounded-md px-3 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+                  <RotateCcw size={14} /> {tr('RESET')}
                 </button>
               )}
               {isUsbConnected && (
-                <div className="flex items-center justify-center h-7 w-7 rounded-md bg-emerald-900/30 text-emerald-400 border border-emerald-800/50" title="USB Conectado">
-                  <Usb size={14} />
+                <div className="flex items-center justify-center h-8 w-8 rounded-md bg-emerald-900/30 text-emerald-500 border border-emerald-800/50" title="USB Conectado">
+                  <Usb size={16} />
                 </div>
               )}
               {(isBleConnected || devices.bleServerActive) && (
-                <div className="flex items-center justify-center h-7 w-7 rounded-md bg-emerald-900/30 text-emerald-400 border border-emerald-800/50" title="Bluetooth Conectado">
-                  <Bluetooth size={14} />
+                <div className="flex items-center justify-center h-8 w-8 rounded-md bg-emerald-900/30 text-emerald-500 border border-emerald-800/50" title="Bluetooth Conectado">
+                  <Bluetooth size={16} />
                 </div>
               )}
             </div>
@@ -365,7 +387,7 @@ export default function App() {
         {showExit && <ExitDialog onCancel={() => setShowExit(false)} onConfirm={() => void handleConfirmExit()} />}
         <StatusToast toast={toast} onClose={dismiss} />
 
-        <main className="nexus-main flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+        <main className="nexus-main flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[var(--bg-app)]">
           {activeTab === 'keyboard' && (
             <div className="nexus-keyboard-page flex min-h-0 w-full flex-1 flex-col gap-1 overflow-hidden p-1 pb-[env(safe-area-inset-bottom)] sm:p-1.5">
               <div className="flex min-h-0 flex-1 flex-row gap-1">
@@ -380,23 +402,19 @@ export default function App() {
                     onNoteOn={handleNoteOn}
                     onNoteOff={handleNoteOff}
                     onDisabledPress={handleDisabledPress}
-                    customWhiteKeyColor={palette.white}
-                    customBlackKeyColor={palette.black}
                     onActiveNotesChange={setActiveNotes}
                     isActive={keyboardEnabled}
-                    isSustainActive={sustain}
+                    isSustainActive={prefs.sustain}
                     onToggleSustain={handleToggleSustain}
                     selectedVelocity={prefs.velocity}
                     onSelectVelocity={(velocity) => prefsStore.set({ velocity })}
-                    selectedPaletteId={prefs.paletteId}
-                    onSelectPalette={(paletteId) => prefsStore.set({ paletteId })}
                     onPitchBend={(val) => void midiManager.sendPitchBend(prefs.channel, val)}
                     onModWheel={(val) => void midiManager.sendControlChange(prefs.channel, 1, val)}
                     isFullscreen={isFullscreen}
                     onToggleFullscreen={toggleFullscreen}
                   />
                 </div>
-                {!isFullscreen && <div className="py-1"><VuMeter level={vuLevel} /></div>}
+                {/* VU METER DIREITO REMOVIDO */}
               </div>
               {!isFullscreen && <MidiStatusBar connectedCount={devices.connected.length} canPlay={canPlay} activeNotes={activeNotes} />}
             </div>
@@ -405,14 +423,14 @@ export default function App() {
           {activeTab === 'pads' && (
             <div className="nexus-pads-page flex min-h-0 w-full flex-1 flex-col gap-1 overflow-hidden p-1 pb-[env(safe-area-inset-bottom)] sm:p-1.5">
               {isFullscreen && (
-                <div className="flex h-10 shrink-0 items-center justify-between gap-2 px-1">
-                  <div className="flex items-center gap-1 rounded-lg border border-[#2E323B] bg-[#121316] p-0.5">
+                <div className="flex h-14 shrink-0 items-center justify-between gap-2 px-1">
+                  <div className="flex items-center gap-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] p-0.5">
                     {[0, 1, 2, 3].map((b) => (
                       <button
                         key={b}
                         type="button"
                         onClick={() => setPadBank(b)}
-                        className={`h-8 min-w-10 whitespace-nowrap rounded-md px-3 text-xs font-bold transition-colors ${padBank === b ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                        className={`h-11 min-w-12 whitespace-nowrap rounded-md px-3 text-sm font-bold transition-colors ${padBank === b ? 'bg-cyan-600 text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]'}`}
                       >
                         {b + 1}
                       </button>
@@ -422,9 +440,9 @@ export default function App() {
                     type="button"
                     onClick={exitFullscreen}
                     aria-label={tr('Sair da tela cheia')}
-                    className="flex h-8 items-center gap-1.5 rounded-lg border border-cyan-500 bg-cyan-600 px-3 text-xs font-bold text-white transition hover:bg-cyan-500 active:scale-95"
+                    className="flex h-11 items-center gap-1.5 rounded-lg border border-cyan-500 bg-cyan-600 px-4 text-sm font-bold text-white transition hover:bg-cyan-500 active:scale-95"
                   >
-                    <Minimize size={14} /> {tr('Sair da tela cheia')}
+                    <Minimize size={16} /> {tr('Sair da tela cheia')}
                   </button>
                 </div>
               )}
@@ -433,7 +451,6 @@ export default function App() {
                 <div className="flex min-h-0 flex-1 flex-col">
                   <MidiPadGrid bank={padBank} isActive={keyboardEnabled} isConnected={canPlay} onNoteOn={handleNoteOn} onNoteOff={handleNoteOff} onDisabledPress={handleDisabledPress} isFullscreen={isFullscreen} />
                 </div>
-                {!isFullscreen && <div className="py-1"><VuMeter level={vuLevel} /></div>}
               </div>
             </div>
           )}
@@ -446,7 +463,7 @@ export default function App() {
 
           {activeTab === 'studio' && (
             <div className="nexus-screen-container flex min-h-0 flex-1 flex-col overflow-hidden">
-              <StudioScreen activeTab={studioTab} onStatus={(message, type = 'info') => showMessage(message, type, 3000)} />
+              <StudioScreen activeTab={studioTab} channel={prefs.channel} isConnected={canPlay} onStatus={(message, type = 'info') => showMessage(message, type, 3000)} />
             </div>
           )}
 
