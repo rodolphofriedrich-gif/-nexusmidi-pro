@@ -3,6 +3,8 @@ import { Play, Save, Trash2, ShieldAlert, RotateCcw } from 'lucide-react';
 import { tr } from '../i18n';
 import { uid } from '../lib/id';
 import { midiManager } from '../services/midiService';
+import { useStore } from '../hooks/useStore';
+import { prefsStore } from '../services/stores';
 import { StudioFader } from './StudioFader';
 
 type MidiPreset = {
@@ -25,7 +27,6 @@ const DEFAULT_CONTROLS = {
   volume: 100,
   expression: 127,
   pan: 64,
-  sustain: false,
   program: 1,
   pitchBend: 8192,
   pressure: 0,
@@ -55,6 +56,8 @@ function loadPresets(): MidiPreset[] {
 const errorText = (error: unknown): string => (error instanceof Error && error.message ? error.message : tr('erro desconhecido'));
 
 export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
+  const prefs = useStore(prefsStore);
+
   const [state, setState] = useState(() => {
     try {
       const saved = localStorage.getItem(STATE_KEY);
@@ -64,9 +67,10 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     }
   });
 
-  const { modWheel, volume, expression, pan, sustain, program, pitchBend, reverb, chorus, cutoff, resonance } = state;
+  const { modWheel, volume, expression, pan, program, pitchBend, reverb, chorus, cutoff, resonance } = state;
 
-  const updateState = (key: string, value: any) => setState((s: any) => ({ ...s, [key]: value }));
+  const updateState = <K extends keyof typeof state>(key: K, value: typeof state[K]) => 
+    setState((s) => ({ ...s, [key]: value }));
 
   const [presetName, setPresetName] = useState(() => tr('Meu preset'));
   const [presets, setPresets] = useState<MidiPreset[]>(loadPresets);
@@ -85,7 +89,6 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     onStatus(tr('Controles redefinidos localmente.'), 'info');
   };
 
-  // Ouve o evento global do botão RESET no cabeçalho
   useEffect(() => {
     const handleReset = () => resetControls();
     window.addEventListener('resetMixer', handleReset);
@@ -117,7 +120,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     }
     setBusy(true);
     try {
-      setState((s: any) => ({ ...s, ...preset }));
+      setState((s) => ({ ...s, ...preset }));
       await midiManager.sendControlChange(channel, 1, preset.modWheel);
       await midiManager.sendControlChange(channel, 7, preset.volume);
       await midiManager.sendControlChange(channel, 11, preset.expression);
@@ -138,9 +141,15 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
   const savePreset = () => {
     const name = presetName.trim();
     if (!name) { onStatus(tr('Digite um nome para o preset.'), 'warn'); return; }
-    const preset: MidiPreset = { id: uid('preset-'), name, ...controls };
+    const preset: MidiPreset = { id: uid('preset-'), name, sustain: prefs.sustain, ...controls };
     setPresets((current) => [preset, ...current]);
     onStatus(tr('Preset “{name}” salvo neste dispositivo.', { name }), 'success');
+  };
+
+  const toggleSustain = () => {
+    const next = !prefs.sustain;
+    prefsStore.set({ sustain: next });
+    void sendCC(64, next ? 127 : 0, next ? tr('Sustain ligado') : tr('Sustain desligado'));
   };
 
   const panic = async () => {
@@ -148,7 +157,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     setBusy(true);
     try {
       await midiManager.sendPanic([channel]);
-      updateState('sustain', false);
+      prefsStore.set({ sustain: false });
       onStatus(tr('MIDI Panic enviado ao canal {channel}.', { channel }), 'success');
     } catch (error) {
       onStatus(tr('Falha no MIDI Panic: {message}', { message: errorText(error) }), 'error');
@@ -156,58 +165,57 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
   };
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto custom-scrollbar bg-[#121316] p-2 sm:p-3 md:flex-row md:overflow-hidden">
+    <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto custom-scrollbar bg-[var(--bg-app)] p-2 sm:p-3 md:flex-row md:overflow-hidden">
       
-      {/* MESA DE MIXAGEM - Aumentada */}
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 bg-[#121316] p-1.5 sm:p-2 rounded-2xl border border-[#2e323b] shadow-inner h-[220px] sm:h-[260px] shrink-0 md:h-auto md:min-h-0 md:min-w-0 md:flex-1 md:shrink md:grid-cols-8 md:grid-rows-1">
-        <StudioFader label="MOD" sublabel="CC 1" value={modWheel} onChange={(v: any) => updateState('modWheel', v)} onCommit={(v) => void sendCC(1, v, 'Modulação')} />
-        <StudioFader tone="level" label="VOL" sublabel="CC 7" value={volume} onChange={(v: any) => updateState('volume', v)} onCommit={(v) => void sendCC(7, v, 'Volume')} />
-        <StudioFader label="EXP" sublabel="CC 11" value={expression} onChange={(v: any) => updateState('expression', v)} onCommit={(v) => void sendCC(11, v, 'Expressão')} />
-        <StudioFader label="PAN" sublabel="CC 10" value={pan} onChange={(v: any) => updateState('pan', v)} onCommit={(v) => void sendCC(10, v, 'Panorama')} />
+      {/* MESA DE MIXAGEM */}
+      <div className="grid grid-cols-4 gap-2 bg-[var(--bg-app)] p-2 rounded-2xl border border-[var(--border-color)] shadow-inner h-[240px] sm:h-[280px] shrink-0 md:h-auto md:min-h-0 md:min-w-0 md:flex-1 md:shrink md:grid-cols-8 md:grid-rows-1">
+        <StudioFader label="MOD" sublabel="CC 1" value={modWheel} onChange={(v) => updateState('modWheel', v)} onCommit={(v) => void sendCC(1, v, 'Modulação')} />
+        <StudioFader tone="level" label="VOL" sublabel="CC 7" value={volume} onChange={(v) => updateState('volume', v)} onCommit={(v) => void sendCC(7, v, 'Volume')} />
+        <StudioFader label="EXP" sublabel="CC 11" value={expression} onChange={(v) => updateState('expression', v)} onCommit={(v) => void sendCC(11, v, 'Expressão')} />
+        <StudioFader label="PAN" sublabel="CC 10" value={pan} onChange={(v) => updateState('pan', v)} onCommit={(v) => void sendCC(10, v, 'Panorama')} />
         
-        <StudioFader label="REV" sublabel="CC 91" value={reverb} onChange={(v: any) => updateState('reverb', v)} onCommit={(v) => void sendCC(91, v, 'Reverb')} />
-        <StudioFader label="CHO" sublabel="CC 93" value={chorus} onChange={(v: any) => updateState('chorus', v)} onCommit={(v) => void sendCC(93, v, 'Chorus')} />
-        <StudioFader label="CUT" sublabel="CC 74" value={cutoff} onChange={(v: any) => updateState('cutoff', v)} onCommit={(v) => void sendCC(74, v, 'Cutoff')} />
-        <StudioFader label="RES" sublabel="CC 71" value={resonance} onChange={(v: any) => updateState('resonance', v)} onCommit={(v) => void sendCC(71, v, 'Ressonância')} />
+        <StudioFader label="REV" sublabel="CC 91" value={reverb} onChange={(v) => updateState('reverb', v)} onCommit={(v) => void sendCC(91, v, 'Reverb')} />
+        <StudioFader label="CHO" sublabel="CC 93" value={chorus} onChange={(v) => updateState('chorus', v)} onCommit={(v) => void sendCC(93, v, 'Chorus')} />
+        <StudioFader label="CUT" sublabel="CC 74" value={cutoff} onChange={(v) => updateState('cutoff', v)} onCommit={(v) => void sendCC(74, v, 'Cutoff')} />
+        <StudioFader label="RES" sublabel="CC 71" value={resonance} onChange={(v) => updateState('resonance', v)} onCommit={(v) => void sendCC(71, v, 'Ressonância')} />
       </div>
 
-      {/* Painel lateral (em telas largas fica ao lado dos faders, com rolagem própria) */}
-      <div className="flex shrink-0 flex-col gap-3 md:min-h-0 md:w-[320px] md:overflow-y-auto md:pr-1 custom-scrollbar">
+      <div className="flex shrink-0 flex-col gap-3 md:min-h-0 md:w-[340px] md:overflow-y-auto md:pr-1 custom-scrollbar">
         
         {/* CARD PERFORMANCE */}
-        <div className="rounded-xl border border-[#2e323b] bg-[#1a1c21] p-3 space-y-2 shadow-sm flex flex-col">
-          <h3 className="text-[10px] font-bold uppercase tracking-wide text-slate-400 flex items-center gap-2 border-b border-[#2e323b] pb-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span> {tr('Performance')}
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-500"></span> {tr('Performance')}
           </h3>
           
-          <div className="grid grid-cols-2 gap-2 flex-1">
-            <div className="flex flex-col justify-between gap-2 rounded-lg bg-[#121316] border border-[#2e323b] p-2">
+          <div className="grid grid-cols-2 gap-3 flex-1">
+            <div className="flex flex-col justify-between gap-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)] p-3">
               <div>
-                <div className="text-[10px] font-semibold text-slate-200">Sustain • CC64</div>
+                <div className="text-xs font-semibold text-[var(--text-main)]">Sustain • CC64</div>
               </div>
               <button 
                 disabled={busy || !isConnected} 
-                onClick={() => { const next = !sustain; updateState('sustain', next); void sendCC(64, next ? 127 : 0, next ? tr('Sustain ligado') : tr('Sustain desligado')); }} 
-                className={`w-full rounded-lg border px-2 py-2 text-[10px] font-bold transition-all disabled:opacity-40 ${sustain ? 'border-emerald-500 bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                onClick={toggleSustain} 
+                className={`w-full h-11 rounded-lg border px-2 text-xs font-bold transition-all disabled:opacity-40 ${prefs.sustain ? 'border-emerald-500 bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:bg-[var(--bg-panel)]'}`}
               >
-                {sustain ? tr('Ligado') : tr('Desligado')}
+                {prefs.sustain ? tr('Ligado') : tr('Desligado')}
               </button>
             </div>
 
-            <div className="flex flex-col justify-between gap-2 rounded-lg bg-[#121316] border border-[#2e323b] p-2">
+            <div className="flex flex-col justify-between gap-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)] p-3">
               <div>
-                <label className="block text-[10px] font-semibold text-slate-200">Program (1–128)</label>
+                <label className="block text-xs font-semibold text-[var(--text-main)]">Program (1–128)</label>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-2">
                 <input 
                   type="number" min="1" max="128" value={program} 
                   onChange={(event) => updateState('program', Math.max(1, Math.min(128, Number(event.target.value) || 1)))} 
-                  className="min-w-0 w-10 rounded-lg border border-slate-700 bg-[#1a1c21] px-1 py-2 font-mono text-xs text-center text-cyan-300 outline-none focus:border-cyan-500" 
+                  className="min-w-0 w-12 h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] px-1 font-mono text-sm text-center text-cyan-500 outline-none focus:border-cyan-500" 
                 />
                 <button 
                   disabled={busy || !isConnected} 
                   onClick={() => void sendAction(() => midiManager.sendProgramChange(channel, program - 1), tr('Program {program} enviado • Canal {channel}', { program, channel }))} 
-                  className="flex-1 rounded-lg bg-cyan-700 px-2 py-2 text-[10px] font-bold text-white disabled:opacity-40 hover:bg-cyan-600 transition"
+                  className="flex-1 h-11 rounded-lg bg-cyan-700 px-2 text-xs font-bold text-white disabled:opacity-40 hover:bg-cyan-600 transition"
                 >
                   {tr('Enviar')}
                 </button>
@@ -217,21 +225,21 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
         </div>
 
         {/* CARD PITCH BEND E PANIC */}
-        <div className="rounded-xl border border-[#2e323b] bg-[#1a1c21] p-3 space-y-2 shadow-sm flex flex-col">
-          <h3 className="text-[10px] font-bold uppercase tracking-wide text-slate-400 flex items-center gap-2 border-b border-[#2e323b] pb-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span> {tr('Pitch Bend')}
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-500"></span> {tr('Pitch Bend')}
           </h3>
           
-          <div className="rounded-lg bg-[#121316] border border-[#2e323b] p-2 flex flex-col justify-center gap-2">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase text-slate-500">
+          <div className="rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)] p-3 flex flex-col justify-center gap-3">
+            <div className="flex items-center justify-between text-xs font-bold uppercase text-[var(--text-muted)]">
               <span>{tr('Grave (-)')}</span>
-              <span className="font-mono text-cyan-400">{pitchBend - 8192 > 0 ? '+' : ''}{pitchBend - 8192}</span>
+              <span className="font-mono text-cyan-500 text-sm">{pitchBend - 8192 > 0 ? '+' : ''}{pitchBend - 8192}</span>
               <span>{tr('Agudo (+)')}</span>
             </div>
             
-            <div className="relative w-full h-8 flex items-center group select-none">
-              <div className="absolute inset-x-0 h-3 bg-[#0e0f12] rounded-full border border-[#2e323b] shadow-inner overflow-hidden">
-                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-600 shadow-[0_0_4px_rgba(255,255,255,0.2)] z-0" />
+            <div className="relative w-full h-10 flex items-center group select-none">
+              <div className="absolute inset-x-0 h-4 bg-[var(--bg-panel)] rounded-full border border-[var(--border-color)] shadow-inner overflow-hidden">
+                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[var(--border-color)] shadow-[0_0_4px_rgba(255,255,255,0.2)] z-0" />
                 <div 
                   className="absolute top-0 bottom-0 bg-cyan-600/30 z-0 transition-all duration-75 ease-out"
                   style={{
@@ -251,82 +259,82 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
               />
 
               <div 
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-gradient-to-b from-slate-500 via-slate-600 to-slate-800 border border-slate-400/50 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.6)] z-10 pointer-events-none flex flex-col items-center justify-center gap-[2px] transition-all duration-75 ease-out"
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-10 h-10 bg-gradient-to-b from-slate-500 via-slate-600 to-slate-800 border border-slate-400/50 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.6)] z-10 pointer-events-none flex flex-col items-center justify-center gap-[2px] transition-all duration-75 ease-out"
                 style={{ left: `${(pitchBend / 16383) * 100}%` }}
               >
-                <div className="w-5 h-[1.5px] bg-slate-900/80 shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
-                <div className="w-5 h-[1.5px] bg-slate-900/80 shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
+                <div className="w-6 h-[2px] bg-slate-900/80 shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
+                <div className="w-6 h-[2px] bg-slate-900/80 shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
               </div>
             </div>
 
             <button 
               disabled={busy || !isConnected} 
               onClick={() => { updateState('pitchBend', 8192); void sendAction(() => midiManager.sendPitchBend(channel, 8192), tr('Pitch Bend centralizado • Canal {channel}', { channel })); }} 
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-[10px] text-slate-300 disabled:opacity-40 hover:bg-slate-700 transition"
+              className="flex w-full h-11 items-center justify-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] px-2 text-xs font-bold text-[var(--text-main)] disabled:opacity-40 hover:bg-[var(--bg-panel)] transition"
             >
-              <RotateCcw size={12} /> {tr('Centralizar')}
+              <RotateCcw size={14} /> {tr('Centralizar')}
             </button>
           </div>
 
           <button 
             disabled={busy || !isConnected} 
             onClick={() => void panic()} 
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-800/60 bg-red-950/40 px-2 py-2 text-[10px] font-extrabold uppercase tracking-wide text-red-400 hover:bg-red-900/60 transition shadow-[inset_0_0_15px_rgba(220,38,38,0.1)] disabled:opacity-40"
+            className="flex w-full h-11 items-center justify-center gap-2 rounded-lg border border-red-800/60 bg-red-950/40 px-2 text-xs font-bold uppercase tracking-wide text-red-400 hover:bg-red-900/60 transition shadow-[inset_0_0_15px_rgba(220,38,38,0.1)] disabled:opacity-40"
           >
-            <ShieldAlert size={14} /> {tr('MIDI Panic')}
+            <ShieldAlert size={16} /> {tr('MIDI Panic')}
           </button>
         </div>
 
         {/* PRESETS COMPACTOS */}
-      <div className="rounded-xl border border-[#2e323b] bg-[#1a1c21] p-3 space-y-2 shadow-sm shrink-0 mb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Save size={14} className="text-cyan-400" />
-            <h3 className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{tr('Presets Salvos')}</h3>
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm shrink-0 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Save size={16} className="text-cyan-500" />
+              <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">{tr('Presets Salvos')}</h3>
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input 
-            aria-label={tr('Nome do preset')} value={presetName} onChange={(event) => setPresetName(event.target.value)} 
-            maxLength={40} placeholder={tr('Nome do preset')} 
-            className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-[#121316] px-2 py-1.5 text-[10px] text-slate-200 outline-none focus:border-cyan-500 transition" 
-          />
-          <button onClick={savePreset} className="flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-cyan-600 transition">
-            <Save size={12} /> {tr('Salvar')}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input 
+              aria-label={tr('Nome do preset')} value={presetName} onChange={(event) => setPresetName(event.target.value)} 
+              maxLength={40} placeholder={tr('Nome do preset')} 
+              className="min-w-0 flex-1 h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 text-xs text-[var(--text-main)] outline-none focus:border-cyan-500 transition" 
+            />
+            <button onClick={savePreset} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 text-xs font-bold text-white hover:bg-cyan-600 transition">
+              <Save size={14} /> {tr('Salvar')}
+            </button>
+          </div>
+          
+          {presets.length === 0 ? (
+            <div className="py-4 text-center border border-dashed border-[var(--border-color)] rounded-lg">
+              <p className="text-xs text-[var(--text-muted)]">{tr('Nenhum preset salvo.')}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-2">
+              {presets.map((preset) => (
+                <div key={preset.id} className="flex min-w-0 items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-2 hover:border-slate-500 transition group">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-bold text-[var(--text-main)]">{preset.name}</div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button 
+                      title={tr('Aplicar')} disabled={busy || !isConnected} onClick={() => void applyPreset(preset)} 
+                      className="rounded bg-cyan-900/40 p-2 text-cyan-500 hover:bg-cyan-800/60 disabled:opacity-40 transition-colors"
+                    >
+                      <Play size={14} />
+                    </button>
+                    <button 
+                      title={tr('Excluir')} onClick={() => setPresets((current) => current.filter((item) => item.id !== preset.id))} 
+                      className="rounded border border-transparent p-2 text-[var(--text-muted)] hover:bg-red-950/50 hover:text-red-500 hover:border-red-900/50 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        
-        {presets.length === 0 ? (
-          <div className="py-3 text-center border border-dashed border-slate-800 rounded-lg">
-            <p className="text-[10px] text-slate-500">{tr('Nenhum preset salvo.')}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-2">
-            {presets.map((preset) => (
-              <div key={preset.id} className="flex min-w-0 items-center gap-1 rounded-lg border border-[#2e323b] bg-[#121316] p-1.5 hover:border-slate-600 transition group">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[10px] font-bold text-slate-200">{preset.name}</div>
-                </div>
-                <div className="flex gap-1">
-                  <button 
-                    title={tr('Aplicar')} disabled={busy || !isConnected} onClick={() => void applyPreset(preset)} 
-                    className="rounded bg-cyan-900/40 p-1 text-cyan-400 hover:bg-cyan-800/60 disabled:opacity-40 transition-colors"
-                  >
-                    <Play size={10} />
-                  </button>
-                  <button 
-                    title={tr('Excluir')} onClick={() => setPresets((current) => current.filter((item) => item.id !== preset.id))} 
-                    className="rounded border border-slate-800 p-1 text-slate-500 hover:bg-red-950/50 hover:text-red-400 hover:border-red-900/50 transition-colors"
-                  >
-                    <Trash2 size={10} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
       </div>
     </section>
   );
