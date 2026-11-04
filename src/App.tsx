@@ -191,7 +191,7 @@ export default function App() {
                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${selected ? `bg-slate-800/80 ${color} font-bold` : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                   >
                     <Icon size={18} className={selected ? color : ''} />
-                    <span className="text-sm">{label}</span>
+                    <span className="text-sm">{tr(label)}</span>
                   </button>
                 );
               })}
@@ -262,7 +262,7 @@ export default function App() {
               {activeTab === 'pads' && (
                 <div className="flex items-center gap-2">
                   <h2 className="text-xs font-bold uppercase tracking-widest text-indigo-400 mr-2 px-1 shrink-0 hidden sm:block">
-                    PADS
+                    {tr('PADS')}
                   </h2>
                   <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[#1e293b] bg-[#0a0f1c] p-0.5">
                     {[0, 1, 2, 3].map((b) => (
@@ -335,7 +335,7 @@ export default function App() {
               {/* RESET DO MIXER NO TOPO DIREITO */}
               {activeTab === 'studio' && studioTab === 'mixer' && (
                 <button type="button" onClick={handleResetMixer} className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[10px] font-bold text-slate-400 hover:text-white transition-colors">
-                  <RotateCcw size={12} /> RESET
+                  <RotateCcw size={12} /> {tr('RESET')}
                 </button>
               )}
               {isUsbConnected && (
