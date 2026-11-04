@@ -8,6 +8,6 @@
   "android": {
     "allowMixedContent": false,
     "webContentsDebuggingEnabled": false,
-    "backgroundColor": "#0a0e1a"
+    "backgroundColor": "#0e0f12"
   }
 }

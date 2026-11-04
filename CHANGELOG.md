@@ -2,6 +2,26 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [Não lançado]
+
+### Adicionado
+- **Várias bibliotecas SoundFont ao mesmo tempo**: cada SF2 da aba Biblioteca tem um interruptor liga/desliga e uma prioridade (▲▼). Se dois SoundFonts tiverem o mesmo instrumento, vale o de maior prioridade.
+- **Baterias**: kits do banco 128 do SF2 aparecem no filtro "Baterias" e tocam em qualquer canal (sem transposição).
+- **Tela cheia nos pads**, com troca de banco (1–4) e botão de sair na própria tela. Funciona também no celular.
+- Cor por canal MIDI (como em uma DAW) nos canais e na lista de instrumentos.
+
+### Alterado
+- **A lista de instrumentos vem do SoundFont importado** (nomes, bancos e programas lidos do arquivo), e não mais de uma lista fixa de 128 sons. Sem SF2 ligado, a lista fica vazia com instruções.
+- Seleção de instrumento guarda banco + programa por canal (`channelsStore.banks`).
+- **Novo tema "DAW"**: grafite neutro, ciano como única cor de destaque, M em amarelo e S em azul. A escala `slate` do Tailwind foi redefinida em `00-theme-tokens.css`.
+- Barras de rolagem mais grossas e em ciano (`02-scrollbars.css`).
+
+### Corrigido
+- O contador "128 sons" aparecia mesmo sem nenhuma biblioteca importada.
+- A lista de presets não rolava (altura do container não estava definida).
+- Carregar uma cena não reaplicava os instrumentos dos canais ao sintetizador.
+- Ao importar um SoundFont, as atribuições de canal eram apagadas.
+
 ## [1.0.0]
 
 ### Corrigido
