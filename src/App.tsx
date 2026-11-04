@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import {
   Activity, AudioWaveform, GitBranch, LogOut, Music2, Menu, X, Usb, Bluetooth, type LucideIcon,
-  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Maximize, Minimize, Power, Piano, LayoutGrid, SlidersHorizontal, Globe, RotateCcw
+  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Maximize, Minimize, Power, LayoutGrid, SlidersHorizontal, Globe, RotateCcw
 } from 'lucide-react';
 import { ConnectionMenu } from './components/ConnectionMenu';
 import { ExitDialog } from './components/ExitDialog';
@@ -207,7 +207,7 @@ export default function App() {
           </div>
 
           <div className="p-3 border-t border-[#1e293b] shrink-0 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => prefsStore.set({ language: prefs.language === 'pt' ? 'en' : 'pt' })} className="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-slate-400 bg-slate-800/50 hover:bg-slate-800 transition-colors">
+            <button type="button" onClick={() => prefsStore.set({ language: prefs.language === 'pt-BR' ? 'en' : 'pt-BR' })} className="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-slate-400 bg-slate-800/50 hover:bg-slate-800 transition-colors">
               <Globe size={16} />
               <span className="text-xs font-bold">{tr('Idioma')}</span>
             </button>
