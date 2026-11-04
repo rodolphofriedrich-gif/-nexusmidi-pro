@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Activity, X, Maximize, Minimize, MoveHorizontal, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
-import { KEYBOARD_PALETTES } from '../constants/palettes';
+import { Activity, X, Maximize, MoveHorizontal, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { MidiPadGrid } from './MidiPadGrid';
 import { tr } from '../i18n';
 
 export interface MidiKeyboardHandle {
@@ -17,16 +17,12 @@ interface MidiKeyboardProps {
   onNoteOn: (note: number) => void;
   onNoteOff: (note: number) => void;
   onDisabledPress: () => void;
-  customWhiteKeyColor: string;
-  customBlackKeyColor: string;
   onActiveNotesChange?: (count: number) => void;
   isActive: boolean;
   isSustainActive: boolean;
   onToggleSustain: () => void;
   selectedVelocity: number;
   onSelectVelocity: (v: number) => void;
-  selectedPaletteId: string;
-  onSelectPalette: (id: string) => void;
   onPitchBend: (value: number) => void;
   onModWheel: (value: number) => void;
   isFullscreen: boolean;
@@ -52,6 +48,12 @@ const TOTAL_WHITE_KEYS = 14;
 const MIN_KEY_WIDTH = 52;
 const MAX_KEY_WIDTH = 95;
 
+// Cores Oficiais do Teclado
+const WHITE_KEY_BG = 'linear-gradient(180deg, #f8fafc 0%, #e2e8f0 88%, #cbd5e1 100%)';
+const WHITE_KEY_PRESSED_BG = 'linear-gradient(180deg, #38bdf8 0%, #bfdbfe 100%)';
+const BLACK_KEY_BG = 'linear-gradient(180deg, #334155 0%, #1e293b 72%, #020617 100%)';
+const BLACK_KEY_PRESSED_BG = 'linear-gradient(180deg, #38bdf8 0%, #0369a1 100%)';
+
 interface PopupProps {
   title: string;
   onClose: () => void;
@@ -74,17 +76,17 @@ function Popup({ title, onClose, children, widthClass = 'max-w-md' }: PopupProps
       <div
         role="dialog"
         aria-modal="true"
-        className={`flex max-h-[92vh] w-full ${widthClass} flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#1a1c21] shadow-2xl`}
+        className={`flex max-h-[92vh] w-full ${widthClass} flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl`}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-2.5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">{title}</h3>
+        <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-color)] px-4 py-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)]">{title}</h3>
           <button
             type="button"
             onClick={onClose}
             aria-label={tr('Fechar')}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-[#121316] text-slate-400 transition hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-muted)] transition hover:text-[var(--text-main)]"
           >
-            <X size={16} />
+            <X size={20} />
           </button>
         </div>
         <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">{children}</div>
@@ -96,9 +98,9 @@ function Popup({ title, onClose, children, widthClass = 'max-w-md' }: PopupProps
 export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   startOctave,
   isConnected, selectedChannel, onSelectChannel, onNoteOn, onNoteOff, onDisabledPress,
-  customWhiteKeyColor, customBlackKeyColor, onActiveNotesChange,
+  onActiveNotesChange,
   isActive, isSustainActive, onToggleSustain,
-  selectedVelocity, onSelectVelocity, selectedPaletteId, onSelectPalette,
+  selectedVelocity, onSelectVelocity,
   onPitchBend, onModWheel, isFullscreen, onToggleFullscreen
 }, ref) => {
   const [keyWidth, setKeyWidth] = useState(MIN_KEY_WIDTH);
@@ -270,12 +272,12 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
               className="relative z-10 flex h-full shrink-0 cursor-pointer flex-col items-center justify-end rounded-b-lg border transition-[filter,transform,box-shadow] duration-75 select-none"
               style={{
                 width: `${keyWidth}px`,
-                background: isPressed ? `linear-gradient(180deg, ${customWhiteKeyColor} 0%, #bfdbfe 100%)` : `linear-gradient(180deg, #f8fafc 0%, #e2e8f0 88%, #cbd5e1 100%)`,
+                background: isPressed ? WHITE_KEY_PRESSED_BG : WHITE_KEY_BG,
                 borderColor: isPressed ? '#22d3ee' : 'rgba(100,116,139,0.75)',
-                boxShadow: isPressed ? 'inset 0 3px 9px rgba(26,28,33,0.22), 0 0 12px rgba(34,211,238,0.28)' : '0 4px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.9)',
+                boxShadow: isPressed ? 'inset 0 3px 9px rgba(15,23,42,0.22), 0 0 12px rgba(34,211,238,0.28)' : '0 4px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.9)',
                 transform: isPressed ? 'translateY(2px)' : 'translateY(0)', touchAction: 'none', opacity: keyOpacity,
               }}>
-              <span className="mb-4 rounded px-1 text-[10px] font-bold select-none" style={{ color: isPressed ? '#075985' : '#64748b', background: isPressed ? 'rgba(255,255,255,0.45)' : 'transparent' }}>{noteLabel}</span>
+              <span className="mb-4 rounded px-1 text-xs font-bold select-none" style={{ color: isPressed ? '#075985' : '#64748b', background: isPressed ? 'rgba(255,255,255,0.45)' : 'transparent' }}>{noteLabel}</span>
             </div>
           );
         } else {
@@ -286,12 +288,12 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
               className="absolute top-0 z-30 flex h-[62%] cursor-pointer flex-col items-center justify-end rounded-b-sm border select-none"
               style={{
                 width: `${blackWidth}px`, left: `${left}px`,
-                background: isPressed ? 'linear-gradient(180deg, #38bdf8 0%, #0369a1 100%)' : `linear-gradient(180deg, #3a3e47 0%, #23262d 72%, #0e0f12 100%)`,
-                borderColor: isPressed ? '#67e8f9' : '#0e0f12',
+                background: isPressed ? BLACK_KEY_PRESSED_BG : BLACK_KEY_BG,
+                borderColor: isPressed ? '#67e8f9' : '#020617',
                 boxShadow: isPressed ? '0 0 12px rgba(34,211,238,0.55), inset 0 0 5px rgba(255,255,255,0.25)' : '0 3px 4px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.1)',
                 transform: isPressed ? 'translateY(2px)' : 'translateY(0)', touchAction: 'none', opacity: keyOpacity,
               }}>
-              <span className="mb-4 text-[9px] font-bold select-none" style={{ color: isPressed ? '#ecfeff' : '#cbd5e1' }}>{noteDef.name}</span>
+              <span className="mb-4 text-[11px] font-bold select-none" style={{ color: isPressed ? '#ecfeff' : '#cbd5e1' }}>{noteDef.name}</span>
             </div>
           );
         }
@@ -303,7 +305,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   const keyboardWidth = TOTAL_WHITE_KEYS * keyWidth;
 
   return (
-    <section className="nexus-midi-keyboard flex min-h-0 min-w-0 w-full flex-1 flex-col gap-1 rounded-2xl border p-1 sm:p-1.5 relative" style={{ background: 'linear-gradient(145deg, rgba(17,24,39,0.98), rgba(8,13,25,0.99))', borderColor: 'rgba(148,163,184,0.16)', boxShadow: '0 18px 50px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.035)' }}>
+    <section className="nexus-midi-keyboard flex min-h-0 min-w-0 w-full flex-1 flex-col gap-1 rounded-2xl border p-1 sm:p-1.5 relative" style={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', boxShadow: '0 18px 50px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.035)' }}>
       
       {isFullscreen && (
         <>
@@ -317,19 +319,19 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
               <Menu size={20} />
             </button>
             {isFullscreenMenuOpen && (
-              <div className="absolute top-full left-0 mt-2 bg-[#1a1c21]/95 backdrop-blur-md border border-slate-700 rounded-xl p-3 flex flex-col gap-2 min-w-[160px] shadow-2xl">
-                <button onClick={() => { onToggleSustain(); setIsFullscreenMenuOpen(false); }} className={`flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs font-bold ${isSustainActive ? 'bg-cyan-900/50 text-cyan-400' : 'text-slate-300 hover:bg-slate-800'}`}>
+              <div className="absolute top-full left-0 mt-2 bg-[var(--bg-panel)] border border-[var(--border-color)] rounded-xl p-3 flex flex-col gap-2 min-w-[180px] shadow-2xl">
+                <button onClick={() => { onToggleSustain(); setIsFullscreenMenuOpen(false); }} className={`flex items-center justify-between w-full px-3 py-3 rounded-lg text-sm font-bold ${isSustainActive ? 'bg-cyan-900/50 text-cyan-500' : 'text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'}`}>
                   <span>Sustain</span>
                   <span className={`w-2 h-2 rounded-full ${isSustainActive ? 'bg-cyan-400' : 'bg-slate-600'}`} />
                 </button>
-                <button onClick={() => { setIsChannelOpen(true); setIsFullscreenMenuOpen(false); }} className="flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800">
+                <button onClick={() => { setIsChannelOpen(true); setIsFullscreenMenuOpen(false); }} className="flex items-center justify-between w-full px-3 py-3 rounded-lg text-sm font-bold text-[var(--text-main)] hover:bg-[var(--bg-elevated)]">
                   <span>Canal</span>
-                  <span className="font-mono text-cyan-400">{String(selectedChannel).padStart(2, '0')}</span>
+                  <span className="font-mono text-cyan-500">{String(selectedChannel).padStart(2, '0')}</span>
                 </button>
-                <button onClick={() => { setIsQuickSettingsOpen(true); setIsFullscreenMenuOpen(false); }} className="flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800">
+                <button onClick={() => { setIsQuickSettingsOpen(true); setIsFullscreenMenuOpen(false); }} className="flex items-center justify-between w-full px-3 py-3 rounded-lg text-sm font-bold text-[var(--text-main)] hover:bg-[var(--bg-elevated)]">
                   <span>Configurações</span>
                 </button>
-                <button className="flex items-center justify-between w-full px-3 py-2 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800">
+                <button className="flex items-center justify-between w-full px-3 py-3 rounded-lg text-sm font-bold text-[var(--text-main)] hover:bg-[var(--bg-elevated)]">
                   <span>Escala</span>
                 </button>
               </div>
@@ -349,7 +351,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
                   key={ch}
                   type="button"
                   onClick={() => { onSelectChannel(ch); setIsChannelOpen(false); }}
-                  className={`h-10 rounded-lg border font-mono text-sm transition-colors ${selected ? 'border-cyan-600/60 bg-cyan-900/50 font-bold text-cyan-300' : 'border-slate-800 bg-[#121316] text-slate-300 hover:bg-slate-800'}`}
+                  className={`h-12 rounded-lg border font-mono text-sm transition-colors ${selected ? 'border-cyan-600/60 bg-cyan-900/50 font-bold text-cyan-500' : 'border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'}`}
                 >
                   {String(ch).padStart(2, '0')}
                 </button>
@@ -364,37 +366,33 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-4">
               <div>
-                <label className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400"><Activity size={12} /> {tr('Intensidade (Velocity)')}</label>
+                <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase text-[var(--text-muted)]"><Activity size={14} /> {tr('Intensidade (Velocity)')}</label>
                 <div className="grid grid-cols-4 gap-2">
                   {[{ id: 30, label: tr('Suave') }, { id: 64, label: tr('Médio') }, { id: 100, label: tr('Forte') }, { id: 127, label: tr('Máx.') }].map((v) => (
-                    <button type="button" key={v.id} onClick={() => onSelectVelocity(v.id)} className={`flex flex-col items-center justify-center py-2 rounded-lg border transition-all ${selectedVelocity === v.id ? 'bg-cyan-900/40 border-cyan-600/50 text-cyan-300 font-bold shadow-[0_0_10px_rgba(8,145,178,0.2)]' : 'bg-[#121316] border-slate-800 text-slate-500 hover:bg-slate-800'}`}>
-                      <span className="text-[10px] font-semibold">{v.label}</span><span className="text-[9px] font-mono opacity-80">{v.id}</span>
+                    <button type="button" key={v.id} onClick={() => onSelectVelocity(v.id)} className={`flex flex-col items-center justify-center py-3 rounded-lg border transition-all ${selectedVelocity === v.id ? 'bg-cyan-900/40 border-cyan-600/50 text-cyan-500 font-bold shadow-[0_0_10px_rgba(8,145,178,0.2)]' : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
+                      <span className="text-xs font-semibold">{v.label}</span><span className="text-[11px] font-mono opacity-80">{v.id}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase text-slate-400">{tr('Cores do Teclado')}</label>
-                <div className="grid grid-cols-5 gap-2">
-                  {KEYBOARD_PALETTES.map((pal) => (
-                    <button type="button" key={pal.id} onClick={() => onSelectPalette(pal.id)} title={tr(pal.name)} className={`relative h-9 w-full rounded-lg overflow-hidden border-2 transition-all ${selectedPaletteId === pal.id ? 'border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.3)]' : 'border-[#2e323b] hover:border-slate-500'}`}>
-                      <div className="absolute inset-0 flex"><div className="w-2/3 h-full" style={{ backgroundColor: pal.white }} /><div className="w-1/3 h-full" style={{ backgroundColor: pal.black }} /></div>
-                    </button>
-                  ))}
+                <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase text-[var(--text-muted)]">{tr('Cores do Teclado')}</label>
+                <div className="flex h-12 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-xs text-[var(--text-muted)]">
+                  Cor Oficial Padrão (Off-white / Grafite)
                 </div>
               </div>
             </div>
 
             <div className="flex flex-col gap-4">
               <div>
-                <label className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase text-slate-400"><span>{tr('Zoom do Teclado')}</span><span className="font-mono text-cyan-300">{keyWidth}px</span></label>
-                <input type="range" min={minKeyWidth} max={MAX_KEY_WIDTH} value={keyWidth} onChange={(e) => setKeyWidth(Number(e.target.value))} className="h-1.5 w-full cursor-pointer accent-cyan-400" />
+                <label className="mb-2 flex items-center justify-between text-xs font-bold uppercase text-[var(--text-muted)]"><span>{tr('Zoom do Teclado')}</span><span className="font-mono text-cyan-500">{keyWidth}px</span></label>
+                <input type="range" min={minKeyWidth} max={MAX_KEY_WIDTH} value={keyWidth} onChange={(e) => setKeyWidth(Number(e.target.value))} className="h-2 w-full cursor-pointer accent-cyan-500" />
               </div>
 
-              <button type="button" onClick={() => setIsScrollLocked(!isScrollLocked)} className={`flex w-full items-center justify-between rounded-lg border p-2.5 transition-colors ${isScrollLocked ? 'bg-amber-900/20 border-amber-700/50 text-amber-400' : 'bg-[#121316] border-slate-800 text-slate-400'}`}>
-                <span className="flex items-center gap-2 text-xs font-bold">{isScrollLocked ? <Maximize size={14} /> : <MoveHorizontal size={14} />} {tr('Travar Rolagem')}</span>
-                <div className={`relative h-4 w-8 rounded-full transition-colors ${isScrollLocked ? 'bg-amber-500' : 'bg-slate-700'}`}><div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${isScrollLocked ? 'left-4' : 'left-0.5'}`} /></div>
+              <button type="button" onClick={() => setIsScrollLocked(!isScrollLocked)} className={`flex w-full items-center justify-between rounded-lg border p-3 transition-colors ${isScrollLocked ? 'bg-amber-900/20 border-amber-700/50 text-amber-500' : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)]'}`}>
+                <span className="flex items-center gap-2 text-sm font-bold">{isScrollLocked ? <Maximize size={16} /> : <MoveHorizontal size={16} />} {tr('Travar Rolagem')}</span>
+                <div className={`relative h-5 w-9 rounded-full transition-colors ${isScrollLocked ? 'bg-amber-500' : 'bg-slate-700'}`}><div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${isScrollLocked ? 'left-4.5' : 'left-0.5'}`} /></div>
               </button>
             </div>
           </div>
@@ -402,59 +400,59 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
       )}
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-row gap-1">
-        <div className="relative flex w-10 shrink-0 flex-col justify-between gap-1 rounded-xl border border-[#2e323b] bg-[#1a1c21] p-1">
+        <div className="relative flex w-12 shrink-0 flex-col justify-between gap-1 rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-1">
           <div className="relative flex w-full flex-1 flex-col items-center">
-            <span className="absolute top-0 z-10 text-[7px] font-bold text-slate-500">PB</span>
-            <div className="relative my-auto h-[80%] w-2.5 rounded-full border border-[#2e323b] bg-[#0e0f12] shadow-inner">
+            <span className="absolute top-0 z-10 text-[9px] font-bold text-[var(--text-muted)]">PB</span>
+            <div className="relative my-auto h-[80%] w-3 rounded-full border border-[var(--border-color)] bg-[var(--bg-app)] shadow-inner">
               <div className="absolute top-1/2 left-0 right-0 z-10 h-px bg-slate-600" />
-              <div className="absolute top-1/2 left-0 right-0 h-1/2 bg-cyan-600/50 opacity-50" style={{ bottom: '50%' }} />
-              <div className="absolute left-1/2 z-30 h-4 w-6 -translate-x-1/2 rounded-sm bg-gradient-to-b from-gray-300 via-gray-400 to-gray-600 border border-gray-500 shadow-[0_2px_5px_rgba(0,0,0,0.8)]"
-                    style={{ bottom: `calc(${(pbValue / 16383) * 100}% - 8px)` }} />
+              <div className="absolute top-1/2 left-0 right-0 h-1/2 bg-fuchsia-600/50 opacity-50" style={{ bottom: '50%' }} />
+              <div className="absolute left-1/2 z-30 h-5 w-8 -translate-x-1/2 rounded-sm bg-gradient-to-b from-gray-300 via-gray-400 to-gray-600 border border-gray-500 shadow-[0_2px_5px_rgba(0,0,0,0.8)]"
+                   style={{ bottom: `calc(${(pbValue / 16383) * 100}% - 10px)` }} />
             </div>
             <input
               type="range" min="0" max="16383" value={pbValue}
               onChange={(e) => { const val = Number(e.target.value); setPbValue(val); onPitchBend(val); }}
               onPointerUp={() => { setPbValue(8192); onPitchBend(8192); }}
-              className="absolute top-4 bottom-4 z-40 h-full w-8 cursor-ns-resize opacity-0"
+              className="absolute top-4 bottom-4 z-40 h-full w-full cursor-ns-resize opacity-0"
               style={{ WebkitAppearance: 'slider-vertical', writingMode: 'vertical-lr', direction: 'rtl' }}
             />
           </div>
           <div className="relative flex w-full flex-1 flex-col items-center">
-            <span className="absolute top-0 z-10 text-[7px] font-bold text-slate-500">MOD</span>
-            <div className="relative my-auto h-[80%] w-2.5 rounded-full border border-[#2e323b] bg-[#0e0f12] shadow-inner">
+            <span className="absolute top-0 z-10 text-[9px] font-bold text-[var(--text-muted)]">MOD</span>
+            <div className="relative my-auto h-[80%] w-3 rounded-full border border-[var(--border-color)] bg-[var(--bg-app)] shadow-inner">
               <div className="absolute bottom-0 left-0 right-0 z-10 bg-cyan-500/50" style={{ height: `${(modValue / 127) * 100}%` }} />
-              <div className="absolute left-1/2 z-30 h-4 w-6 -translate-x-1/2 rounded-sm bg-gradient-to-b from-gray-300 via-gray-400 to-gray-600 border border-gray-500 shadow-[0_2px_5px_rgba(0,0,0,0.8)]"
-                    style={{ bottom: `calc(${(modValue / 127) * 100}% - 8px)` }} />
+              <div className="absolute left-1/2 z-30 h-5 w-8 -translate-x-1/2 rounded-sm bg-gradient-to-b from-gray-300 via-gray-400 to-gray-600 border border-gray-500 shadow-[0_2px_5px_rgba(0,0,0,0.8)]"
+                   style={{ bottom: `calc(${(modValue / 127) * 100}% - 10px)` }} />
             </div>
             <input
               type="range" min="0" max="127" value={modValue}
               onChange={(e) => { const val = Number(e.target.value); setModValue(val); onModWheel(val); }}
-              className="absolute top-4 bottom-4 z-40 h-full w-8 cursor-ns-resize opacity-0"
+              className="absolute top-4 bottom-4 z-40 h-full w-full cursor-ns-resize opacity-0"
               style={{ WebkitAppearance: 'slider-vertical', writingMode: 'vertical-lr', direction: 'rtl' }}
             />
           </div>
         </div>
 
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <div ref={containerRef} className="relative flex min-w-0 flex-1 overflow-hidden rounded-xl border border-[#2e323b]">
+          <div ref={containerRef} className="relative flex min-w-0 flex-1 overflow-hidden rounded-xl border border-[var(--border-color)]">
             {!isScrollLocked && (
-              <button type="button" aria-label={tr('Rolar para a esquerda')} disabled={!canScrollLeft} onClick={() => scrollKeyboard('left')} className="flex w-10 shrink-0 items-center justify-center border-r border-[#2e323b] bg-[#1a1c21] text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:opacity-20 disabled:hover:bg-[#1a1c21]">
-                <ChevronLeft size={24} />
+              <button type="button" aria-label={tr('Rolar para a esquerda')} disabled={!canScrollLeft} onClick={() => scrollKeyboard('left')} className="flex w-12 shrink-0 items-center justify-center border-r border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] transition hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] disabled:opacity-20 disabled:hover:bg-[var(--bg-panel)]">
+                <ChevronLeft size={28} />
               </button>
             )}
             <div
               ref={scrollViewportRef}
               onScroll={updateScrollState}
               className={`nexus-midi-viewport relative z-0 min-w-0 flex-1 ${isScrollLocked ? 'overflow-hidden' : 'overflow-x-auto overflow-y-hidden'}`}
-              style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(35,38,45,0.72), rgba(14,15,18,0.98) 78%)', touchAction: isScrollLocked ? 'none' : 'pan-x', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+              style={{ background: 'var(--bg-app)', touchAction: isScrollLocked ? 'none' : 'pan-x', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
             >
               <div className="relative flex h-full items-stretch p-0.5" style={{ width: `${keyboardWidth}px`, minWidth: `${keyboardWidth}px`, marginInline: isScrollLocked ? 'auto' : undefined }}>
                 {renderKeys()}
               </div>
             </div>
             {!isScrollLocked && (
-              <button type="button" aria-label={tr('Rolar para a direita')} disabled={!canScrollRight} onClick={() => scrollKeyboard('right')} className="flex w-10 shrink-0 items-center justify-center border-l border-[#2e323b] bg-[#1a1c21] text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:opacity-20 disabled:hover:bg-[#1a1c21]">
-                <ChevronRight size={24} />
+              <button type="button" aria-label={tr('Rolar para a direita')} disabled={!canScrollRight} onClick={() => scrollKeyboard('right')} className="flex w-12 shrink-0 items-center justify-center border-l border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] transition hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] disabled:opacity-20 disabled:hover:bg-[var(--bg-panel)]">
+                <ChevronRight size={28} />
               </button>
             )}
           </div>
