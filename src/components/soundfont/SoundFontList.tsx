@@ -7,19 +7,12 @@ import type { SoundFontPreset } from '../../types/soundfont';
 interface SoundFontListProps {
   soundFonts: SoundFontPreset[];
   activeChannel: number;
-  onSelectChannel: (ch: number) => void;
   channelAssignments: Record<number, number>;
   onAssignProgram: (preset: SoundFontPreset) => void;
-  // NOVOS CONTROLES DE MIXAGEM
-  mutedChannels: Record<number, boolean>;
-  soloedChannel: number | null;
-  onToggleMute: (ch: number) => void;
-  onToggleSolo: (ch: number) => void;
 }
 
 export function SoundFontList({
-  soundFonts, activeChannel, onSelectChannel, channelAssignments, onAssignProgram,
-  mutedChannels, soloedChannel, onToggleMute, onToggleSolo
+  soundFonts, activeChannel, channelAssignments, onAssignProgram,
 }: SoundFontListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
@@ -45,45 +38,6 @@ export function SoundFontList({
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full w-full overflow-hidden">
       
-      {/* MIXER DE CANAIS (Mute e Solo) */}
-      <div className="flex items-center gap-2 pb-2 shrink-0 overflow-x-auto no-scrollbar border-b border-[#1e293b] mb-2">
-        {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16].map(ch => {
-          const isMuted = mutedChannels[ch];
-          const isSoloed = soloedChannel === ch;
-          const isActive = activeChannel === ch;
-          
-          return (
-            <div key={ch} className={`flex flex-col items-center p-1 rounded-lg border transition-colors ${isActive ? 'bg-slate-800 border-cyan-600/50' : 'bg-[#0a0f1c] border-[#1e293b]'}`}>
-              <button 
-                type="button"
-                onClick={() => onSelectChannel(ch)} 
-                className={`w-7 h-6 rounded font-mono text-xs font-bold mb-1 transition-colors ${isActive ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-700'}`}
-              >
-                {ch}
-              </button>
-              <div className="flex gap-1">
-                <button 
-                  type="button"
-                  onClick={() => onToggleMute(ch)} 
-                  title={tr('Mute')}
-                  className={`w-4 h-4 rounded flex items-center justify-center text-[8px] font-bold ${isMuted ? 'bg-rose-600 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
-                >
-                  M
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => onToggleSolo(ch)} 
-                  title={tr('Solo')}
-                  className={`w-4 h-4 rounded flex items-center justify-center text-[8px] font-bold ${isSoloed ? 'bg-amber-500 text-white' : 'bg-[#1e293b] text-slate-500 hover:bg-slate-700'}`}
-                >
-                  S
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       <div className="flex flex-col gap-1.5 pb-2 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="relative flex-1 min-w-0">
