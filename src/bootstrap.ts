@@ -16,7 +16,7 @@ export function startAppServices(): void {
   const applyAll = (): void => {
     const settings = synthSettingsStore.get();
     const channels = channelsStore.get();
-    synthService.setChannelPrograms(channels.assignments);
+    synthService.setChannelPrograms(channels.assignments, channels.banks);
     synthService.applySettings(settings);
     synthService.applyMix(settings.volume, channels.muted, channels.solo);
   };

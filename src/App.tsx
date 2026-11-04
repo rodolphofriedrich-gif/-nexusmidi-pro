@@ -9,6 +9,7 @@ import { ConnectionMenu } from './components/ConnectionMenu';
 import { ExitDialog } from './components/ExitDialog';
 import { MidiKeyboard, MidiKeyboardHandle } from './components/MidiKeyboard';
 import { MidiMonitorScreen } from './components/MidiMonitorScreen';
+import { useAppFullscreen } from './hooks/useAppFullscreen';
 import { MidiPadGrid } from './components/MidiPadGrid';
 import { MidiRouterScreen } from './components/MidiRouterScreen';
 import { MidiStatusBar } from './components/MidiStatusBar';
@@ -30,10 +31,10 @@ type AppTab = 'keyboard' | 'pads' | 'router' | 'studio' | 'monitor';
 
 const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string; color: string }> = [
   { id: 'keyboard', Icon: Music2, label: 'Teclado', color: 'text-cyan-400' },
-  { id: 'pads', Icon: LayoutGrid, label: 'PADS', color: 'text-indigo-400' },
-  { id: 'router', Icon: GitBranch, label: 'Roteador', color: 'text-emerald-400' },
-  { id: 'studio', Icon: AudioWaveform, label: 'Estúdio', color: 'text-amber-400' },
-  { id: 'monitor', Icon: Activity, label: 'Monitor', color: 'text-fuchsia-400' },
+  { id: 'pads', Icon: LayoutGrid, label: 'PADS', color: 'text-cyan-400' },
+  { id: 'router', Icon: GitBranch, label: 'Roteador', color: 'text-cyan-400' },
+  { id: 'studio', Icon: AudioWaveform, label: 'Estúdio', color: 'text-cyan-400' },
+  { id: 'monitor', Icon: Activity, label: 'Monitor', color: 'text-cyan-400' },
 ];
 
 export default function App() {
@@ -51,7 +52,7 @@ export default function App() {
   const [activeNotes, setActiveNotes] = useState(0);
   const [keyboardEnabled, setKeyboardEnabled] = useState(true);
   const [sustain, setSustain] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const { isFullscreen, exit: exitFullscreen, toggle: toggleFullscreen } = useAppFullscreen();
   
   const [startOctave, setStartOctave] = useState(3);
   const [padBank, setPadBank] = useState(0);
@@ -70,13 +71,13 @@ export default function App() {
     const handleBack = () => {
       if (isSidebarOpen) { setIsSidebarOpen(false); return; }
       if (openMenu) { setOpenMenu(null); return; }
-      if (isFullscreen) { setIsFullscreen(false); return; }
+      if (isFullscreen) { exitFullscreen(); return; }
       if (showExit) { setShowExit(false); return; }
       setShowExit(true);
     };
     CapApp.addListener('backButton', handleBack).then(l => { backListener = l; });
     return () => { if (backListener) backListener.remove(); };
-  }, [isSidebarOpen, openMenu, isFullscreen, showExit]);
+  }, [isSidebarOpen, openMenu, isFullscreen, exitFullscreen, showExit]);
 
   useEffect(() => {
     document.documentElement.lang = prefs.language;
@@ -158,7 +159,7 @@ export default function App() {
     window.dispatchEvent(new Event('resetMixer'));
   };
 
-  const btnClass = "flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#1e293b] bg-[#0f172a] text-slate-400 transition-all hover:bg-slate-800 hover:text-slate-200 active:scale-95 px-2.5 text-[10px] font-bold";
+  const btnClass = "flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#2e323b] bg-[#1a1c21] text-slate-400 transition-all hover:bg-slate-800 hover:text-slate-200 active:scale-95 px-2.5 text-[10px] font-bold";
   const btnActiveClass = "border-cyan-700/50 bg-cyan-900/30 text-cyan-400 shadow-[0_0_10px_rgba(8,145,178,0.2)]";
 
   return (
@@ -169,8 +170,8 @@ export default function App() {
       )}
 
       {!isFullscreen && (
-        <aside className={`fixed inset-y-0 left-0 z-[100] flex w-64 flex-col border-r border-[#1e293b] bg-[#0a0f1c] transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="flex h-12 items-center justify-between px-4 border-b border-[#1e293b] shrink-0">
+        <aside className={`fixed inset-y-0 left-0 z-[100] flex w-64 flex-col border-r border-[#2e323b] bg-[#121316] transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="flex h-12 items-center justify-between px-4 border-b border-[#2e323b] shrink-0">
             <span className="text-sm font-extrabold tracking-wider text-slate-200">
               NEXUSMIDI <span className="text-cyan-400">Pro</span>
             </span>
@@ -197,7 +198,7 @@ export default function App() {
               })}
             </div>
 
-            <div className="h-px w-full bg-[#1e293b]" />
+            <div className="h-px w-full bg-[#23262d]" />
 
             <div className="flex flex-col gap-2">
               <span className="text-[10px] font-bold uppercase text-slate-500 px-3">Conexões</span>
@@ -206,7 +207,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="p-3 border-t border-[#1e293b] shrink-0 grid grid-cols-2 gap-2">
+          <div className="p-3 border-t border-[#2e323b] shrink-0 grid grid-cols-2 gap-2">
             <button type="button" onClick={() => prefsStore.set({ language: prefs.language === 'pt-BR' ? 'en' : 'pt-BR' })} className="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-slate-400 bg-slate-800/50 hover:bg-slate-800 transition-colors">
               <Globe size={16} />
               <span className="text-xs font-bold">{tr('Idioma')}</span>
@@ -221,7 +222,7 @@ export default function App() {
 
       <div className="flex h-full flex-1 flex-col overflow-hidden">
         {!isFullscreen && (
-          <header className="relative z-[80] flex h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-[#1e293b] bg-[#0a0f1c] px-2 pt-[env(safe-area-inset-top)] sm:px-3">
+          <header className="relative z-[80] flex h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-[#2e323b] bg-[#121316] px-2 pt-[env(safe-area-inset-top)] sm:px-3">
             
             <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
               <button type="button" onClick={() => setIsSidebarOpen(true)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors" title={tr('Menu')}>
@@ -237,13 +238,13 @@ export default function App() {
 
                   <div className="flex shrink-0 items-center gap-1">
                     <button type="button" disabled={startOctave <= 1} onClick={() => setStartOctave(v => Math.max(1, v - 1))} className={`${btnClass} w-8 text-lg`}>−</button>
-                    <div className="flex h-8 min-w-[44px] items-center justify-center rounded-lg border border-[#1e293b] bg-[#0a0f1c] px-2 font-mono text-xs font-bold text-cyan-300">C{startOctave}</div>
+                    <div className="flex h-8 min-w-[44px] items-center justify-center rounded-lg border border-[#2e323b] bg-[#121316] px-2 font-mono text-xs font-bold text-cyan-300">C{startOctave}</div>
                     <button type="button" disabled={startOctave >= 6} onClick={() => setStartOctave(v => Math.min(6, v + 1))} className={`${btnClass} w-8 text-lg`}>+</button>
                   </div>
                   <button type="button" onClick={handleToggleSustain} className={`${btnClass} ${sustain ? btnActiveClass : ''} hidden sm:flex`}><Pause size={14} /> SUSTAIN</button>
 
                   <button type="button" onClick={() => { setKeyboardEnabled(!keyboardEnabled); showMessage(!keyboardEnabled ? tr('Teclado Virtual Ligado') : tr('Teclado Virtual Desligado'), 'info', 1500); }} className={`${btnClass} ${keyboardEnabled ? btnActiveClass : ''} hidden md:flex`}><Power size={14} /><span className="hidden lg:inline">{keyboardEnabled ? 'ON' : 'OFF'}</span></button>
-                  <button type="button" onClick={() => setIsFullscreen(!isFullscreen)} className={`${btnClass} ${isFullscreen ? 'bg-amber-600 border-amber-500 text-white' : ''} w-8 hidden md:flex`}>{isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}</button>
+                  <button type="button" onClick={toggleFullscreen} className={`${btnClass} ${isFullscreen ? 'bg-cyan-600 border-cyan-500 text-white' : ''} w-8 hidden md:flex`}>{isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}</button>
 
                   <div className="h-6 w-px bg-slate-700 shrink-0 hidden sm:block mx-1" />
 
@@ -261,28 +262,37 @@ export default function App() {
               {/* CONTROLES DO PADS */}
               {activeTab === 'pads' && (
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-indigo-400 mr-2 px-1 shrink-0 hidden sm:block">
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mr-2 px-1 shrink-0 hidden sm:block">
                     {tr('PADS')}
                   </h2>
-                  <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[#1e293b] bg-[#0a0f1c] p-0.5">
+                  <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[#2e323b] bg-[#121316] p-0.5">
                     {[0, 1, 2, 3].map((b) => (
-                      <button key={b} type="button" onClick={() => setPadBank(b)} className={`h-7 whitespace-nowrap rounded-md px-3 text-[10px] font-bold transition-colors ${padBank === b ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}>{tr('BANCO {n}', { n: b + 1 })}</button>
+                      <button key={b} type="button" onClick={() => setPadBank(b)} className={`h-7 whitespace-nowrap rounded-md px-3 text-[10px] font-bold transition-colors ${padBank === b ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}>{tr('BANCO {n}', { n: b + 1 })}</button>
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    onClick={toggleFullscreen}
+                    aria-label={tr('Tela cheia')}
+                    title={tr('Tela cheia')}
+                    className={`${btnClass} w-9`}
+                  >
+                    <Maximize size={15} />
+                  </button>
                 </div>
               )}
 
               {/* CONTROLES DO ROTEADOR */}
               {activeTab === 'router' && (
                 <div className="flex items-center gap-3">
-                  <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400 shrink-0 hidden sm:flex">
+                  <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400 shrink-0 hidden sm:flex">
                     <GitBranch size={16} /> {tr('Roteador MIDI Matriz')}
                   </h2>
                   <div className="flex items-center gap-2 shrink-0">
                     <button type="button" aria-label={tr('Atualizar lista')} onClick={() => void handleRefreshRouter()} disabled={isRouterRefreshing} className={`${btnClass} w-8`}>
                       <RefreshCw size={14} className={isRouterRefreshing ? 'animate-spin' : ''} />
                     </button>
-                    <button type="button" onClick={addNewRoute} className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-emerald-900/50 transition hover:bg-emerald-500">
+                    <button type="button" onClick={addNewRoute} className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-black/40 transition hover:bg-cyan-500">
                       <Plus size={16} /> <span className="hidden sm:inline">{tr('Nova Rota')}</span>
                     </button>
                   </div>
@@ -292,11 +302,11 @@ export default function App() {
               {/* CONTROLES DO ESTÚDIO */}
               {activeTab === 'studio' && (
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400 mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button type="button" onClick={() => setStudioTab('synth')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'synth' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><AudioWaveform size={14} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
-                    <button type="button" onClick={() => setStudioTab('mixer')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'mixer' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><SlidersHorizontal size={14} /> <span className="hidden sm:inline">{tr('Mixer / CC')}</span></button>
-                    <button type="button" onClick={() => setStudioTab('tools')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'tools' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><Settings2 size={14} /> <span className="hidden sm:inline">{tr('Ferramentas')}</span></button>
+                    <button type="button" onClick={() => setStudioTab('synth')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'synth' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><AudioWaveform size={14} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
+                    <button type="button" onClick={() => setStudioTab('mixer')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'mixer' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><SlidersHorizontal size={14} /> <span className="hidden sm:inline">{tr('Mixer / CC')}</span></button>
+                    <button type="button" onClick={() => setStudioTab('tools')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${studioTab === 'tools' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}`}><Settings2 size={14} /> <span className="hidden sm:inline">{tr('Ferramentas')}</span></button>
                   </div>
                 </div>
               )}
@@ -304,26 +314,26 @@ export default function App() {
               {/* CONTROLES DO MONITOR */}
               {activeTab === 'monitor' && (
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-fuchsia-400 shrink-0 hidden sm:block">{tr('MIDI Monitor')}</h2>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-cyan-400 shrink-0 hidden sm:block">{tr('MIDI Monitor')}</h2>
                   <div className="flex items-center gap-2 shrink-0">
                     <div className="relative">
-                      <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} className="flex h-8 items-center gap-2 rounded-lg border border-slate-700 bg-[#0f172a] px-3 text-xs text-slate-300 hover:bg-slate-800">
+                      <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} className="flex h-8 items-center gap-2 rounded-lg border border-slate-700 bg-[#1a1c21] px-3 text-xs text-slate-300 hover:bg-slate-800">
                         {monitorFilter === 'all' ? tr('Todos') : monitorFilter === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')} <ChevronDown size={12} />
                       </button>
                       {isFilterOpen && (
-                        <div className="fixed top-[60px] left-[60px] z-[999] w-40 overflow-hidden rounded-lg border border-slate-700 bg-[#0f172a] shadow-2xl">
+                        <div className="fixed top-[60px] left-[60px] z-[999] w-40 overflow-hidden rounded-lg border border-slate-700 bg-[#1a1c21] shadow-2xl">
                           {(['all', 'RX', 'TX'] as const).map((f) => (
-                            <button type="button" key={f} onClick={() => { setMonitorFilter(f); setIsFilterOpen(false); }} className={`w-full px-3 py-2 text-left text-xs hover:bg-slate-800 ${monitorFilter === f ? 'font-bold text-fuchsia-400' : 'text-slate-300'}`}>
+                            <button type="button" key={f} onClick={() => { setMonitorFilter(f); setIsFilterOpen(false); }} className={`w-full px-3 py-2 text-left text-xs hover:bg-slate-800 ${monitorFilter === f ? 'font-bold text-cyan-400' : 'text-slate-300'}`}>
                               {f === 'all' ? tr('Todos') : f === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')}
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
-                    <button type="button" onClick={() => setMonitorPaused(!monitorPaused)} className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${monitorPaused ? 'border-amber-600/60 bg-amber-900/30 text-amber-400' : 'border-slate-700 bg-[#0f172a] text-slate-300 hover:bg-slate-800'}`}>
+                    <button type="button" onClick={() => setMonitorPaused(!monitorPaused)} className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${monitorPaused ? 'border-amber-600/60 bg-amber-900/30 text-amber-400' : 'border-slate-700 bg-[#1a1c21] text-slate-300 hover:bg-slate-800'}`}>
                       {monitorPaused ? <Play size={14} /> : <Pause size={14} />}
                     </button>
-                    <button type="button" onClick={() => { midiManager.clearLog(); setMonitorPaused(false); }} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-[#0f172a] text-slate-300 transition hover:bg-red-950/50 hover:text-red-400">
+                    <button type="button" onClick={() => { midiManager.clearLog(); setMonitorPaused(false); }} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-[#1a1c21] text-slate-300 transition hover:bg-red-950/50 hover:text-red-400">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -383,7 +393,7 @@ export default function App() {
                     onPitchBend={(val) => void midiManager.sendPitchBend(prefs.channel, val)}
                     onModWheel={(val) => void midiManager.sendControlChange(prefs.channel, 1, val)}
                     isFullscreen={isFullscreen}
-                    onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+                    onToggleFullscreen={toggleFullscreen}
                   />
                 </div>
                 {!isFullscreen && <div className="py-1"><VuMeter level={vuLevel} /></div>}
@@ -394,6 +404,30 @@ export default function App() {
 
           {activeTab === 'pads' && (
             <div className="nexus-pads-page flex min-h-0 w-full flex-1 flex-col gap-1 overflow-hidden p-1 pb-[env(safe-area-inset-bottom)] sm:p-1.5">
+              {isFullscreen && (
+                <div className="flex h-10 shrink-0 items-center justify-between gap-2 px-1">
+                  <div className="flex items-center gap-1 rounded-lg border border-[#2E323B] bg-[#121316] p-0.5">
+                    {[0, 1, 2, 3].map((b) => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setPadBank(b)}
+                        className={`h-8 min-w-10 whitespace-nowrap rounded-md px-3 text-xs font-bold transition-colors ${padBank === b ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                      >
+                        {b + 1}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={exitFullscreen}
+                    aria-label={tr('Sair da tela cheia')}
+                    className="flex h-8 items-center gap-1.5 rounded-lg border border-cyan-500 bg-cyan-600 px-3 text-xs font-bold text-white transition hover:bg-cyan-500 active:scale-95"
+                  >
+                    <Minimize size={14} /> {tr('Sair da tela cheia')}
+                  </button>
+                </div>
+              )}
               <div className="flex min-h-0 flex-1 flex-row gap-1">
                 {!isFullscreen && <div className="py-1"><VuMeter level={vuLevel} /></div>}
                 <div className="flex min-h-0 flex-1 flex-col">

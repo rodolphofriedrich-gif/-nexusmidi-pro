@@ -1,5 +1,5 @@
 export const KEYBOARD_PALETTES = [
-  { id: 'default', name: 'Padrão', white: '#ffffff', black: '#1e293b' },
+  { id: 'default', name: 'Padrão', white: '#ffffff', black: '#23262d' },
   { id: 'custom-blue', name: 'Azul', white: '#D6E6F7', black: '#0F3D73' },
   { id: 'silver-sapphire', name: 'Prata/Safira', white: '#D8DDE3', black: '#0F3D73' },
   { id: 'silver-burgundy-deep', name: 'Prata/Bordo', white: '#BFC5CA', black: '#5C0A1D' },
