@@ -17,6 +17,8 @@ export interface Prefs {
   velocityCurve: VelocityCurve;
   channel: number;
   language: Language;
+  theme: 'dark' | 'light' | 'system';
+  sustain: boolean;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -25,6 +27,8 @@ export const DEFAULT_PREFS: Prefs = {
   velocityCurve: 'linear',
   channel: 1,
   language: 'pt-BR',
+  theme: 'dark',
+  sustain: false,
 };
 
 export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
@@ -43,6 +47,8 @@ export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
     velocityCurve: CURVES.includes(p.velocityCurve) ? p.velocityCurve : 'linear',
     channel: clampInt(p.channel, 1, 16),
     language: p.language === 'en' ? 'en' : 'pt-BR',
+    theme: ['dark', 'light', 'system'].includes(p.theme) ? p.theme : 'dark',
+    sustain: Boolean(p.sustain),
   }),
 });
 
