@@ -1,37 +1,39 @@
 /* =========================================================
    NEXUSMIDI PRO — MIDNIGHT STUDIO
-   Tema global • Azul índigo • Ciano • Superfícies escuras
+   Tema global • Azul índigo (seleção) • Ciano (atividade MIDI)
    ========================================================= */
 
 :root {
   color-scheme: dark;
 
-  /* Superfícies: grafite neutro (como uma DAW), em 4 níveis */
-  --nexus-bg-top: #17191d;
-  --nexus-bg-bottom: #0e0f12;
-  --nexus-panel: #1a1c21;
-  --nexus-panel-raised: #23262d;
-  --nexus-panel-hover: #2a2d35;
+  /* Superfícies: azul-marinho → grafite azulado, em 4 níveis */
+  --nexus-bg-top: #0c1019;
+  --nexus-bg-bottom: #070a12;
+  --nexus-panel: #141a28;
+  --nexus-panel-raised: #1b2233;
+  --nexus-panel-hover: #222a3f;
 
-  /* Uma única cor de destaque: ciano */
-  --nexus-primary: #0891b2;
-  --nexus-primary-end: #0e7490;
+  /* Índigo = seleção / ação do usuário */
+  --nexus-primary: #6366f1;
+  --nexus-primary-end: #4f46e5;
+
+  /* Ciano = atividade MIDI (nota, pad, meter, TX) */
   --nexus-accent: #22d3ee;
 
-  --nexus-text: #e6e8ec;
-  --nexus-text-secondary: #9aa0ab;
-  --nexus-text-muted: #868c98;
+  --nexus-text: #e6eaf2;
+  --nexus-text-secondary: #97a2b8;
+  --nexus-text-muted: #6b7690;
 
   /* Cores de função (padrão das DAWs): só aparecem com significado */
   --nexus-success: #34d399;
   --nexus-success-end: #059669;
   --nexus-warning: #fbbf24; /* mute */
-  --nexus-danger: #ef4444; /* gravação / perigo */
-  --nexus-solo: #0ea5e9; /* solo */
+  --nexus-danger: #ef4444;  /* gravação / perigo */
+  --nexus-solo: #0ea5e9;    /* solo */
 
-  --nexus-border: rgba(255, 255, 255, 0.08);
-  --nexus-border-strong: rgba(255, 255, 255, 0.14);
-  --nexus-glass: rgba(255, 255, 255, 0.04);
+  --nexus-border: rgba(255, 255, 255, 0.06);
+  --nexus-border-strong: rgba(255, 255, 255, 0.1);
+  --nexus-glass: rgba(255, 255, 255, 0.03);
 
   /* Cantos menores: aparência de equipamento, não de app genérico */
   --nexus-radius-sm: 6px;
@@ -39,16 +41,19 @@
   --nexus-radius-lg: 10px;
   --nexus-radius-xl: 12px;
 
+  /* Sombra neutra para cards/painéis (profundidade suave, sem glow) */
   --nexus-shadow-card:
-    0 2px 10px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 2px 10px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 
   --nexus-shadow-float:
     0 18px 48px rgba(0, 0, 0, 0.55),
-    0 4px 12px rgba(0, 0, 0, 0.3);
+    0 4px 12px rgba(0, 0, 0, 0.35);
 
+  /* Reservado SOMENTE para estados ativos/selecionados */
   --nexus-shadow-primary:
-    0 2px 12px rgba(34, 211, 238, 0.18);
+    0 2px 10px rgba(99, 102, 241, 0.28);
 
   font-family:
     Inter,
@@ -66,63 +71,74 @@
 }
 
 /* =========================================================
-   LIGHT STUDIO (TEMA CLARO)
+   LIGHT STUDIO (TEMA CLARO) — acabamento alumínio
    ========================================================= */
 html.light {
   color-scheme: light;
 
-  --nexus-bg-top: #f8fafc;
-  --nexus-bg-bottom: #e2e8f0;
+  --nexus-bg-top: #eef1f5;
+  --nexus-bg-bottom: #e0e5ec;
   --nexus-panel: #ffffff;
-  --nexus-panel-raised: #f1f5f9;
-  --nexus-panel-hover: #e2e8f0;
+  --nexus-panel-raised: #f4f6fa;
+  --nexus-panel-hover: #e9ecf2;
 
-  --nexus-text: #0f172a;
-  --nexus-text-secondary: #475569;
-  --nexus-text-muted: #64748b;
+  /* Índigo mais profundo para contraste em fundo claro */
+  --nexus-primary: #4f46e5;
+  --nexus-primary-end: #4338ca;
 
-  --nexus-border: rgba(0, 0, 0, 0.08);
-  --nexus-border-strong: rgba(0, 0, 0, 0.15);
-  --nexus-glass: rgba(0, 0, 0, 0.03);
+  /* Azul-petróleo (ciano dessaturado) para atividade MIDI em claro */
+  --nexus-accent: #0891b2;
+
+  --nexus-text: #1a2030;
+  --nexus-text-secondary: #55617a;
+  --nexus-text-muted: #7a8599;
+
+  --nexus-border: rgba(15, 23, 42, 0.08);
+  --nexus-border-strong: rgba(15, 23, 42, 0.14);
+  --nexus-glass: rgba(15, 23, 42, 0.03);
 
   --nexus-shadow-card:
-    0 2px 10px rgba(0, 0, 0, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 2px 8px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 #ffffff;
 
   --nexus-shadow-float:
-    0 18px 48px rgba(0, 0, 0, 0.1),
-    0 4px 12px rgba(0, 0, 0, 0.05);
+    0 18px 48px rgba(15, 23, 42, 0.1),
+    0 4px 12px rgba(15, 23, 42, 0.06);
 
-  /* Substituição da escala slate do Tailwind para o modo claro */
-  --color-slate-50: #f8fafc;
-  --color-slate-100: #f1f5f9;
-  --color-slate-200: #e2e8f0;
-  --color-slate-300: #cbd5e1;
-  --color-slate-400: #94a3b8;
-  --color-slate-500: #64748b;
-  --color-slate-600: #475569;
-  --color-slate-700: #334155;
-  --color-slate-800: #1e293b;
-  --color-slate-900: #0f172a;
-  --color-slate-950: #020617;
+  --nexus-shadow-primary:
+    0 2px 10px rgba(79, 70, 229, 0.2);
+
+  /* Escala slate para o modo claro (alumínio) */
+  --color-slate-50: #f7f9fc;
+  --color-slate-100: #eef1f6;
+  --color-slate-200: #dde2ea;
+  --color-slate-300: #c4cbd8;
+  --color-slate-400: #97a1b4;
+  --color-slate-500: #6b7688;
+  --color-slate-600: #4e586b;
+  --color-slate-700: #384252;
+  --color-slate-800: #232b3a;
+  --color-slate-900: #141b28;
+  --color-slate-950: #0a0f18;
 }
 
-/* Breakpoint extra usado nas classes `xs:` (antes não existia e essas classes eram ignoradas). */
+/* Breakpoint extra usado nas classes `xs:` */
 @theme {
   --breakpoint-xs: 30rem;
 }
 
-/* Escala "slate" do Tailwind trocada por grafite neutro (padrão Dark): todas as classes slate-* do app seguem a paleta DAW. */
+/* Escala "slate" do Tailwind trocada por grafite azulado (padrão Dark) */
 @theme {
-  --color-slate-50: #f2f3f5;
-  --color-slate-100: #e6e8ec;
-  --color-slate-200: #d0d3da;
-  --color-slate-300: #b4b9c4;
-  --color-slate-400: #9aa0ab;
-  --color-slate-500: #868c98;
-  --color-slate-600: #565b66;
-  --color-slate-700: #3a3e47;
-  --color-slate-800: #2a2d35;
-  --color-slate-900: #1e2025;
-  --color-slate-950: #15171b;
+  --color-slate-50: #e8ebf2;
+  --color-slate-100: #d6dbe7;
+  --color-slate-200: #b9c1d4;
+  --color-slate-300: #98a2bb;
+  --color-slate-400: #7a85a2;
+  --color-slate-500: #5d6884;
+  --color-slate-600: #454f69;
+  --color-slate-700: #333c52;
+  --color-slate-800: #232a3d;
+  --color-slate-900: #171d2d;
+  --color-slate-950: #0e1320;
 }
