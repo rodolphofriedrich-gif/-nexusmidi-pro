@@ -60,7 +60,7 @@ button:disabled {
 
 ::selection {
   color: white;
-  background: rgba(34, 211, 238, 0.35);
+  background: rgba(99, 102, 241, 0.35);
 }
 
 /* Safe Area para Notch */
