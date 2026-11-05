@@ -483,7 +483,7 @@ export function SoundFontScreen({ onStatus }: Props) {
         </Popup>
       )}
 
-      {/* ============ POPUPS: EFEITOS / TIMBRE / SISTEMA ============ */}
+            {/* ============ POPUPS: EFEITOS / TIMBRE / SISTEMA ============ */}
       {(popupMode === 'effects' || popupMode === 'timbre' || popupMode === 'system') && (
         <Popup
           title={`${tr('Configurações')} • ${tr(popupMode === 'effects' ? 'EFEITOS' : popupMode === 'timbre' ? 'TIMBRE' : 'SISTEMA')} • CH ${String(configChannel).padStart(2, '0')}`}
@@ -504,7 +504,7 @@ export function SoundFontScreen({ onStatus }: Props) {
               settings={getChannelSettings(configChannel)}
               onUpdateSetting={updateConfigSetting}
               onReset={handleResetChannel}
-              {...({ defaultTab: popupMode } as any)}
+              defaultTab={popupMode === 'effects' ? 'fx' : popupMode === 'timbre' ? 'sound' : 'system'}
             />
           </div>
         </Popup>
