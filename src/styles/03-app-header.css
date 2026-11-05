@@ -9,24 +9,19 @@
   min-width: 0;
   overflow: hidden;
   color: var(--nexus-text);
-  background:
-    radial-gradient(
-      ellipse at 50% -20%,
-      rgba(34, 211, 238, 0.09),
-      transparent 58%
-    ),
-    linear-gradient(
-      180deg,
-      var(--nexus-bg-top),
-      var(--nexus-bg-bottom)
-    );
+  /* Sem glow ambiente — apenas o gradiente das superfícies */
+  background: linear-gradient(
+    180deg,
+    var(--nexus-bg-top),
+    var(--nexus-bg-bottom)
+  );
 }
 
 .nexus-header {
   gap: 12px;
-  background: rgba(10, 14, 26, 0.91);
+  background: rgba(20, 26, 40, 0.92);
   border-bottom: 1px solid var(--nexus-border);
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
@@ -46,7 +41,8 @@
     var(--nexus-primary),
     var(--nexus-primary-end)
   );
-  box-shadow: 0 4px 16px rgba(34, 211, 238, 0.22);
+  /* Sem glow permanente — profundidade neutra apenas */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .nexus-brand-name {
@@ -69,7 +65,7 @@
   padding: 4px;
   border: 1px solid var(--nexus-border);
   border-radius: 14px;
-  background: rgba(5, 7, 13, 0.7);
+  background: rgba(7, 10, 18, 0.7);
 }
 
 .nexus-nav-button {
@@ -88,7 +84,7 @@
 
 .nexus-nav-button:hover {
   color: var(--nexus-text);
-  background: rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .nexus-nav-button:active {
@@ -102,8 +98,9 @@
     var(--nexus-primary),
     var(--nexus-primary-end)
   );
-  border-color: rgba(147, 197, 253, 0.16);
-  box-shadow: 0 3px 14px rgba(34, 211, 238, 0.22);
+  border-color: rgba(255, 255, 255, 0.08);
+  /* Glow apenas no estado ativo (índigo) */
+  box-shadow: 0 3px 10px rgba(99, 102, 241, 0.22);
 }
 
 .nexus-nav-button.is-active svg {
