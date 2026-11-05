@@ -19,7 +19,7 @@ export function PerformancePanel() {
   const tools = useStore(toolsStore);
 
   return (
-    <Card title={tr('Performance')} Icon={Sparkles} accent="text-pink-400">
+    <Card title={tr('Performance')} Icon={Sparkles} accent="text-indigo-400">
       <Field label={tr('Curva de velocity')}>
         <Segmented
           value={prefs.velocityCurve}
@@ -51,7 +51,7 @@ export function PerformancePanel() {
           </select>
         </Field>
       </div>
-      <p className="-mt-1 text-[10px] text-slate-500">{tr('Com uma escala ativa, notas fora dela são ajustadas para a mais próxima.')}</p>
+      <p className="-mt-1 text-[10px] text-[var(--text-muted)]">{tr('Com uma escala ativa, notas fora dela são ajustadas para a mais próxima.')}</p>
 
       <div className="grid grid-cols-2 gap-3">
         <Field label={tr('Acorde de um toque')}>
