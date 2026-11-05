@@ -44,11 +44,11 @@ const TOTAL_WHITE_KEYS = 14;
 const MIN_KEY_WIDTH = 52;
 const MAX_KEY_WIDTH = 95;
 
-// Cores Oficiais do Teclado
-const WHITE_KEY_BG = 'linear-gradient(180deg, #f8fafc 0%, #e2e8f0 88%, #cbd5e1 100%)';
-const WHITE_KEY_PRESSED_BG = 'linear-gradient(180deg, #38bdf8 0%, #bfdbfe 100%)';
-const BLACK_KEY_BG = 'linear-gradient(180deg, #334155 0%, #1e293b 72%, #020617 100%)';
-const BLACK_KEY_PRESSED_BG = 'linear-gradient(180deg, #38bdf8 0%, #0369a1 100%)';
+// Cores Oficiais do Teclado (branco natural / grafite), feedback em CIANO (atividade MIDI)
+const WHITE_KEY_BG = 'linear-gradient(180deg, #f5f2ea 0%, #e6e3db 88%, #cfccc4 100%)';
+const WHITE_KEY_PRESSED_BG = 'linear-gradient(180deg, #22d3ee 0%, #cffafe 100%)';
+const BLACK_KEY_BG = 'linear-gradient(180deg, #2a2e38 0%, #1a1d25 72%, #0a0c11 100%)';
+const BLACK_KEY_PRESSED_BG = 'linear-gradient(180deg, #22d3ee 0%, #0e7490 100%)';
 
 interface PopupProps {
   title: string;
@@ -266,11 +266,11 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
               style={{
                 width: `${keyWidth}px`,
                 background: isPressed ? WHITE_KEY_PRESSED_BG : WHITE_KEY_BG,
-                borderColor: isPressed ? '#22d3ee' : 'rgba(100,116,139,0.75)',
+                borderColor: isPressed ? '#22d3ee' : 'rgba(120,128,145,0.75)',
                 boxShadow: isPressed ? 'inset 0 3px 9px rgba(15,23,42,0.22), 0 0 12px rgba(34,211,238,0.28)' : '0 4px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.9)',
                 transform: isPressed ? 'translateY(2px)' : 'translateY(0)', touchAction: 'none', opacity: keyOpacity,
               }}>
-              <span className="mb-4 rounded px-1 text-xs font-bold select-none" style={{ color: isPressed ? '#075985' : '#64748b', background: isPressed ? 'rgba(255,255,255,0.45)' : 'transparent' }}>{noteLabel}</span>
+              <span className="mb-4 rounded px-1 text-xs font-bold select-none" style={{ color: isPressed ? '#0e7490' : '#64748b', background: isPressed ? 'rgba(255,255,255,0.45)' : 'transparent' }}>{noteLabel}</span>
             </div>
           );
         } else {
@@ -282,7 +282,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
               style={{
                 width: `${blackWidth}px`, left: `${left}px`,
                 background: isPressed ? BLACK_KEY_PRESSED_BG : BLACK_KEY_BG,
-                borderColor: isPressed ? '#67e8f9' : '#020617',
+                borderColor: isPressed ? '#67e8f9' : '#05070c',
                 boxShadow: isPressed ? '0 0 12px rgba(34,211,238,0.55), inset 0 0 5px rgba(255,255,255,0.25)' : '0 3px 4px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.1)',
                 transform: isPressed ? 'translateY(2px)' : 'translateY(0)', touchAction: 'none', opacity: keyOpacity,
               }}>
@@ -311,7 +311,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
                   key={ch}
                   type="button"
                   onClick={() => { onSelectChannel(ch); setIsChannelOpen(false); }}
-                  className={`h-12 rounded-lg border font-mono text-sm transition-colors ${selected ? 'border-cyan-600/60 bg-cyan-500/20 font-bold text-cyan-400' : 'border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'}`}
+                  className={`h-12 rounded-lg border font-mono text-sm transition-colors ${selected ? 'border-indigo-500/60 bg-indigo-500/20 font-bold text-[var(--nexus-primary)]' : 'border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'}`}
                 >
                   {String(ch).padStart(2, '0')}
                 </button>
@@ -329,7 +329,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
                 <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase text-[var(--text-muted)]"><Activity size={14} /> {tr('Intensidade (Velocity)')}</label>
                 <div className="grid grid-cols-4 gap-2">
                   {[{ id: 30, label: tr('Suave') }, { id: 64, label: tr('Médio') }, { id: 100, label: tr('Forte') }, { id: 127, label: tr('Máx.') }].map((v) => (
-                    <button type="button" key={v.id} onClick={() => onSelectVelocity(v.id)} className={`flex flex-col items-center justify-center py-3 rounded-lg border transition-all ${selectedVelocity === v.id ? 'bg-cyan-600 border-cyan-600 text-white font-bold shadow-[0_0_10px_rgba(8,145,178,0.3)]' : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
+                    <button type="button" key={v.id} onClick={() => onSelectVelocity(v.id)} className={`flex flex-col items-center justify-center py-3 rounded-lg border transition-all ${selectedVelocity === v.id ? 'bg-indigo-600 border-indigo-600 text-white font-bold shadow-[0_0_10px_rgba(99,102,241,0.3)]' : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
                       <span className="text-xs font-semibold">{v.label}</span><span className="text-[11px] font-mono opacity-80">{v.id}</span>
                     </button>
                   ))}
@@ -346,8 +346,8 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
 
             <div className="flex flex-col gap-4">
               <div>
-                <label className="mb-2 flex items-center justify-between text-xs font-bold uppercase text-[var(--text-muted)]"><span>{tr('Zoom do Teclado')}</span><span className="font-mono text-cyan-500">{keyWidth}px</span></label>
-                <input type="range" min={minKeyWidth} max={MAX_KEY_WIDTH} value={keyWidth} onChange={(e) => setKeyWidth(Number(e.target.value))} className="h-2 w-full cursor-pointer accent-cyan-500" />
+                <label className="mb-2 flex items-center justify-between text-xs font-bold uppercase text-[var(--text-muted)]"><span>{tr('Zoom do Teclado')}</span><span className="font-mono text-[var(--nexus-primary)]">{keyWidth}px</span></label>
+                <input type="range" min={minKeyWidth} max={MAX_KEY_WIDTH} value={keyWidth} onChange={(e) => setKeyWidth(Number(e.target.value))} className="h-2 w-full cursor-pointer accent-indigo-500" />
               </div>
 
               <button type="button" onClick={() => setIsScrollLocked(!isScrollLocked)} className={`flex w-full items-center justify-between rounded-lg border p-3 transition-colors ${isScrollLocked ? 'bg-amber-900/20 border-amber-700/50 text-amber-500' : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)]'}`}>
@@ -365,7 +365,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
             <span className="absolute top-0 z-10 text-[9px] font-bold text-[var(--text-muted)]">PB</span>
             <div className="relative my-auto h-[80%] w-3 rounded-full border border-[var(--border-color)] bg-[var(--bg-app)] shadow-inner">
               <div className="absolute top-1/2 left-0 right-0 z-10 h-px bg-slate-600" />
-              <div className="absolute top-1/2 left-0 right-0 h-1/2 bg-fuchsia-600/50 opacity-50" style={{ bottom: '50%' }} />
+              <div className="absolute top-1/2 left-0 right-0 h-1/2 bg-indigo-500/50 opacity-50" style={{ bottom: '50%' }} />
               <div className="absolute left-1/2 z-30 h-5 w-8 -translate-x-1/2 rounded-sm bg-gradient-to-b from-gray-300 via-gray-400 to-gray-600 border border-gray-500 shadow-[0_2px_5px_rgba(0,0,0,0.8)]"
                    style={{ bottom: `calc(${(pbValue / 16383) * 100}% - 10px)` }} />
             </div>
