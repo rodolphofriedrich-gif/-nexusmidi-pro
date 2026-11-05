@@ -210,7 +210,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
         {/* CARD PERFORMANCE */}
         <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col">
           <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-500"></span> {tr('Performance')}
+            <span className="w-2 h-2 rounded-full bg-[var(--nexus-primary)]"></span> {tr('Performance')}
           </h3>
           
           <div className="grid grid-cols-2 gap-3 flex-1">
@@ -221,7 +221,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
               <button 
                 disabled={busy || !isConnected} 
                 onClick={toggleSustain} 
-                className={`w-full h-11 rounded-lg border px-2 text-xs font-bold transition-all disabled:opacity-40 ${prefs.sustain ? 'border-emerald-500 bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:bg-[var(--bg-panel)]'}`}
+                className={`w-full h-11 rounded-lg border px-2 text-xs font-bold transition-all disabled:opacity-40 ${prefs.sustain ? 'border-indigo-500 bg-indigo-600 text-white shadow-[0_0_10px_rgba(99,102,241,0.3)]' : 'border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:bg-[var(--bg-panel)]'}`}
               >
                 {prefs.sustain ? tr('Ligado') : tr('Desligado')}
               </button>
@@ -235,12 +235,12 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
                 <input 
                   type="number" min="1" max="128" value={program} 
                   onChange={(event) => updateState('program', Math.max(1, Math.min(128, Number(event.target.value) || 1)))} 
-                  className="min-w-0 w-12 h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] px-1 font-mono text-sm text-center text-cyan-500 outline-none focus:border-cyan-500" 
+                  className="min-w-0 w-12 h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] px-1 font-mono text-sm text-center text-indigo-400 outline-none focus:border-indigo-500" 
                 />
                 <button 
                   disabled={busy || !isConnected} 
                   onClick={() => void sendAction(() => midiManager.sendProgramChange(channel, program - 1), tr('Program {program} enviado • Canal {channel}', { program, channel }))} 
-                  className="flex-1 h-11 rounded-lg bg-cyan-700 px-2 text-xs font-bold text-white disabled:opacity-40 hover:bg-cyan-600 transition"
+                  className="flex-1 h-11 rounded-lg bg-indigo-600 px-2 text-xs font-bold text-white disabled:opacity-40 hover:bg-indigo-500 transition"
                 >
                   {tr('Enviar')}
                 </button>
@@ -252,13 +252,13 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
         {/* CARD PITCH BEND E PANIC */}
         <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col">
           <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-500"></span> {tr('Pitch Bend')}
+            <span className="w-2 h-2 rounded-full bg-[var(--nexus-primary)]"></span> {tr('Pitch Bend')}
           </h3>
           
           <div className="rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)] p-3 flex flex-col justify-center gap-3">
             <div className="flex items-center justify-between text-xs font-bold uppercase text-[var(--text-muted)]">
               <span>{tr('Grave (-)')}</span>
-              <span className="font-mono text-cyan-500 text-sm">{pitchBend - 8192 > 0 ? '+' : ''}{pitchBend - 8192}</span>
+              <span className="font-mono text-indigo-400 text-sm">{pitchBend - 8192 > 0 ? '+' : ''}{pitchBend - 8192}</span>
               <span>{tr('Agudo (+)')}</span>
             </div>
             
@@ -266,7 +266,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
               <div className="absolute inset-x-0 h-4 bg-[var(--bg-panel)] rounded-full border border-[var(--border-color)] shadow-inner overflow-hidden">
                 <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[var(--border-color)] shadow-[0_0_4px_rgba(255,255,255,0.2)] z-0" />
                 <div 
-                  className="absolute top-0 bottom-0 bg-cyan-600/30 z-0 transition-all duration-75 ease-out"
+                  className="absolute top-0 bottom-0 bg-indigo-500/30 z-0 transition-all duration-75 ease-out"
                   style={{
                     left: pitchBend > 8192 ? '50%' : `${(pitchBend / 8192) * 50}%`,
                     right: pitchBend < 8192 ? '50%' : `${100 - ((pitchBend - 8192) / 8192) * 50}%`
@@ -304,7 +304,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
           <button 
             disabled={busy || !isConnected} 
             onClick={() => void panic()} 
-            className="flex w-full h-11 items-center justify-center gap-2 rounded-lg border border-red-800/60 bg-red-950/40 px-2 text-xs font-bold uppercase tracking-wide text-red-400 hover:bg-red-900/60 transition shadow-[inset_0_0_15px_rgba(220,38,38,0.1)] disabled:opacity-40"
+            className="flex w-full h-11 items-center justify-center gap-2 rounded-lg border border-red-800/60 bg-red-950/40 px-2 text-xs font-bold uppercase tracking-wide text-red-400 hover:bg-red-900/60 transition disabled:opacity-40"
           >
             <ShieldAlert size={16} /> {tr('MIDI Panic')}
           </button>
@@ -314,7 +314,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
         <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm shrink-0 mb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Save size={16} className="text-cyan-500" />
+              <Save size={16} className="text-indigo-400" />
               <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">{tr('Presets Salvos')}</h3>
             </div>
           </div>
@@ -323,9 +323,9 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
             <input 
               aria-label={tr('Nome do preset')} value={presetName} onChange={(event) => setPresetName(event.target.value)} 
               maxLength={40} placeholder={tr('Nome do preset')} 
-              className="min-w-0 flex-1 h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 text-xs text-[var(--text-main)] outline-none focus:border-cyan-500 transition" 
+              className="min-w-0 flex-1 h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 text-xs text-[var(--text-main)] outline-none focus:border-indigo-500 transition" 
             />
-            <button onClick={savePreset} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-cyan-700 px-4 text-xs font-bold text-white hover:bg-cyan-600 transition">
+            <button onClick={savePreset} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white hover:bg-indigo-500 transition">
               <Save size={14} /> {tr('Salvar')}
             </button>
           </div>
@@ -344,7 +344,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
                   <div className="flex gap-1">
                     <button 
                       title={tr('Aplicar')} disabled={busy || !isConnected} onClick={() => void applyPreset(preset)} 
-                      className="rounded bg-cyan-900/40 p-2 text-cyan-500 hover:bg-cyan-800/60 disabled:opacity-40 transition-colors"
+                      className="rounded bg-indigo-900/40 p-2 text-indigo-400 hover:bg-indigo-800/60 disabled:opacity-40 transition-colors"
                     >
                       <Play size={14} />
                     </button>
