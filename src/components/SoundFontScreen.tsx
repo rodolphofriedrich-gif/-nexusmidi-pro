@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
-import { AlertCircle, CheckCircle2, Library, List, UploadCloud, X, Settings2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
+import { Library, List, UploadCloud, X, Settings2 } from 'lucide-react';
+import { channelColor } from '../constants/channelColors';
+import { categoryOfProgram } from '../constants/gm';
 import { useStore } from '../hooks/useStore';
 import type { ToastType } from '../hooks/useToast';
 import { tr } from '../i18n';
@@ -44,6 +46,52 @@ function Popup({ title, onClose, children, widthClass = 'max-w-2xl' }: { title: 
   );
 }
 
+function MidiChannelsPanel({ activeChannel, muted, solo, onSelect, onToggleMute, onToggleSolo }: {
+  activeChannel: number;
+  muted: Record<number, boolean>;
+  solo: number | null;
+  onSelect: (ch: number) => void;
+  onToggleMute: (ch: number) => void;
+  onToggleSolo: (ch: number) => void;
+}) {
+  const [page, setPage] = useState(0);
+  const list = Array.from({ length: 8 }, (_, i) => page * 8 + 1 + i);
+
+  return (
+    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2">
+      <div className="mb-2 flex items-center justify-between px-1">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{tr('Canais MIDI')}</span>
+        <div className="flex items-center gap-2 text-xs font-bold text-cyan-400">
+          <button type="button" disabled={page === 0} onClick={() => setPage(0)} className="px-2 disabled:opacity-30">‹</button>
+          {page * 8 + 1}-{page * 8 + 8}
+          <button type="button" disabled={page === 1} onClick={() => setPage(1)} className="px-2 disabled:opacity-30">›</button>
+        </div>
+      </div>
+      <div className="grid grid-cols-8 gap-1">
+        {list.map((ch) => {
+          const isActive = ch === activeChannel;
+          return (
+            <div key={ch} className={`flex flex-col items-center gap-1 rounded-lg border bg-[var(--bg-app)] p-1 ${isActive ? 'border-rose-400/70' : 'border-[var(--border-color)]'}`}>
+              <button
+                type="button"
+                onClick={() => onSelect(ch)}
+                className="flex h-8 w-full items-center justify-center rounded-md text-sm font-bold"
+                style={isActive ? { backgroundColor: channelColor(ch), color: '#121316' } : { color: channelColor(ch) }}
+              >
+                {ch}
+              </button>
+              <button type="button" onClick={() => onToggleMute(ch)}
+                className={`h-8 w-full rounded-md text-xs font-bold ${muted[ch] ? 'bg-red-600 text-white' : 'bg-[#23262D] text-slate-200'}`}>M</button>
+              <button type="button" onClick={() => onToggleSolo(ch)}
+                className={`h-8 w-full rounded-md text-xs font-bold ${solo === ch ? 'bg-amber-500 text-black' : 'bg-[#23262D] text-slate-200'}`}>S</button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function SoundFontScreen({ onStatus }: Props) {
   const settings = useStore(synthSettingsStore);
   const channels = useStore(channelsStore);
@@ -69,6 +117,38 @@ export function SoundFontScreen({ onStatus }: Props) {
     if (library.error) onStatus(library.error, 'error');
   }, [library.error, onStatus]);
 
+  /** Instrumentos dos SoundFonts LIGADOS, na ordem de prioridade (o primeiro vence em repetidos). */
+  const instruments = useMemo<SoundFontPreset[]>(() => {
+    const seen = new Set<string>();
+    const result: SoundFontPreset[] = [];
+    for (const libraryId of library.activeIds) {
+      const libraryName = library.items.find((i) => i.id === libraryId)?.name ?? libraryId;
+      for (const raw of library.presets[libraryId] ?? []) {
+        // Leitura tolerante: ajuste aqui se os nomes dos campos de Sf2Preset forem outros.
+        const p = raw as any;
+        const bankNumber: number = p.bankNumber ?? p.bank ?? 0;
+        const programNumber: number = p.programNumber ?? p.program ?? p.preset ?? 0;
+        const isDrum: boolean = p.isDrum ?? bankNumber === 128;
+        const key = `${bankNumber}:${programNumber}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        result.push({
+          id: `${libraryId}:${bankNumber}:${programNumber}`,
+          libraryId,
+          libraryName,
+          programNumber,
+          bankNumber,
+          name: p.name ?? `Preset ${programNumber}`,
+          category: isDrum ? 'Baterias' : categoryOfProgram(programNumber),
+          isDrum,
+        });
+      }
+    }
+    return result.sort((a, b) => a.bankNumber - b.bankNumber || a.programNumber - b.programNumber);
+  }, [library.activeIds, library.items, library.presets]);
+
+  const hasLibrary = library.items.length > 0;
+
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -91,9 +171,7 @@ export function SoundFontScreen({ onStatus }: Props) {
     onStatus(tr('SoundFont removido da biblioteca.'), 'info');
   };
 
-  const handleMove = (id: string, delta: -1 | 1) => {
-    console.log('Mover', id, delta);
-  };
+  const handleMove = (id: string, delta: -1 | 1) => soundFontLibrary.move(id, delta);
 
   const handleAssignProgram = (preset: SoundFontPreset) => {
     if (!synth.ready) {
@@ -101,8 +179,18 @@ export function SoundFontScreen({ onStatus }: Props) {
       return;
     }
     synthService.programChange(preset.programNumber, activeChannel);
-    channelsStore.set((s) => ({ ...s, assignments: { ...s.assignments, [activeChannel]: preset.programNumber } }));
+    channelsStore.set((s) => ({
+      ...s,
+      assignments: { ...s.assignments, [activeChannel]: preset.programNumber },
+      banks: { ...s.banks, [activeChannel]: preset.bankNumber },
+    }));
   };
+
+  const selectChannel = (ch: number) => prefsStore.set({ channel: ch });
+  const toggleMute = (ch: number) =>
+    channelsStore.set((s) => ({ ...s, muted: { ...s.muted, [ch]: !s.muted?.[ch] } }));
+  const toggleSolo = (ch: number) =>
+    channelsStore.set((s) => ({ ...s, solo: s.solo === ch ? null : ch }));
 
   const updateSetting = (key: keyof SynthSettings, value: number) => synthSettingsStore.set({ [key]: value });
 
@@ -112,12 +200,10 @@ export function SoundFontScreen({ onStatus }: Props) {
   };
 
   const activePreset = (): SoundFontPreset => {
-    return {
-      programNumber: channels.assignments[activeChannel] ?? 0,
-      name: 'Instrument',
-      category: 'Piano',
-      isDrum: false
-    } as any;
+    const program = channels.assignments[activeChannel] ?? 0;
+    const bank = channels.banks?.[activeChannel] ?? 0;
+    const found = instruments.find((i) => i.programNumber === program && i.bankNumber === bank);
+    return found ?? ({ programNumber: program, name: tr('Escolha um instrumento'), category: 'Piano', isDrum: false } as any);
   };
 
   const handleAudition = () => {
@@ -151,16 +237,11 @@ export function SoundFontScreen({ onStatus }: Props) {
   const tabClass = (mode: ViewMode, active: string) =>
     `flex h-8 items-center justify-center gap-1.5 px-4 text-xs font-bold rounded-lg transition-colors ${viewMode === mode ? active : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`;
 
-  // @ts-ignore - Ignorando caso a lib não exponha essas props ainda, para evitar quebra
-  const instruments = (library as any).instruments || [];
-  const hasLibrary = instruments.length > 0 || synth.ready;
-
   return (
-    <div className="flex w-full flex-1 flex-row overflow-hidden bg-[var(--bg-app)] p-2 text-[var(--text-main)] gap-2">
-      
-      {/* COLUNA ESQUERDA (58%) */}
-      <div className="flex flex-col gap-2 shrink-0" style={{ width: '58%' }}>
-        <div className="w-full shrink-0 h-52 flex flex-col">
+    <div className="flex w-full flex-1 flex-row gap-2 overflow-hidden bg-[var(--bg-app)] p-2 text-[var(--text-main)]">
+      {/* COLUNA ESQUERDA */}
+      <div className="flex min-h-0 shrink-0 flex-col gap-2 overflow-y-auto" style={{ width: '46%' }}>
+        <div className="w-full shrink-0">
           <ActiveSoundFontCard
             preset={activePreset()}
             volume={settings.volume}
@@ -173,75 +254,64 @@ export function SoundFontScreen({ onStatus }: Props) {
             canPlay={synth.ready}
           />
         </div>
+        <MidiChannelsPanel
+          activeChannel={activeChannel}
+          muted={channels.muted ?? {}}
+          solo={channels.solo ?? null}
+          onSelect={selectChannel}
+          onToggleMute={toggleMute}
+          onToggleSolo={toggleSolo}
+        />
       </div>
 
-      {/* COLUNA DIREITA (42%) */}
-      <div className="flex-1 min-w-0 flex flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2">
-        
-        <div className="mb-2 flex flex-wrap shrink-0 items-center justify-between gap-2 border-b border-[var(--border-color)] pb-2">
+      {/* COLUNA DIREITA */}
+      <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2">
+        <div className="mb-2 flex shrink-0 flex-col gap-2 border-b border-[var(--border-color)] pb-2">
           <div className="flex items-center gap-2">
-            <div className="flex bg-[var(--bg-app)] rounded-lg p-0.5 border border-[var(--border-color)]">
+            <div className="flex min-w-0 flex-1 overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
               {SCENES.map((s) => (
-                <button key={s} type="button" onClick={() => loadScene(s)} className={`flex h-8 items-center justify-center px-3 text-xs font-bold rounded-md transition-colors ${activeScene === s ? 'bg-amber-600 text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-slate-800'}`}>
+                <button key={s} type="button" onClick={() => loadScene(s)}
+                  className={`flex h-8 flex-1 items-center justify-center rounded-md px-2 text-xs font-bold transition-colors ${activeScene === s ? 'bg-amber-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
                   {s}
                 </button>
               ))}
             </div>
-            <button onClick={saveScene} className="flex h-8 items-center gap-1.5 rounded-lg border border-amber-600/50 bg-amber-900/20 px-3 text-xs font-bold text-amber-500 hover:bg-amber-900/40 transition">
+            <button type="button" onClick={saveScene} className="h-8 shrink-0 whitespace-nowrap rounded-lg border border-amber-600/50 bg-amber-900/20 px-3 text-xs font-bold text-amber-500 hover:bg-amber-900/40">
               {tr('Salvar Cena')}
             </button>
           </div>
 
-          <div className="flex items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto justify-end">
-            <div className="flex bg-[var(--bg-app)] rounded-lg p-0.5 border border-[var(--border-color)]">
-              <button type="button" onClick={() => setViewMode('presets')} className={tabClass('presets', 'bg-cyan-600 text-white shadow-sm')}>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
+              <button type="button" onClick={() => setViewMode('presets')} className={tabClass('presets', 'bg-cyan-600 text-white')}>
                 <List size={14} /> PRESETS
               </button>
-              <button type="button" onClick={() => setViewMode('library')} className={tabClass('library', 'bg-cyan-600 text-white shadow-sm')}>
+              <button type="button" onClick={() => setViewMode('library')} className={tabClass('library', 'bg-cyan-600 text-white')}>
                 <Library size={14} /> BIBLIOTECA
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setIsConfigOpen(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition"
-              title={tr('Configurações')}
-            >
+            <button type="button" onClick={() => setIsConfigOpen(true)} title={tr('Configurações')}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--text-main)]">
               <Settings2 size={14} />
             </button>
-
-            {synth.fileName ? (
-              <span className="hidden max-w-[120px] items-center gap-1 truncate font-mono text-[10px] text-emerald-500 sm:flex">
-                <CheckCircle2 size={12} /> {synth.fileName}
-              </span>
-            ) : (
-              <span className="hidden items-center gap-1 font-mono text-[10px] text-[var(--text-muted)] sm:flex">
-                <AlertCircle size={12} /> Sem SF2
-              </span>
-            )}
             <input type="file" accept=".sf2" ref={fileInputRef} onChange={(e) => void handleFileChange(e)} className="hidden" />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={busy}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white shadow transition hover:bg-cyan-500 disabled:opacity-50"
-            >
+            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={busy}
+              className="ml-auto flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-cyan-600 px-3 text-xs font-bold text-white hover:bg-cyan-500 disabled:opacity-50">
               <UploadCloud size={14} /> {busy ? '...' : 'Importar SF2'}
             </button>
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 w-full overflow-hidden">
+        <div className="min-h-0 w-full flex-1 overflow-hidden">
           {viewMode === 'presets' && (
             <SoundFontList
               activeChannel={activeChannel}
               channelAssignments={channels.assignments}
               onAssignProgram={handleAssignProgram}
               instruments={instruments}
-              channelBanks={channels.banks}
+              channelBanks={channels.banks ?? {}}
               hasLibrary={hasLibrary}
-              showLibraryName={true}
+              showLibraryName={library.activeIds.length > 1}
               onOpenLibrary={() => setViewMode('library')}
             />
           )}
