@@ -7,7 +7,7 @@ interface StudioFaderProps {
   onChange: (value: number) => void;
   onCommit: (value: number) => void;
   unit?: string;
-  /** `level` = medidor de nível (verde → amarelo → vermelho, só para volume). `accent` = ciano. */
+  /** `level` = medidor de nível (verde → amarelo → vermelho, só para volume). `accent` = índigo (controle). */
   tone?: 'accent' | 'level';
 }
 
@@ -26,19 +26,19 @@ export function StudioFader({
   const percent = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
 
   const getLedColor = () => {
-    if (tone === 'accent') return 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.35)]';
+    if (tone === 'accent') return 'bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.35)]';
     if (percent > 85) return 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.6)]';
     if (percent > 65) return 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.6)]';
     return 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.4)]';
   };
 
   return (
-    <div className="flex flex-col items-center gap-2 p-2 bg-[#1a1c21] border border-[#2e323b] rounded-xl shadow-lg w-full max-w-[80px] mx-auto h-full">
+    <div className="flex flex-col items-center gap-2 p-2 bg-[var(--bg-panel)] border border-[var(--border-color)] rounded-xl shadow-lg w-full max-w-[80px] mx-auto h-full">
       
       {/* Cabeçalho do Fader */}
       <div className="text-center w-full shrink-0">
-        <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-300 truncate">{label}</span>
-        {sublabel && <span className="block text-[9px] text-slate-500 font-mono mt-0.5">{sublabel}</span>}
+        <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-main)] truncate">{label}</span>
+        {sublabel && <span className="block text-[9px] text-[var(--text-muted)] font-mono mt-0.5">{sublabel}</span>}
       </div>
 
       {/* Área do Fader Vertical (Flexível). A "pista" fica 16px mais curta em cima e embaixo:
@@ -46,7 +46,7 @@ export function StudioFader({
       <div className="relative w-full flex-1 select-none min-h-[88px]">
         <div className="absolute inset-x-0 top-4 bottom-4">
           {/* Trilho de Fundo (Sulco) */}
-          <div className="absolute inset-y-0 left-1/2 w-2 -translate-x-1/2 overflow-hidden rounded-full border border-[#2e323b] bg-[#0e0f12] shadow-inner">
+          <div className="absolute inset-y-0 left-1/2 w-2 -translate-x-1/2 overflow-hidden rounded-full border border-[var(--border-color)] bg-[var(--bg-app)] shadow-inner">
             <div
               className={`absolute bottom-0 w-full rounded-full transition-all duration-75 ease-out ${getLedColor()}`}
               style={{ height: `${percent}%` }}
@@ -56,7 +56,7 @@ export function StudioFader({
           {/* Marcações de Escala (Ticks) */}
           <div className="absolute inset-y-0 right-0 flex w-1.5 flex-col justify-between">
             {[0, 32, 64, 96, 127].map((tick) => (
-              <div key={tick} className="h-px w-1.5 bg-slate-600/60" />
+              <div key={tick} className="h-px w-1.5 bg-[var(--text-muted)]/60" />
             ))}
           </div>
 
@@ -91,10 +91,10 @@ export function StudioFader({
       </div>
 
       {/* Visor do Valor */}
-      <div className="w-full shrink-0 bg-[#121316] border border-[#2e323b] rounded-md py-1 text-center shadow-inner">
-        <span className="font-mono text-[12px] font-bold text-cyan-400">
+      <div className="w-full shrink-0 bg-[var(--bg-app)] border border-[var(--border-color)] rounded-md py-1 text-center shadow-inner">
+        <span className="font-mono text-[12px] font-bold text-indigo-400">
           {value}
-          <span className="text-[9px] text-slate-500 ml-0.5">{unit}</span>
+          <span className="text-[9px] text-[var(--text-muted)] ml-0.5">{unit}</span>
         </span>
       </div>
     </div>
