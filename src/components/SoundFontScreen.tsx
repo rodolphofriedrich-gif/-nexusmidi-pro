@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
-import { Library, List, UploadCloud, X, Settings2 } from 'lucide-react';
+import { Library, List, UploadCloud, X, Settings2, Trash2 } from 'lucide-react';
 import { channelColor } from '../constants/channelColors';
 import { categoryOfProgram } from '../constants/gm';
 import { useStore } from '../hooks/useStore';
@@ -21,7 +21,7 @@ interface Props {
 
 type ViewMode = 'presets' | 'library';
 
-const SCENES = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+const SCENES = ['A', 'B', 'C'];
 const SCENES_KEY = 'nexusmidi_studio_scenes';
 
 function Popup({ title, onClose, children, widthClass = 'max-w-2xl' }: { title: string; onClose: () => void; children: React.ReactNode; widthClass?: string }) {
@@ -112,6 +112,10 @@ export function SoundFontScreen({ onStatus }: Props) {
     } catch { return {}; }
   });
   const [activeScene, setActiveScene] = useState('A');
+
+  // ESTADOS PARA APAGAR CENAS
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [scenesToDelete, setScenesToDelete] = useState<string[]>([]);
 
   useEffect(() => {
     if (library.error) onStatus(library.error, 'error');
@@ -234,6 +238,35 @@ export function SoundFontScreen({ onStatus }: Props) {
     onStatus(tr('Cena {scene} salva com sucesso.', { scene: activeScene }), 'success');
   };
 
+  // LÓGICA DE APAGAR CENAS
+  const toggleSceneSelection = (scene: string) => {
+    setScenesToDelete(prev => 
+      prev.includes(scene) ? prev.filter(s => s !== scene) : [...prev, scene]
+    );
+  };
+
+  const confirmDeleteScenes = () => {
+    if (scenesToDelete.length === 0) {
+      setIsDeleteModalOpen(false);
+      return;
+    }
+
+    const newScenes = { ...scenes };
+    scenesToDelete.forEach(s => delete newScenes[s]);
+    
+    setScenes(newScenes);
+    localStorage.setItem(SCENES_KEY, JSON.stringify(newScenes));
+    
+    if (scenesToDelete.includes(activeScene)) {
+      const firstAvailable = SCENES.find(s => newScenes[s]) || 'A';
+      setActiveScene(firstAvailable);
+    }
+
+    onStatus(tr('Cenas apagadas com sucesso.'), 'info');
+    setIsDeleteModalOpen(false);
+    setScenesToDelete([]);
+  };
+
   const tabClass = (mode: ViewMode, active: string) =>
     `flex h-8 items-center justify-center gap-1.5 px-4 text-xs font-bold rounded-lg transition-colors ${viewMode === mode ? active : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`;
 
@@ -275,6 +308,15 @@ export function SoundFontScreen({ onStatus }: Props) {
                   {s}
                 </button>
               ))}
+              {/* NOVO BOTÃO DE APAGAR CENAS */}
+              <button 
+                type="button" 
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-red-500/70 hover:bg-red-900/20 hover:text-red-400 transition-colors ml-1"
+                title={tr('Apagar Cenas')}
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
             <button type="button" onClick={saveScene} className="h-8 shrink-0 whitespace-nowrap rounded-lg border border-amber-600/50 bg-amber-900/20 px-3 text-xs font-bold text-amber-500 hover:bg-amber-900/40">
               {tr('Salvar Cena')}
@@ -329,6 +371,56 @@ export function SoundFontScreen({ onStatus }: Props) {
       {isConfigOpen && (
         <Popup title={tr('Configurações')} onClose={() => setIsConfigOpen(false)} widthClass="max-w-2xl">
           <SynthSettingsPanel settings={settings} onUpdateSetting={updateSetting} onReset={handleReset} />
+        </Popup>
+      )}
+
+      {/* MODAL DE APAGAR CENAS */}
+      {isDeleteModalOpen && (
+        <Popup title={tr('Apagar Cenas')} onClose={() => setIsDeleteModalOpen(false)} widthClass="max-w-sm">
+          <div className="space-y-4">
+            <p className="text-sm text-[var(--text-muted)]">{tr('Selecione as cenas que deseja apagar:')}</p>
+            
+            <div className="grid grid-cols-2 gap-2">
+              {SCENES.map((scene) => {
+                const hasData = !!scenes[scene];
+                const isSelected = scenesToDelete.includes(scene);
+                
+                return (
+                  <button
+                    key={scene}
+                    type="button"
+                    disabled={!hasData}
+                    onClick={() => toggleSceneSelection(scene)}
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                      !hasData ? 'opacity-40 cursor-not-allowed bg-[var(--bg-app)] border-transparent' :
+                      isSelected ? 'bg-red-900/20 border-red-600/50 text-red-400' : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'
+                    }`}
+                  >
+                    <span className="font-bold">Cena {scene}</span>
+                    {hasData && (
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-red-500 border-red-500' : 'border-slate-500'}`}>
+                        {isSelected && <div className="w-2 h-2 bg-white rounded-full" />}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-[var(--border-color)]">
+              <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="flex-1 h-10 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-sm font-bold text-[var(--text-main)] hover:bg-[var(--bg-elevated)]">
+                {tr('Cancelar')}
+              </button>
+              <button 
+                type="button" 
+                onClick={confirmDeleteScenes} 
+                disabled={scenesToDelete.length === 0}
+                className="flex-1 h-10 rounded-lg bg-red-600 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-50"
+              >
+                {tr('Apagar')}
+              </button>
+            </div>
+          </div>
         </Popup>
       )}
     </div>
