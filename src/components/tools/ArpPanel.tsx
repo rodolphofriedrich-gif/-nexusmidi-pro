@@ -20,7 +20,7 @@ export function ArpPanel() {
   const rates: Array<{ id: ArpRate; label: string }> = (['1/4', '1/8', '1/16', '1/32'] as const).map((id) => ({ id, label: id }));
 
   return (
-    <Card title={tr('Arpejador')} Icon={Repeat} accent="text-amber-400">
+    <Card title={tr('Arpejador')} Icon={Repeat} accent="text-indigo-400">
       <Toggle
         checked={runtime.arpEnabled}
         onChange={(arpEnabled) => runtimeStore.set({ arpEnabled })}
