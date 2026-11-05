@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
-import { AlertCircle, CheckCircle2, Library, List, UploadCloud, X, ChevronLeft, ChevronRight, Settings2 } from 'lucide-react';
-import { GM_PRESETS } from '../constants/gm';
+import { AlertCircle, CheckCircle2, Library, List, UploadCloud, X, Settings2 } from 'lucide-react';
 import { useStore } from '../hooks/useStore';
 import type { ToastType } from '../hooks/useToast';
 import { tr } from '../i18n';
@@ -80,15 +79,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     }
   };
 
-  const handleActivate = async (id: string) => {
-    if (await soundFontLibrary.activate(id)) onStatus(tr('SoundFont carregado!'), 'success');
-  };
-
-  const handleRemove = async (id: string) => {
-    await soundFontLibrary.remove(id);
-    onStatus(tr('SoundFont removido da biblioteca.'), 'info');
-  };
-
   const handleAssignProgram = (preset: SoundFontPreset) => {
     if (!synth.ready) {
       onStatus(tr('Importe um arquivo SF2 primeiro.'), 'warn');
@@ -108,8 +98,14 @@ export function SoundFontScreen({ onStatus }: Props) {
   const toggleMute = (ch: number) => channelsStore.set((s) => ({ ...s, muted: { ...s.muted, [ch]: !s.muted[ch] } }));
   const toggleSolo = (ch: number) => channelsStore.set((s) => ({ ...s, solo: s.solo === ch ? null : ch }));
 
-  const activePreset = (): SoundFontPreset =>
-    GM_PRESETS.find((p) => p.programNumber === channels.assignments[activeChannel]) ?? GM_PRESETS[0];
+  const activePreset = (): SoundFontPreset => {
+    return {
+      programNumber: channels.assignments[activeChannel] ?? 0,
+      name: 'Instrument',
+      category: 'Piano',
+      isDrum: false
+    } as any;
+  };
 
   const handleAudition = () => {
     if (!synth.ready) {
@@ -157,6 +153,7 @@ export function SoundFontScreen({ onStatus }: Props) {
             transpose={settings.transpose}
             onTransposeChange={(v) => updateSetting('transpose', v)}
             onAudition={handleAudition}
+            canPlay={synth.ready}
           />
         </div>
       </div>
@@ -221,7 +218,6 @@ export function SoundFontScreen({ onStatus }: Props) {
         <div className="flex-1 min-h-0 w-full overflow-hidden">
           {viewMode === 'presets' && (
             <SoundFontList
-              soundFonts={GM_PRESETS}
               activeChannel={activeChannel}
               onSelectChannel={setActiveChannel}
               channelAssignments={channels.assignments}
@@ -235,8 +231,6 @@ export function SoundFontScreen({ onStatus }: Props) {
           {viewMode === 'library' && (
             <SoundFontLibraryPanel
               library={library}
-              onActivate={(id) => void handleActivate(id)}
-              onRemove={(id) => void handleRemove(id)}
             />
           )}
         </div>
