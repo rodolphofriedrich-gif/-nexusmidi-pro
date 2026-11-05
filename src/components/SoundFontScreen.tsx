@@ -113,7 +113,6 @@ export function SoundFontScreen({ onStatus }: Props) {
   });
   const [activeScene, setActiveScene] = useState('A');
 
-  // ESTADOS PARA APAGAR CENAS
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [scenesToDelete, setScenesToDelete] = useState<string[]>([]);
 
@@ -121,14 +120,12 @@ export function SoundFontScreen({ onStatus }: Props) {
     if (library.error) onStatus(library.error, 'error');
   }, [library.error, onStatus]);
 
-  /** Instrumentos dos SoundFonts LIGADOS, na ordem de prioridade (o primeiro vence em repetidos). */
   const instruments = useMemo<SoundFontPreset[]>(() => {
     const seen = new Set<string>();
     const result: SoundFontPreset[] = [];
     for (const libraryId of library.activeIds) {
       const libraryName = library.items.find((i) => i.id === libraryId)?.name ?? libraryId;
       for (const raw of library.presets[libraryId] ?? []) {
-        // Leitura tolerante: ajuste aqui se os nomes dos campos de Sf2Preset forem outros.
         const p = raw as any;
         const bankNumber: number = p.bankNumber ?? p.bank ?? 0;
         const programNumber: number = p.programNumber ?? p.program ?? p.preset ?? 0;
@@ -238,7 +235,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     onStatus(tr('Cena {scene} salva com sucesso.', { scene: activeScene }), 'success');
   };
 
-  // LÓGICA DE APAGAR CENAS
   const toggleSceneSelection = (scene: string) => {
     setScenesToDelete(prev => 
       prev.includes(scene) ? prev.filter(s => s !== scene) : [...prev, scene]
@@ -273,7 +269,7 @@ export function SoundFontScreen({ onStatus }: Props) {
   return (
     <div className="flex w-full flex-1 flex-row gap-2 overflow-hidden bg-[var(--bg-app)] p-2 text-[var(--text-main)]">
       {/* COLUNA ESQUERDA */}
-      <div className="flex min-h-0 shrink-0 flex-col gap-2 overflow-y-auto" style={{ width: '46%' }}>
+      <div className="flex min-h-0 shrink-0 flex-col gap-2 overflow-y-auto custom-scrollbar" style={{ width: '46%' }}>
         <div className="w-full shrink-0">
           <ActiveSoundFontCard
             preset={activePreset()}
@@ -298,7 +294,7 @@ export function SoundFontScreen({ onStatus }: Props) {
       </div>
 
       {/* COLUNA DIREITA */}
-      <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2">
+      <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2 min-h-0 h-full">
         <div className="mb-2 flex shrink-0 flex-col gap-2 border-b border-[var(--border-color)] pb-2">
           <div className="flex items-center gap-2">
             <div className="flex min-w-0 flex-1 overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
@@ -308,7 +304,6 @@ export function SoundFontScreen({ onStatus }: Props) {
                   {s}
                 </button>
               ))}
-              {/* NOVO BOTÃO DE APAGAR CENAS */}
               <button 
                 type="button" 
                 onClick={() => setIsDeleteModalOpen(true)}
@@ -344,7 +339,8 @@ export function SoundFontScreen({ onStatus }: Props) {
           </div>
         </div>
 
-        <div className="min-h-0 w-full flex-1 overflow-hidden">
+        {/* CONTAINER DAS LISTAS AJUSTADO PARA ROLAGEM */}
+        <div className="min-h-0 w-full flex-1 overflow-y-auto custom-scrollbar">
           {viewMode === 'presets' && (
             <SoundFontList
               activeChannel={activeChannel}
@@ -374,7 +370,6 @@ export function SoundFontScreen({ onStatus }: Props) {
         </Popup>
       )}
 
-      {/* MODAL DE APAGAR CENAS */}
       {isDeleteModalOpen && (
         <Popup title={tr('Apagar Cenas')} onClose={() => setIsDeleteModalOpen(false)} widthClass="max-w-sm">
           <div className="space-y-4">
