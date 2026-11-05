@@ -59,6 +59,7 @@ export const en: Record<string, string> = {
   "Canal Out": "Channel Out",
   "Canal {n}": "Channel {n}",
   "Canal: {n}": "Channel: {n}",
+  "Canais MIDI": "MIDI Channels",
   "Cancelar": "Cancel",
   "Carregando e salvando SoundFont...": "Loading and saving SoundFont...",
   "Carregue um arquivo .sf2 primeiro.": "Load an .sf2 file first.",
