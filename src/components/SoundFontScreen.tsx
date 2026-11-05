@@ -47,11 +47,12 @@ function Popup({ title, onClose, children, widthClass = 'max-w-2xl' }: { title: 
 export function SoundFontScreen({ onStatus }: Props) {
   const settings = useStore(synthSettingsStore);
   const channels = useStore(channelsStore);
+  const prefs = useStore(prefsStore);
   const synth = useSyncExternalStore(synthService.subscribe, synthService.getSnapshot, synthService.getSnapshot);
   const library = useSyncExternalStore(soundFontLibrary.subscribe, soundFontLibrary.getSnapshot, soundFontLibrary.getSnapshot);
 
   const [viewMode, setViewMode] = useState<ViewMode>('presets');
-  const [activeChannel, setActiveChannel] = useState(() => prefsStore.get().channel);
+  const activeChannel = prefs.channel;
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const busy = library.busy || synth.loading;
@@ -79,10 +80,9 @@ export function SoundFontScreen({ onStatus }: Props) {
     }
   };
 
-  // Funções exigidas pelo SoundFontLibraryPanel
   const handleActivate = async (id: string) => {
-    if (await soundFontLibrary.activate(id)) {
-      onStatus(tr('SoundFont carregado!'), 'success');
+    if (await soundFontLibrary.toggle(id)) {
+      onStatus(tr('SoundFont alterado!'), 'success');
     }
   };
 
@@ -91,10 +91,10 @@ export function SoundFontScreen({ onStatus }: Props) {
     onStatus(tr('SoundFont removido da biblioteca.'), 'info');
   };
 
-  const handleMove = (id: string, direction: 'up' | 'down') => {
+  const handleMove = (id: string, delta: -1 | 1) => {
     // Se a biblioteca tiver um método de mover, chame aqui.
     // Se não, apenas mantemos a interface compilando.
-    console.log('Mover', id, direction);
+    console.log('Mover', id, delta);
   };
 
   const handleAssignProgram = (preset: SoundFontPreset) => {
@@ -112,9 +112,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     synthSettingsStore.reset();
     onStatus(tr('Configurações restauradas para o padrão.'), 'info');
   };
-
-  const toggleMute = (ch: number) => channelsStore.set((s) => ({ ...s, muted: { ...s.muted, [ch]: !s.muted[ch] } }));
-  const toggleSolo = (ch: number) => channelsStore.set((s) => ({ ...s, solo: s.solo === ch ? null : ch }));
 
   const activePreset = (): SoundFontPreset => {
     return {
@@ -239,10 +236,6 @@ export function SoundFontScreen({ onStatus }: Props) {
               activeChannel={activeChannel}
               channelAssignments={channels.assignments}
               onAssignProgram={handleAssignProgram}
-              mutedChannels={channels.muted}
-              soloedChannel={channels.solo}
-              onToggleMute={toggleMute}
-              onToggleSolo={toggleSolo}
             />
           )}
           {viewMode === 'library' && (
