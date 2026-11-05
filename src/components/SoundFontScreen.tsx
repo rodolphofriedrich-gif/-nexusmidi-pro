@@ -188,44 +188,7 @@ export function SoundFontScreen({ onStatus }: Props) {
               ))}
             </div>
             <button onClick={saveScene} className="flex h-8 items-center gap-1.5 rounded-lg border border-amber-600/50 bg-amber-900/20 px-3 text-xs font-bold text-amber-500 hover:bg-amber-900/40 transition">
-              // ... imports ...
-
-export function SoundFontScreen({ onStatus }: Props) {
-  // ... states ...
-
-  return (
-    <div className="flex w-full flex-1 flex-row overflow-hidden bg-[var(--bg-app)] p-2 text-[var(--text-main)] gap-2">
-      
-      {/* COLUNA ESQUERDA (58%) */}
-      <div className="flex flex-col gap-2 shrink-0" style={{ width: '58%' }}>
-        {/* ... ActiveSoundFontCard ... */}
-      </div>
-
-      {/* COLUNA DIREITA (42%) */}
-      <div className="flex-1 min-w-0 flex flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2">
-        
-        <div className="mb-2 flex flex-wrap shrink-0 items-center justify-between gap-2 border-b border-[var(--border-color)] pb-2">
-          <div className="flex items-center gap-2">
-            <div className="flex bg-[var(--bg-app)] rounded-lg p-0.5 border border-[var(--border-color)]">
-              {SCENES.map((s) => (
-                <button key={s} type="button" onClick={() => loadScene(s)} className={`flex h-8 items-center justify-center px-3 text-xs font-bold rounded-md transition-colors ${activeScene === s ? 'bg-amber-600 text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-slate-800'}`}>
-                  {s}
-                </button>
-              ))}
-            </div>
-            <button onClick={saveScene} className="flex h-8 items-center gap-1.5 rounded-lg border border-amber-600/50 bg-amber-900/20 px-3 text-xs font-bold text-amber-500 hover:bg-amber-900/40 transition">
               {tr('Salvar Cena')}
-            </button>
-          </div>
-          
-          {/* ... resto do header ... */}
-        </div>
-
-        {/* ... listas ... */}
-      </div>
-    </div>
-  );
-}
             </button>
           </div>
 
