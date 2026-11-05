@@ -92,8 +92,6 @@ export function SoundFontScreen({ onStatus }: Props) {
   };
 
   const handleMove = (id: string, delta: -1 | 1) => {
-    // Se a biblioteca tiver um método de mover, chame aqui.
-    // Se não, apenas mantemos a interface compilando.
     console.log('Mover', id, delta);
   };
 
@@ -152,6 +150,10 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const tabClass = (mode: ViewMode, active: string) =>
     `flex h-8 items-center justify-center gap-1.5 px-4 text-xs font-bold rounded-lg transition-colors ${viewMode === mode ? active : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`;
+
+  // @ts-ignore - Ignorando caso a lib não exponha essas props ainda, para evitar quebra
+  const instruments = (library as any).instruments || [];
+  const hasLibrary = instruments.length > 0 || synth.ready;
 
   return (
     <div className="flex w-full flex-1 flex-row overflow-hidden bg-[var(--bg-app)] p-2 text-[var(--text-main)] gap-2">
@@ -236,6 +238,11 @@ export function SoundFontScreen({ onStatus }: Props) {
               activeChannel={activeChannel}
               channelAssignments={channels.assignments}
               onAssignProgram={handleAssignProgram}
+              instruments={instruments}
+              channelBanks={channels.banks}
+              hasLibrary={hasLibrary}
+              showLibraryName={true}
+              onOpenLibrary={() => setViewMode('library')}
             />
           )}
           {viewMode === 'library' && (
