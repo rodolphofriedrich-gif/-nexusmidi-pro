@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RotateCcw, Settings2, Volume2, Zap } from 'lucide-react';
 import { tr } from '../../i18n';
 import type { SynthSettings } from '../../services/synthTypes';
@@ -7,6 +7,7 @@ interface Props {
   settings: SynthSettings;
   onUpdateSetting: (key: keyof SynthSettings, value: number) => void;
   onReset: () => void;
+  defaultTab?: TabId;
 }
 
 interface SliderRowProps {
@@ -46,8 +47,13 @@ function SliderRow({ label, value, min, max, step = 1, unit = '%', onChange }: S
 
 type TabId = 'fx' | 'sound' | 'system';
 
-export function SynthSettingsPanel({ settings, onUpdateSetting, onReset }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>('fx');
+export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, defaultTab = 'fx' }: Props) {
+  const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
+
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
+
   const set = (key: keyof SynthSettings) => (value: number) => onUpdateSetting(key, value);
   const tabClass = (id: TabId, active: string) =>
     `flex h-7 items-center gap-1.5 rounded-md px-3 text-[10px] font-bold transition-colors ${activeTab === id ? active : 'text-slate-500 hover:text-slate-300'}`;
