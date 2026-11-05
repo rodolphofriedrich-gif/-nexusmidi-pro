@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import {
   Activity, AudioWaveform, GitBranch, LogOut, Music2, Menu, X, Usb, Bluetooth, type LucideIcon,
-  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Power, LayoutGrid, SlidersHorizontal, Globe, RotateCcw, Moon, Sun, Monitor, Lock, Unlock, ShieldAlert
+  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Power, LayoutGrid, SlidersHorizontal, Globe, Moon, Sun, Monitor, Lock, Unlock, ShieldAlert
 } from 'lucide-react';
 import { ConnectionMenu } from './components/ConnectionMenu';
 import { ExitDialog } from './components/ExitDialog';
@@ -35,7 +35,6 @@ const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string; co
   { id: 'monitor', Icon: Activity, label: 'Monitor', color: 'text-cyan-400' },
 ];
 
-/** Popup de seleção de canal independente para os Pads (não depende do MidiKeyboard). */
 function ChannelSelectPopup({ title, value, onSelect, onClose }: { title: string; value: number; onSelect: (ch: number) => void; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -123,7 +122,7 @@ export default function App() {
       setVuLevel(velocity);
     };
     midiManager.addActivityListener(onActivity);
-    
+
     const interval = setInterval(() => {
       if (Date.now() - lastActivity > 150) setVuLevel(0);
     }, 200);
@@ -193,10 +192,6 @@ export default function App() {
 
   const addNewRoute = () => {
     midiManager.addRoute({ sourceId: VIRTUAL_ID, destinationId: devices.connected[0]?.id ?? '' });
-  };
-
-  const handleResetMixer = () => {
-    window.dispatchEvent(new Event('resetMixer'));
   };
 
   const btnClass = "flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] active:scale-95 px-3 text-xs font-bold";
