@@ -1,11 +1,10 @@
 /* =========================================================
-   SCROLLBARS (barras de rolagem) — grossas e em ciano para ficarem fáceis de ver
+   SCROLLBARS — grossas e na cor de seleção (índigo)
    ========================================================= */
 
 /*
  * Atenção: no Chrome/WebView, declarar `scrollbar-width` ou `scrollbar-color` desativa os estilos
- * `::-webkit-scrollbar` (e a barra volta a ser a fina e invisível do sistema). Por isso as propriedades
- * padrão ficam só para navegadores sem suporte a ::-webkit-scrollbar (Firefox).
+ * `::-webkit-scrollbar`. Por isso as propriedades padrão ficam só para navegadores sem suporte a ::-webkit-scrollbar.
  */
 *::-webkit-scrollbar {
   width: 10px;
@@ -13,30 +12,44 @@
 }
 
 *::-webkit-scrollbar-track {
-  background: #15171b;
+  background: var(--nexus-bg-bottom);
   border-radius: 999px;
 }
 
 *::-webkit-scrollbar-thumb {
   min-height: 36px;
   min-width: 36px;
-  background: #0e7490;
-  border: 2px solid #15171b;
+  background: #3e4670;
+  border: 2px solid var(--nexus-bg-bottom);
   border-radius: 999px;
 }
 
 *::-webkit-scrollbar-thumb:hover,
 *::-webkit-scrollbar-thumb:active {
-  background: #22d3ee;
+  background: var(--nexus-primary);
 }
 
 *::-webkit-scrollbar-corner {
   background: transparent;
 }
 
+/* Overrides para o tema claro (barras discretas em cinza) */
+html.light *::-webkit-scrollbar-thumb {
+  background: #c5cbda;
+  border-color: var(--nexus-bg-bottom);
+}
+
+html.light *::-webkit-scrollbar-thumb:hover,
+html.light *::-webkit-scrollbar-thumb:active {
+  background: var(--nexus-primary);
+}
+
 @supports not selector(::-webkit-scrollbar) {
   * {
     scrollbar-width: auto;
-    scrollbar-color: #0e7490 #15171b;
+    scrollbar-color: #3e4670 var(--nexus-bg-bottom);
+  }
+  html.light * {
+    scrollbar-color: #c5cbda var(--nexus-bg-bottom);
   }
 }
