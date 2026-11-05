@@ -8,7 +8,7 @@ interface MidiPadGridProps {
   onNoteOn: (note: number) => void;
   onNoteOff: (note: number) => void;
   onDisabledPress: () => void;
-  isFullscreen?: boolean;
+  isEditMode: boolean;
 }
 
 export interface PadData {
@@ -44,7 +44,7 @@ const DEFAULT_BANKS: PadData[][] = [
 
 const COLORS = ['bg-blue-500', 'bg-red-500', 'bg-yellow-500', 'bg-green-500', 'bg-cyan-500', 'bg-pink-500', 'bg-purple-500', 'bg-orange-500'];
 
-export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, onDisabledPress, isFullscreen }: MidiPadGridProps) {
+export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, onDisabledPress, isEditMode }: MidiPadGridProps) {
   const [banksData, setBanksData] = useState<PadData[][]>(() => {
     try {
       const saved = localStorage.getItem('nexus_pads_data');
@@ -176,7 +176,7 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
               onPointerUp={(e) => { releasePad(pad.note, e.pointerId); }}
               onPointerCancel={(e) => { releasePad(pad.note, e.pointerId); }}
               onLostPointerCapture={() => releasePad(pad.note, -1)}
-              onContextMenu={(e) => { e.preventDefault(); setEditPadIndex(index); }}
+              onContextMenu={(e) => { e.preventDefault(); if (isEditMode) setEditPadIndex(index); }}
               role="button"
               className={`relative flex min-h-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-xl border-2 transition-all duration-100 ease-out ${
                 isPressed 
@@ -191,7 +191,7 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
 
               {isPressed && <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />}
 
-              {!isFullscreen && (
+              {isEditMode && (
                 <button type="button" onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); }} className={`absolute right-2 top-2 z-20 rounded-md p-2 transition-all ${isPressed ? 'bg-black/20 text-white/80' : 'bg-black/10 text-black/50 hover:bg-black/30 dark:bg-black/40 dark:text-white/50 dark:hover:bg-black/80 dark:hover:text-white'}`}>
                   <Settings2 size={14} />
                 </button>
