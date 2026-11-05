@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
-import { Library, List, UploadCloud, X, Settings2, Trash2 } from 'lucide-react';
+import { Library, List, UploadCloud, X, Settings2, Trash2, SlidersHorizontal, Wand2, Cpu } from 'lucide-react';
 import { channelColor } from '../constants/channelColors';
 import { categoryOfProgram } from '../constants/gm';
 import { useStore } from '../hooks/useStore';
@@ -8,6 +8,7 @@ import { tr } from '../i18n';
 import { soundFontLibrary } from '../services/soundFontLibrary';
 import { channelsStore, prefsStore, synthSettingsStore } from '../services/stores';
 import type { SynthSettings } from '../services/synthTypes';
+import { DEFAULT_SYNTH_SETTINGS } from '../services/synthTypes';
 import { synthService } from '../services/synthService';
 import type { SoundFontPreset } from '../types/soundfont';
 import { ActiveSoundFontCard } from './soundfont/ActiveSoundFontCard';
@@ -19,10 +20,12 @@ interface Props {
   onStatus: (message: string, type?: ToastType) => void;
 }
 
-type ViewMode = 'presets' | 'library';
+type ConfigTab = 'effects' | 'timbre' | 'system';
+type PopupMode = 'presets' | 'library' | ConfigTab | null;
 
-const SCENES = ['A', 'B', 'C'];
+const SCENES = ['A', 'B', 'C', 'D', 'E', 'F'];
 const SCENES_KEY = 'nexusmidi_studio_scenes';
+const CHANNEL_SETTINGS_KEY = 'nexusmidi_channel_settings';
 
 function Popup({ title, onClose, children, widthClass = 'max-w-2xl' }: { title: string; onClose: () => void; children: React.ReactNode; widthClass?: string }) {
   useEffect(() => {
@@ -92,6 +95,31 @@ function MidiChannelsPanel({ activeChannel, muted, solo, onSelect, onToggleMute,
   );
 }
 
+function ChannelGrid({ value, onSelect }: { value: number; onSelect: (ch: number) => void }) {
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {Array.from({ length: 16 }, (_, i) => {
+        const ch = i + 1;
+        const selected = value === ch;
+        return (
+          <button
+            key={ch}
+            type="button"
+            onClick={() => onSelect(ch)}
+            className={`h-12 rounded-lg border font-mono text-sm transition-colors ${
+              selected
+                ? 'border-cyan-600/60 bg-cyan-500/20 font-bold text-cyan-400'
+                : 'border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'
+            }`}
+          >
+            {String(ch).padStart(2, '0')}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function SoundFontScreen({ onStatus }: Props) {
   const settings = useStore(synthSettingsStore);
   const channels = useStore(channelsStore);
@@ -99,12 +127,28 @@ export function SoundFontScreen({ onStatus }: Props) {
   const synth = useSyncExternalStore(synthService.subscribe, synthService.getSnapshot, synthService.getSnapshot);
   const library = useSyncExternalStore(soundFontLibrary.subscribe, soundFontLibrary.getSnapshot, soundFontLibrary.getSnapshot);
 
-  const [viewMode, setViewMode] = useState<ViewMode>('presets');
   const activeChannel = prefs.channel;
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const busy = library.busy || synth.loading;
 
+  // ---- Popups principais ----
+  const [popupMode, setPopupMode] = useState<PopupMode>(null);
+  const [selectedPresetForChannel, setSelectedPresetForChannel] = useState<SoundFontPreset | null>(null);
+
+  // ---- Config por canal ----
+  const [channelSettings, setChannelSettings] = useState<Record<number, SynthSettings>>(() => {
+    try {
+      const saved = localStorage.getItem(CHANNEL_SETTINGS_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const [configChannel, setConfigChannel] = useState<number>(activeChannel);
+
+  useEffect(() => {
+    try { localStorage.setItem(CHANNEL_SETTINGS_KEY, JSON.stringify(channelSettings)); } catch { /* */ }
+  }, [channelSettings]);
+
+  // ---- Cenas ----
   const [scenes, setScenes] = useState<Record<string, any>>(() => {
     try {
       const saved = localStorage.getItem(SCENES_KEY);
@@ -112,7 +156,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     } catch { return {}; }
   });
   const [activeScene, setActiveScene] = useState('A');
-
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [scenesToDelete, setScenesToDelete] = useState<string[]>([]);
 
@@ -120,6 +163,15 @@ export function SoundFontScreen({ onStatus }: Props) {
     if (library.error) onStatus(library.error, 'error');
   }, [library.error, onStatus]);
 
+  // Sincroniza o snapshot do canal ativo sempre que muda de canal
+  useEffect(() => {
+    const snapshot = channelSettings[activeChannel];
+    if (snapshot) {
+      synthSettingsStore.set(snapshot);
+    }
+  }, [activeChannel]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- Instruments Memo ----
   const instruments = useMemo<SoundFontPreset[]>(() => {
     const seen = new Set<string>();
     const result: SoundFontPreset[] = [];
@@ -150,6 +202,39 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const hasLibrary = library.items.length > 0;
 
+  // ---- Helpers de config por canal ----
+  const getChannelSettings = (ch: number): SynthSettings =>
+    channelSettings[ch] ?? DEFAULT_SYNTH_SETTINGS;
+
+  const updateSetting = (key: keyof SynthSettings, value: number) => {
+    const ch = activeChannel;
+    synthSettingsStore.set({ [key]: value });
+    setChannelSettings((prev) => ({
+      ...prev,
+      [ch]: { ...(prev[ch] ?? synthSettingsStore.get()), [key]: value },
+    }));
+  };
+
+  const updateConfigSetting = (key: keyof SynthSettings, value: number) => {
+    const ch = configChannel;
+    const current = channelSettings[ch] ?? DEFAULT_SYNTH_SETTINGS;
+    const updated = { ...current, [key]: value };
+    setChannelSettings((prev) => ({ ...prev, [ch]: updated }));
+    if (ch === activeChannel) {
+      synthSettingsStore.set({ [key]: value });
+    }
+  };
+
+  const handleResetChannel = () => {
+    const ch = configChannel;
+    setChannelSettings((prev) => ({ ...prev, [ch]: DEFAULT_SYNTH_SETTINGS }));
+    if (ch === activeChannel) {
+      synthSettingsStore.set(DEFAULT_SYNTH_SETTINGS);
+    }
+    onStatus(tr('Configurações do canal {ch} restauradas.', { ch }), 'info');
+  };
+
+  // ---- Ações de biblioteca / import ----
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -174,17 +259,26 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const handleMove = (id: string, delta: -1 | 1) => soundFontLibrary.move(id, delta);
 
-  const handleAssignProgram = (preset: SoundFontPreset) => {
+  // ---- Preset: seleção abre diálogo de canal ----
+  const handlePresetSelected = (preset: SoundFontPreset) => {
+    setSelectedPresetForChannel(preset);
+  };
+
+  const applyPresetToChannel = (ch: number) => {
+    if (!selectedPresetForChannel) return;
     if (!synth.ready) {
       onStatus(tr('Importe um arquivo SF2 primeiro.'), 'warn');
       return;
     }
-    synthService.programChange(preset.programNumber, activeChannel);
+    synthService.programChange(selectedPresetForChannel.programNumber, ch);
     channelsStore.set((s) => ({
       ...s,
-      assignments: { ...s.assignments, [activeChannel]: preset.programNumber },
-      banks: { ...s.banks, [activeChannel]: preset.bankNumber },
+      assignments: { ...s.assignments, [ch]: selectedPresetForChannel.programNumber },
+      banks: { ...s.banks, [ch]: selectedPresetForChannel.bankNumber },
     }));
+    onStatus(tr('Preset aplicado ao canal {ch}.', { ch }), 'success');
+    setSelectedPresetForChannel(null);
+    setPopupMode(null);
   };
 
   const selectChannel = (ch: number) => prefsStore.set({ channel: ch });
@@ -192,20 +286,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     channelsStore.set((s) => ({ ...s, muted: { ...s.muted, [ch]: !s.muted?.[ch] } }));
   const toggleSolo = (ch: number) =>
     channelsStore.set((s) => ({ ...s, solo: s.solo === ch ? null : ch }));
-
-  const updateSetting = (key: keyof SynthSettings, value: number) => synthSettingsStore.set({ [key]: value });
-
-  const handleReset = () => {
-    synthSettingsStore.reset();
-    onStatus(tr('Configurações restauradas para o padrão.'), 'info');
-  };
-
-  const activePreset = (): SoundFontPreset => {
-    const program = channels.assignments[activeChannel] ?? 0;
-    const bank = channels.banks?.[activeChannel] ?? 0;
-    const found = instruments.find((i) => i.programNumber === program && i.bankNumber === bank);
-    return found ?? ({ programNumber: program, name: tr('Escolha um instrumento'), category: 'Piano', isDrum: false } as any);
-  };
 
   const handleAudition = () => {
     if (!synth.ready) {
@@ -217,6 +297,14 @@ export function SoundFontScreen({ onStatus }: Props) {
     setTimeout(() => chord.forEach((note) => synthService.noteOff(note, activeChannel)), 1000);
   };
 
+  const activePreset = (): SoundFontPreset => {
+    const program = channels.assignments[activeChannel] ?? 0;
+    const bank = channels.banks?.[activeChannel] ?? 0;
+    const found = instruments.find((i) => i.programNumber === program && i.bankNumber === bank);
+    return found ?? ({ programNumber: program, name: tr('Escolha um instrumento'), category: 'Piano', isDrum: false } as any);
+  };
+
+  // ---- Cenas ----
   const loadScene = (scene: string) => {
     setActiveScene(scene);
     if (scenes[scene]) {
@@ -236,35 +324,33 @@ export function SoundFontScreen({ onStatus }: Props) {
   };
 
   const toggleSceneSelection = (scene: string) => {
-    setScenesToDelete(prev => 
-      prev.includes(scene) ? prev.filter(s => s !== scene) : [...prev, scene]
-    );
+    setScenesToDelete((prev) => (prev.includes(scene) ? prev.filter((s) => s !== scene) : [...prev, scene]));
   };
 
   const confirmDeleteScenes = () => {
-    if (scenesToDelete.length === 0) {
-      setIsDeleteModalOpen(false);
-      return;
-    }
-
+    if (scenesToDelete.length === 0) { setIsDeleteModalOpen(false); return; }
     const newScenes = { ...scenes };
-    scenesToDelete.forEach(s => delete newScenes[s]);
-    
+    scenesToDelete.forEach((s) => delete newScenes[s]);
     setScenes(newScenes);
     localStorage.setItem(SCENES_KEY, JSON.stringify(newScenes));
-    
     if (scenesToDelete.includes(activeScene)) {
-      const firstAvailable = SCENES.find(s => newScenes[s]) || 'A';
+      const firstAvailable = SCENES.find((s) => newScenes[s]) || 'A';
       setActiveScene(firstAvailable);
     }
-
     onStatus(tr('Cenas apagadas com sucesso.'), 'info');
     setIsDeleteModalOpen(false);
     setScenesToDelete([]);
   };
 
-  const tabClass = (mode: ViewMode, active: string) =>
-    `flex h-8 items-center justify-center gap-1.5 px-4 text-xs font-bold rounded-lg transition-colors ${viewMode === mode ? active : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`;
+  const tabClass = (mode: string, active: string) =>
+    `flex h-8 items-center justify-center gap-1.5 px-4 text-xs font-bold rounded-lg transition-colors ${popupMode === mode ? active : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`;
+
+  const configBtnClass = (mode: ConfigTab, color: string) =>
+    `flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-colors ${
+      popupMode === mode
+        ? `bg-${color}-600/20 border-${color}-500/50 text-${color}-400`
+        : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'
+    }`;
 
   return (
     <div className="flex w-full flex-1 flex-row gap-2 overflow-hidden bg-[var(--bg-app)] p-2 text-[var(--text-main)]">
@@ -273,11 +359,11 @@ export function SoundFontScreen({ onStatus }: Props) {
         <div className="w-full shrink-0">
           <ActiveSoundFontCard
             preset={activePreset()}
-            volume={settings.volume}
+            volume={getChannelSettings(activeChannel).volume}
             onVolumeChange={(v) => updateSetting('volume', v)}
-            reverb={settings.reverb}
+            reverb={getChannelSettings(activeChannel).reverb}
             onReverbChange={(v) => updateSetting('reverb', v)}
-            transpose={settings.transpose}
+            transpose={getChannelSettings(activeChannel).transpose}
             onTransposeChange={(v) => updateSetting('transpose', v)}
             onAudition={handleAudition}
             canPlay={synth.ready}
@@ -296,6 +382,7 @@ export function SoundFontScreen({ onStatus }: Props) {
       {/* COLUNA DIREITA */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2 min-h-0 h-full">
         <div className="mb-2 flex shrink-0 flex-col gap-2 border-b border-[var(--border-color)] pb-2">
+          {/* Linha 1: Cenas */}
           <div className="flex items-center gap-2">
             <div className="flex min-w-0 flex-1 overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
               {SCENES.map((s) => (
@@ -304,8 +391,8 @@ export function SoundFontScreen({ onStatus }: Props) {
                   {s}
                 </button>
               ))}
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setIsDeleteModalOpen(true)}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-red-500/70 hover:bg-red-900/20 hover:text-red-400 transition-colors ml-1"
                 title={tr('Apagar Cenas')}
@@ -318,68 +405,141 @@ export function SoundFontScreen({ onStatus }: Props) {
             </button>
           </div>
 
+          {/* Linha 2: Presets e Biblioteca (abrem popups) */}
           <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
-              <button type="button" onClick={() => setViewMode('presets')} className={tabClass('presets', 'bg-cyan-600 text-white')}>
+            <div className="flex flex-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
+              <button type="button" onClick={() => setPopupMode('presets')}
+                className={tabClass('presets', 'bg-cyan-600 text-white')}>
                 <List size={14} /> PRESETS
               </button>
-              <button type="button" onClick={() => setViewMode('library')} className={tabClass('library', 'bg-cyan-600 text-white')}>
+              <button type="button" onClick={() => setPopupMode('library')}
+                className={tabClass('library', 'bg-cyan-600 text-white')}>
                 <Library size={14} /> BIBLIOTECA
               </button>
             </div>
-            <button type="button" onClick={() => setIsConfigOpen(true)} title={tr('Configurações')}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--text-main)]">
-              <Settings2 size={14} />
-            </button>
             <input type="file" accept=".sf2" ref={fileInputRef} onChange={(e) => void handleFileChange(e)} className="hidden" />
             <button type="button" onClick={() => fileInputRef.current?.click()} disabled={busy}
-              className="ml-auto flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-cyan-600 px-3 text-xs font-bold text-white hover:bg-cyan-500 disabled:opacity-50">
+              className="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-cyan-600 px-3 text-xs font-bold text-white hover:bg-cyan-500 disabled:opacity-50">
               <UploadCloud size={14} /> {busy ? '...' : 'Importar SF2'}
+            </button>
+          </div>
+
+          {/* Linha 3: Efeitos, Timbre, Sistema */}
+          <div className="flex items-center gap-1.5">
+            <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('effects'); }}
+              className={configBtnClass('effects', 'fuchsia')}>
+              <SlidersHorizontal size={14} /> {tr('EFEITOS')}
+            </button>
+            <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('timbre'); }}
+              className={configBtnClass('timbre', 'amber')}>
+              <Wand2 size={14} /> {tr('TIMBRE')}
+            </button>
+            <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('system'); }}
+              className={configBtnClass('system', 'emerald')}>
+              <Cpu size={14} /> {tr('SISTEMA')}
             </button>
           </div>
         </div>
 
-        {/* CONTAINER DAS LISTAS AJUSTADO PARA ROLAGEM */}
-        <div className="min-h-0 w-full flex-1 overflow-y-auto custom-scrollbar">
-          {viewMode === 'presets' && (
-            <SoundFontList
-              activeChannel={activeChannel}
-              channelAssignments={channels.assignments}
-              onAssignProgram={handleAssignProgram}
-              instruments={instruments}
-              channelBanks={channels.banks ?? {}}
-              hasLibrary={hasLibrary}
-              showLibraryName={library.activeIds.length > 1}
-              onOpenLibrary={() => setViewMode('library')}
-            />
-          )}
-          {viewMode === 'library' && (
-            <SoundFontLibraryPanel
-              library={library}
-              onToggle={handleActivate}
-              onMove={handleMove}
-              onRemove={handleRemove}
-            />
+        {/* Área abaixo dos botões - dica de uso */}
+        <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--border-color)] p-6 text-center">
+          <Settings2 size={32} className="text-[var(--text-muted)] opacity-40" />
+          <p className="text-xs text-[var(--text-muted)] max-w-xs">
+            {tr('Abra PRESETS para escolher um instrumento ou BIBLIOTECA para gerenciar seus SoundFonts.')}
+          </p>
+          {hasLibrary && (
+            <p className="text-[11px] text-emerald-500">
+              {instruments.length} {tr('instrumentos disponíveis')}
+            </p>
           )}
         </div>
       </div>
 
-      {isConfigOpen && (
-        <Popup title={tr('Configurações')} onClose={() => setIsConfigOpen(false)} widthClass="max-w-2xl">
-          <SynthSettingsPanel settings={settings} onUpdateSetting={updateSetting} onReset={handleReset} />
+      {/* ============ POPUP: PRESETS ============ */}
+      {popupMode === 'presets' && (
+        <Popup title={tr('PRESETS')} onClose={() => setPopupMode(null)} widthClass="max-w-4xl">
+          <SoundFontList
+            activeChannel={activeChannel}
+            channelAssignments={channels.assignments}
+            onAssignProgram={handlePresetSelected}
+            instruments={instruments}
+            channelBanks={channels.banks ?? {}}
+            hasLibrary={hasLibrary}
+            showLibraryName={library.activeIds.length > 1}
+            onOpenLibrary={() => setPopupMode('library')}
+          />
         </Popup>
       )}
 
+      {/* ============ POPUP: BIBLIOTECA ============ */}
+      {popupMode === 'library' && (
+        <Popup title={tr('BIBLIOTECA')} onClose={() => setPopupMode(null)} widthClass="max-w-2xl">
+          <SoundFontLibraryPanel
+            library={library}
+            onToggle={handleActivate}
+            onMove={handleMove}
+            onRemove={handleRemove}
+          />
+        </Popup>
+      )}
+
+      {/* ============ POPUPS: EFEITOS / TIMBRE / SISTEMA ============ */}
+      {(popupMode === 'effects' || popupMode === 'timbre' || popupMode === 'system') && (
+        <Popup
+          title={`${tr('Configurações')} • ${tr(popupMode === 'effects' ? 'EFEITOS' : popupMode === 'timbre' ? 'TIMBRE' : 'SISTEMA')} • CH ${String(configChannel).padStart(2, '0')}`}
+          onClose={() => setPopupMode(null)}
+          widthClass="max-w-2xl"
+        >
+          <div className="flex flex-col gap-4">
+            {/* Seletor de canal */}
+            <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-app)] p-3">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                {tr('Canal MIDI a editar')}
+              </p>
+              <ChannelGrid value={configChannel} onSelect={setConfigChannel} />
+            </div>
+
+            {/* Painel de configurações do canal selecionado */}
+            <SynthSettingsPanel
+              settings={getChannelSettings(configChannel)}
+              onUpdateSetting={updateConfigSetting}
+              onReset={handleResetChannel}
+              {...({ defaultTab: popupMode } as any)}
+            />
+          </div>
+        </Popup>
+      )}
+
+      {/* ============ DIÁLOGO: ESCOLHER CANAL PARA O PRESET ============ */}
+      {selectedPresetForChannel && (
+        <Popup title={tr('Aplicar preset ao canal')} onClose={() => setSelectedPresetForChannel(null)} widthClass="max-w-sm">
+          <div className="flex flex-col gap-4">
+            <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{tr('Preset selecionado')}</p>
+              <p className="mt-1 text-sm font-bold text-cyan-400">{selectedPresetForChannel.name}</p>
+              <p className="text-[11px] text-[var(--text-muted)]">
+                {selectedPresetForChannel.libraryName} • PRG {selectedPresetForChannel.programNumber}
+                {selectedPresetForChannel.isDrum ? ' • Bateria' : ''}
+              </p>
+            </div>
+
+            <p className="text-xs text-[var(--text-muted)]">{tr('Selecione o canal MIDI:')}</p>
+            <ChannelGrid value={activeChannel} onSelect={applyPresetToChannel} />
+          </div>
+        </Popup>
+      )}
+
+      {/* ============ MODAL: APAGAR CENAS ============ */}
       {isDeleteModalOpen && (
         <Popup title={tr('Apagar Cenas')} onClose={() => setIsDeleteModalOpen(false)} widthClass="max-w-sm">
           <div className="space-y-4">
             <p className="text-sm text-[var(--text-muted)]">{tr('Selecione as cenas que deseja apagar:')}</p>
-            
+
             <div className="grid grid-cols-2 gap-2">
               {SCENES.map((scene) => {
                 const hasData = !!scenes[scene];
                 const isSelected = scenesToDelete.includes(scene);
-                
+
                 return (
                   <button
                     key={scene}
@@ -406,9 +566,9 @@ export function SoundFontScreen({ onStatus }: Props) {
               <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="flex-1 h-10 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-sm font-bold text-[var(--text-main)] hover:bg-[var(--bg-elevated)]">
                 {tr('Cancelar')}
               </button>
-              <button 
-                type="button" 
-                onClick={confirmDeleteScenes} 
+              <button
+                type="button"
+                onClick={confirmDeleteScenes}
                 disabled={scenesToDelete.length === 0}
                 className="flex-1 h-10 rounded-lg bg-red-600 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-50"
               >
