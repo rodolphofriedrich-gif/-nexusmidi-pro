@@ -168,12 +168,12 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
                 {COLORS.map((c) => (
                   <label key={c} className="cursor-pointer">
                     <input type="radio" name="color" value={c} defaultChecked={banksData[bank][editPadIndex].color === c} className="peer sr-only" />
-                    <div className={`h-8 w-8 rounded-full ${c} ring-white peer-checked:ring-2`} />
+                    <div className={`h-8 w-8 rounded-full ${c} ring-[var(--nexus-primary)] peer-checked:ring-2`} />
                   </label>
                 ))}
               </div>
             </div>
-            <button type="submit" className="flex w-full h-11 items-center justify-center gap-2 rounded-lg bg-cyan-600 text-sm font-bold text-white hover:bg-cyan-500 mt-2">
+            <button type="submit" className="flex w-full h-11 items-center justify-center gap-2 rounded-lg bg-indigo-600 text-sm font-bold text-white hover:bg-indigo-500 mt-2">
               <Save size={18} /> {tr('Salvar Pad')}
             </button>
           </form>
@@ -194,7 +194,7 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
               role="button"
               className={`relative flex min-h-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-xl border-2 transition-all duration-100 ease-out ${
                 isPressed 
-                  ? 'scale-[0.97] z-10 border-white/80 shadow-[0_0_20px_rgba(255,255,255,0.4)]' 
+                  ? 'scale-[0.97] z-10 border-cyan-400/80 shadow-[0_0_20px_rgba(34,211,238,0.4)]' 
                   : 'border-[var(--border-color)] bg-[var(--bg-elevated)] shadow-sm hover:border-slate-400'
               } ${!isActive ? 'cursor-not-allowed opacity-50 grayscale' : ''}`}
               style={{ touchAction: 'none' }}
