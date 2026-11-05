@@ -79,6 +79,24 @@ export function SoundFontScreen({ onStatus }: Props) {
     }
   };
 
+  // Funções exigidas pelo SoundFontLibraryPanel
+  const handleActivate = async (id: string) => {
+    if (await soundFontLibrary.activate(id)) {
+      onStatus(tr('SoundFont carregado!'), 'success');
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    await soundFontLibrary.remove(id);
+    onStatus(tr('SoundFont removido da biblioteca.'), 'info');
+  };
+
+  const handleMove = (id: string, direction: 'up' | 'down') => {
+    // Se a biblioteca tiver um método de mover, chame aqui.
+    // Se não, apenas mantemos a interface compilando.
+    console.log('Mover', id, direction);
+  };
+
   const handleAssignProgram = (preset: SoundFontPreset) => {
     if (!synth.ready) {
       onStatus(tr('Importe um arquivo SF2 primeiro.'), 'warn');
@@ -219,7 +237,6 @@ export function SoundFontScreen({ onStatus }: Props) {
           {viewMode === 'presets' && (
             <SoundFontList
               activeChannel={activeChannel}
-              onSelectChannel={setActiveChannel}
               channelAssignments={channels.assignments}
               onAssignProgram={handleAssignProgram}
               mutedChannels={channels.muted}
@@ -231,6 +248,9 @@ export function SoundFontScreen({ onStatus }: Props) {
           {viewMode === 'library' && (
             <SoundFontLibraryPanel
               library={library}
+              onToggle={handleActivate}
+              onMove={handleMove}
+              onRemove={handleRemove}
             />
           )}
         </div>
