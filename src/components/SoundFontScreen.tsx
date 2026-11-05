@@ -23,7 +23,7 @@ interface Props {
 type ConfigTab = 'effects' | 'timbre' | 'system';
 type PopupMode = 'presets' | 'library' | ConfigTab | null;
 
-const SCENES = ['A', 'B', 'C', 'D', 'E', 'F'];
+const SCENES = ['A', 'B', 'C', 'D'];
 const SCENES_KEY = 'nexusmidi_studio_scenes';
 const CHANNEL_SETTINGS_KEY = 'nexusmidi_channel_settings';
 
@@ -121,7 +121,6 @@ function ChannelGrid({ value, onSelect }: { value: number; onSelect: (ch: number
 }
 
 export function SoundFontScreen({ onStatus }: Props) {
-  const settings = useStore(synthSettingsStore);
   const channels = useStore(channelsStore);
   const prefs = useStore(prefsStore);
   const synth = useSyncExternalStore(synthService.subscribe, synthService.getSnapshot, synthService.getSnapshot);
@@ -131,11 +130,9 @@ export function SoundFontScreen({ onStatus }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const busy = library.busy || synth.loading;
 
-  // ---- Popups principais ----
   const [popupMode, setPopupMode] = useState<PopupMode>(null);
   const [selectedPresetForChannel, setSelectedPresetForChannel] = useState<SoundFontPreset | null>(null);
 
-  // ---- Config por canal ----
   const [channelSettings, setChannelSettings] = useState<Record<number, SynthSettings>>(() => {
     try {
       const saved = localStorage.getItem(CHANNEL_SETTINGS_KEY);
@@ -148,7 +145,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     try { localStorage.setItem(CHANNEL_SETTINGS_KEY, JSON.stringify(channelSettings)); } catch { /* */ }
   }, [channelSettings]);
 
-  // ---- Cenas ----
   const [scenes, setScenes] = useState<Record<string, any>>(() => {
     try {
       const saved = localStorage.getItem(SCENES_KEY);
@@ -163,7 +159,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     if (library.error) onStatus(library.error, 'error');
   }, [library.error, onStatus]);
 
-  // Sincroniza o snapshot do canal ativo sempre que muda de canal
   useEffect(() => {
     const snapshot = channelSettings[activeChannel];
     if (snapshot) {
@@ -171,7 +166,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     }
   }, [activeChannel]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ---- Instruments Memo ----
   const instruments = useMemo<SoundFontPreset[]>(() => {
     const seen = new Set<string>();
     const result: SoundFontPreset[] = [];
@@ -202,7 +196,6 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const hasLibrary = library.items.length > 0;
 
-  // ---- Helpers de config por canal ----
   const getChannelSettings = (ch: number): SynthSettings =>
     channelSettings[ch] ?? DEFAULT_SYNTH_SETTINGS;
 
@@ -234,7 +227,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     onStatus(tr('Configurações do canal {ch} restauradas.', { ch }), 'info');
   };
 
-  // ---- Ações de biblioteca / import ----
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -259,7 +251,6 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const handleMove = (id: string, delta: -1 | 1) => soundFontLibrary.move(id, delta);
 
-  // ---- Preset: seleção abre diálogo de canal ----
   const handlePresetSelected = (preset: SoundFontPreset) => {
     setSelectedPresetForChannel(preset);
   };
@@ -304,7 +295,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     return found ?? ({ programNumber: program, name: tr('Escolha um instrumento'), category: 'Piano', isDrum: false } as any);
   };
 
-  // ---- Cenas ----
   const loadScene = (scene: string) => {
     setActiveScene(scene);
     if (scenes[scene]) {
@@ -382,7 +372,6 @@ export function SoundFontScreen({ onStatus }: Props) {
       {/* COLUNA DIREITA */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2 min-h-0 h-full">
         <div className="mb-2 flex shrink-0 flex-col gap-2 border-b border-[var(--border-color)] pb-2">
-          {/* Linha 1: Cenas */}
           <div className="flex items-center gap-2">
             <div className="flex min-w-0 flex-1 overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
               {SCENES.map((s) => (
@@ -405,7 +394,6 @@ export function SoundFontScreen({ onStatus }: Props) {
             </button>
           </div>
 
-          {/* Linha 2: Presets e Biblioteca (abrem popups) */}
           <div className="flex items-center gap-2">
             <div className="flex flex-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
               <button type="button" onClick={() => setPopupMode('presets')}
@@ -424,7 +412,6 @@ export function SoundFontScreen({ onStatus }: Props) {
             </button>
           </div>
 
-          {/* Linha 3: Efeitos, Timbre, Sistema */}
           <div className="flex items-center gap-1.5">
             <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('effects'); }}
               className={configBtnClass('effects', 'fuchsia')}>
@@ -441,7 +428,6 @@ export function SoundFontScreen({ onStatus }: Props) {
           </div>
         </div>
 
-        {/* Área abaixo dos botões - dica de uso */}
         <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--border-color)] p-6 text-center">
           <Settings2 size={32} className="text-[var(--text-muted)] opacity-40" />
           <p className="text-xs text-[var(--text-muted)] max-w-xs">
@@ -455,7 +441,6 @@ export function SoundFontScreen({ onStatus }: Props) {
         </div>
       </div>
 
-      {/* ============ POPUP: PRESETS ============ */}
       {popupMode === 'presets' && (
         <Popup title={tr('PRESETS')} onClose={() => setPopupMode(null)} widthClass="max-w-4xl">
           <SoundFontList
@@ -471,7 +456,6 @@ export function SoundFontScreen({ onStatus }: Props) {
         </Popup>
       )}
 
-      {/* ============ POPUP: BIBLIOTECA ============ */}
       {popupMode === 'library' && (
         <Popup title={tr('BIBLIOTECA')} onClose={() => setPopupMode(null)} widthClass="max-w-2xl">
           <SoundFontLibraryPanel
@@ -483,7 +467,6 @@ export function SoundFontScreen({ onStatus }: Props) {
         </Popup>
       )}
 
-            {/* ============ POPUPS: EFEITOS / TIMBRE / SISTEMA ============ */}
       {(popupMode === 'effects' || popupMode === 'timbre' || popupMode === 'system') && (
         <Popup
           title={`${tr('Configurações')} • ${tr(popupMode === 'effects' ? 'EFEITOS' : popupMode === 'timbre' ? 'TIMBRE' : 'SISTEMA')} • CH ${String(configChannel).padStart(2, '0')}`}
@@ -491,7 +474,6 @@ export function SoundFontScreen({ onStatus }: Props) {
           widthClass="max-w-2xl"
         >
           <div className="flex flex-col gap-4">
-            {/* Seletor de canal */}
             <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-app)] p-3">
               <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 {tr('Canal MIDI a editar')}
@@ -499,7 +481,6 @@ export function SoundFontScreen({ onStatus }: Props) {
               <ChannelGrid value={configChannel} onSelect={setConfigChannel} />
             </div>
 
-            {/* Painel de configurações do canal selecionado */}
             <SynthSettingsPanel
               settings={getChannelSettings(configChannel)}
               onUpdateSetting={updateConfigSetting}
@@ -510,7 +491,6 @@ export function SoundFontScreen({ onStatus }: Props) {
         </Popup>
       )}
 
-      {/* ============ DIÁLOGO: ESCOLHER CANAL PARA O PRESET ============ */}
       {selectedPresetForChannel && (
         <Popup title={tr('Aplicar preset ao canal')} onClose={() => setSelectedPresetForChannel(null)} widthClass="max-w-sm">
           <div className="flex flex-col gap-4">
@@ -529,7 +509,6 @@ export function SoundFontScreen({ onStatus }: Props) {
         </Popup>
       )}
 
-      {/* ============ MODAL: APAGAR CENAS ============ */}
       {isDeleteModalOpen && (
         <Popup title={tr('Apagar Cenas')} onClose={() => setIsDeleteModalOpen(false)} widthClass="max-w-sm">
           <div className="space-y-4">
