@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Activity, X, Maximize, Minimize, MoveHorizontal, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { Activity, X, Maximize, MoveHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { tr } from '../i18n';
 
 export interface MidiKeyboardHandle {
   openChannelPopup: () => void;
   openSettingsPopup: () => void;
-  setLastChannel: () => void;
 }
 
 interface MidiKeyboardProps {
@@ -24,8 +23,6 @@ interface MidiKeyboardProps {
   onSelectVelocity: (v: number) => void;
   onPitchBend: (value: number) => void;
   onModWheel: (value: number) => void;
-  isFullscreen: boolean;
-  onToggleFullscreen: () => void;
 }
 
 const OCTAVE_NOTES = [
@@ -83,7 +80,7 @@ function Popup({ title, onClose, children, widthClass = 'max-w-md' }: PopupProps
             type="button"
             onClick={onClose}
             aria-label={tr('Fechar')}
-            className="flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-muted)] transition hover:text-[var(--text-main)]"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-muted)] transition hover:text-[var(--text-main)]"
           >
             <X size={20} />
           </button>
@@ -100,7 +97,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   onActiveNotesChange,
   isActive, isSustainActive, onToggleSustain,
   selectedVelocity, onSelectVelocity,
-  onPitchBend, onModWheel, isFullscreen, onToggleFullscreen
+  onPitchBend, onModWheel
 }, ref) => {
   const [keyWidth, setKeyWidth] = useState(MIN_KEY_WIDTH);
   const [minKeyWidth, setMinKeyWidth] = useState(MIN_KEY_WIDTH);
@@ -110,10 +107,8 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   const [pbValue, setPbValue] = useState(8192);
   const [modValue, setModValue] = useState(0);
 
-  const [lastPianoChannel] = useState(selectedChannel);
   const [isChannelOpen, setIsChannelOpen] = useState(false);
   const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
-  const [isFullscreenMenuOpen, setIsFullscreenMenuOpen] = useState(false);
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -129,7 +124,6 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   useImperativeHandle(ref, () => ({
     openChannelPopup: () => setIsChannelOpen(true),
     openSettingsPopup: () => setIsQuickSettingsOpen(true),
-    setLastChannel: () => { if (lastPianoChannel !== 10) onSelectChannel(lastPianoChannel); }
   }));
 
   useEffect(() => {
@@ -159,7 +153,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
       observer?.disconnect();
       window.removeEventListener('resize', updateMinSize);
     };
-  }, [isFullscreen]);
+  }, []);
 
   const updateScrollState = useCallback(() => {
     const el = scrollViewportRef.current;
@@ -181,7 +175,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
       observer?.disconnect();
       window.removeEventListener('resize', updateScrollState);
     };
-  }, [keyWidth, startOctave, isScrollLocked, isFullscreen, updateScrollState]);
+  }, [keyWidth, startOctave, isScrollLocked, updateScrollState]);
 
   const scrollKeyboard = (direction: 'left' | 'right') => {
     if (scrollViewportRef.current) {
@@ -306,39 +300,6 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
   return (
     <section className="nexus-midi-keyboard flex min-h-0 min-w-0 w-full flex-1 flex-col gap-1 rounded-2xl border p-1 sm:p-1.5 relative" style={{ background: 'var(--bg-panel)', borderColor: 'var(--border-color)', boxShadow: '0 18px 50px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.035)' }}>
       
-      {isFullscreen && (
-        <>
-          <div className="fixed top-4 right-4 z-[9999]">
-            <button onClick={onToggleFullscreen} className="bg-black/60 p-3 rounded-full text-white hover:bg-black/80 backdrop-blur-sm transition shadow-lg border border-slate-600/50">
-              <Minimize size={20} />
-            </button>
-          </div>
-          <div className="fixed top-4 left-4 z-[9999]">
-            <button onClick={() => setIsFullscreenMenuOpen(!isFullscreenMenuOpen)} className="bg-black/60 p-3 rounded-full text-white hover:bg-black/80 backdrop-blur-sm transition shadow-lg border border-slate-600/50">
-              <Menu size={20} />
-            </button>
-            {isFullscreenMenuOpen && (
-              <div className="absolute top-full left-0 mt-2 bg-[var(--bg-panel)] border border-[var(--border-color)] rounded-xl p-3 flex flex-col gap-2 min-w-[180px] shadow-2xl">
-                <button onClick={() => { onToggleSustain(); setIsFullscreenMenuOpen(false); }} className={`flex items-center justify-between w-full px-3 py-3 rounded-lg text-sm font-bold ${isSustainActive ? 'bg-cyan-900/50 text-cyan-500' : 'text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'}`}>
-                  <span>Sustain</span>
-                  <span className={`w-2 h-2 rounded-full ${isSustainActive ? 'bg-cyan-400' : 'bg-slate-600'}`} />
-                </button>
-                <button onClick={() => { setIsChannelOpen(true); setIsFullscreenMenuOpen(false); }} className="flex items-center justify-between w-full px-3 py-3 rounded-lg text-sm font-bold text-[var(--text-main)] hover:bg-[var(--bg-elevated)]">
-                  <span>Canal</span>
-                  <span className="font-mono text-cyan-500">{String(selectedChannel).padStart(2, '0')}</span>
-                </button>
-                <button onClick={() => { setIsQuickSettingsOpen(true); setIsFullscreenMenuOpen(false); }} className="flex items-center justify-between w-full px-3 py-3 rounded-lg text-sm font-bold text-[var(--text-main)] hover:bg-[var(--bg-elevated)]">
-                  <span>Configurações</span>
-                </button>
-                <button className="flex items-center justify-between w-full px-3 py-3 rounded-lg text-sm font-bold text-[var(--text-main)] hover:bg-[var(--bg-elevated)]">
-                  <span>Escala</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
       {isChannelOpen && (
         <Popup title={tr('Canal MIDI')} onClose={() => setIsChannelOpen(false)} widthClass="max-w-xs">
           <div className="grid grid-cols-4 gap-2">
@@ -350,7 +311,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
                   key={ch}
                   type="button"
                   onClick={() => { onSelectChannel(ch); setIsChannelOpen(false); }}
-                  className={`h-12 rounded-lg border font-mono text-sm transition-colors ${selected ? 'border-cyan-600/60 bg-cyan-900/50 font-bold text-cyan-500' : 'border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'}`}
+                  className={`h-12 rounded-lg border font-mono text-sm transition-colors ${selected ? 'border-cyan-600/60 bg-cyan-500/20 font-bold text-cyan-400' : 'border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'}`}
                 >
                   {String(ch).padStart(2, '0')}
                 </button>
@@ -368,7 +329,7 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
                 <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase text-[var(--text-muted)]"><Activity size={14} /> {tr('Intensidade (Velocity)')}</label>
                 <div className="grid grid-cols-4 gap-2">
                   {[{ id: 30, label: tr('Suave') }, { id: 64, label: tr('Médio') }, { id: 100, label: tr('Forte') }, { id: 127, label: tr('Máx.') }].map((v) => (
-                    <button type="button" key={v.id} onClick={() => onSelectVelocity(v.id)} className={`flex flex-col items-center justify-center py-3 rounded-lg border transition-all ${selectedVelocity === v.id ? 'bg-cyan-900/40 border-cyan-600/50 text-cyan-500 font-bold shadow-[0_0_10px_rgba(8,145,178,0.2)]' : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
+                    <button type="button" key={v.id} onClick={() => onSelectVelocity(v.id)} className={`flex flex-col items-center justify-center py-3 rounded-lg border transition-all ${selectedVelocity === v.id ? 'bg-cyan-600 border-cyan-600 text-white font-bold shadow-[0_0_10px_rgba(8,145,178,0.3)]' : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
                       <span className="text-xs font-semibold">{v.label}</span><span className="text-[11px] font-mono opacity-80">{v.id}</span>
                     </button>
                   ))}
