@@ -25,9 +25,9 @@ interface SliderRowProps {
 function SliderRow({ label, value, min, max, step = 1, unit = '%', onChange }: SliderRowProps) {
   return (
     <div className="mb-3 flex flex-col gap-1">
-      <label className="flex items-center justify-between text-[11px] font-bold text-slate-300">
+      <label className="flex items-center justify-between text-[11px] font-bold text-[var(--text-main)]">
         <span>{label}</span>
-        <span className="rounded border border-cyan-900/50 bg-cyan-950/50 px-1.5 py-0.5 font-mono text-cyan-400">
+        <span className="rounded border border-indigo-900/50 bg-indigo-950/50 px-1.5 py-0.5 font-mono text-indigo-400">
           {value}
           {unit}
         </span>
@@ -39,7 +39,7 @@ function SliderRow({ label, value, min, max, step = 1, unit = '%', onChange }: S
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-full cursor-pointer accent-cyan-500"
+        className="h-1.5 w-full cursor-pointer accent-indigo-500"
       />
     </div>
   );
@@ -56,20 +56,20 @@ export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, default
 
   const set = (key: keyof SynthSettings) => (value: number) => onUpdateSetting(key, value);
   const tabClass = (id: TabId, active: string) =>
-    `flex h-7 items-center gap-1.5 rounded-md px-3 text-[10px] font-bold transition-colors ${activeTab === id ? active : 'text-slate-500 hover:text-slate-300'}`;
-  const sectionTitle = 'mb-3 border-b border-[#2e323b] pb-1 text-xs font-bold text-cyan-400';
+    `flex h-7 items-center gap-1.5 rounded-md px-3 text-[10px] font-bold transition-colors ${activeTab === id ? active : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`;
+  const sectionTitle = 'mb-3 border-b border-[var(--border-color)] pb-1 text-xs font-bold text-indigo-400';
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-[#2e323b] bg-[#1a1c21]">
-      <div className="flex shrink-0 items-center justify-between border-b border-[#2e323b] bg-[#121316] p-2">
-        <div className="flex rounded-lg border border-[#2e323b] bg-[#1a1c21] p-0.5">
-          <button type="button" onClick={() => setActiveTab('fx')} className={tabClass('fx', 'bg-slate-700 text-white')}>
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)]">
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-app)] p-2">
+        <div className="flex rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] p-0.5">
+          <button type="button" onClick={() => setActiveTab('fx')} className={tabClass('fx', 'bg-indigo-600 text-white')}>
             <Zap size={12} /> {tr('EFEITOS')}
           </button>
-          <button type="button" onClick={() => setActiveTab('sound')} className={tabClass('sound', 'bg-cyan-700 text-white')}>
+          <button type="button" onClick={() => setActiveTab('sound')} className={tabClass('sound', 'bg-indigo-600 text-white')}>
             <Volume2 size={12} /> {tr('TIMBRE')}
           </button>
-          <button type="button" onClick={() => setActiveTab('system')} className={tabClass('system', 'bg-slate-700 text-white')}>
+          <button type="button" onClick={() => setActiveTab('system')} className={tabClass('system', 'bg-indigo-600 text-white')}>
             <Settings2 size={12} /> {tr('SISTEMA')}
           </button>
         </div>
@@ -127,10 +127,10 @@ export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, default
             <div>
               <h3 className={sectionTitle}>{tr('Desempenho (Mobile)')}</h3>
               <SliderRow label={tr('Polifonia Máxima')} value={settings.maxPolyphony} min={1} max={128} unit={` ${tr('vozes')}`} onChange={set('maxPolyphony')} />
-              <p className="mt-2 text-[10px] leading-tight text-slate-500">
+              <p className="mt-2 text-[10px] leading-tight text-[var(--text-muted)]">
                 {tr('Ao atingir o limite, a nota mais antiga é encerrada para dar lugar à nova. Reduza em celulares mais antigos.')}
               </p>
-              <p className="mt-2 text-[10px] leading-tight text-slate-500">{tr('As configurações são salvas automaticamente.')}</p>
+              <p className="mt-2 text-[10px] leading-tight text-[var(--text-muted)]">{tr('As configurações são salvas automaticamente.')}</p>
             </div>
           </div>
         )}
