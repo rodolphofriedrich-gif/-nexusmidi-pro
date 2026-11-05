@@ -28,14 +28,14 @@ export function VuMeter({ level }: VuMeterProps) {
   const percent = Math.max(0, Math.min(100, (displayLevel / 127) * 100));
 
   return (
-    <div className="w-3 h-full bg-[#0e0f12] border border-[#2e323b] rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col justify-end p-[2px]">
+    <div className="w-3 h-full bg-[var(--nexus-bg-bottom)] border border-[var(--nexus-border-strong)] rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col justify-end p-[2px]">
       <div
         className="w-full rounded-full transition-all duration-75 ease-out"
         style={{
           height: `${percent}%`,
-          // Gradiente estilo mesa de som: Verde -> Amarelo -> Vermelho
-          background: 'linear-gradient(to top, #10b981 0%, #10b981 60%, #f59e0b 85%, #ef4444 100%)',
-          boxShadow: '0 0 8px rgba(16, 185, 129, 0.5)'
+          // Zonas do medidor: Ciano (atividade) -> Âmbar (atenção) -> Vermelho (clipping)
+          background: 'linear-gradient(to top, #22d3ee 0%, #22d3ee 60%, #fbbf24 85%, #ef4444 100%)',
+          boxShadow: '0 0 8px rgba(34, 211, 238, 0.5)'
         }}
       />
     </div>
