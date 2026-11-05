@@ -28,11 +28,11 @@ import { synthService } from './services/synthService';
 type AppTab = 'keyboard' | 'pads' | 'router' | 'studio' | 'monitor';
 
 const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string; color: string }> = [
-  { id: 'keyboard', Icon: Music2, label: 'Teclado', color: 'text-cyan-400' },
-  { id: 'pads', Icon: LayoutGrid, label: 'PADS', color: 'text-cyan-400' },
-  { id: 'router', Icon: GitBranch, label: 'Roteador', color: 'text-cyan-400' },
-  { id: 'studio', Icon: AudioWaveform, label: 'Estúdio', color: 'text-cyan-400' },
-  { id: 'monitor', Icon: Activity, label: 'Monitor', color: 'text-cyan-400' },
+  { id: 'keyboard', Icon: Music2, label: 'Teclado', color: 'text-[var(--nexus-primary)]' },
+  { id: 'pads', Icon: LayoutGrid, label: 'PADS', color: 'text-[var(--nexus-primary)]' },
+  { id: 'router', Icon: GitBranch, label: 'Roteador', color: 'text-[var(--nexus-primary)]' },
+  { id: 'studio', Icon: AudioWaveform, label: 'Estúdio', color: 'text-[var(--nexus-primary)]' },
+  { id: 'monitor', Icon: Activity, label: 'Monitor', color: 'text-[var(--nexus-primary)]' },
 ];
 
 function ChannelSelectPopup({ title, value, onSelect, onClose }: { title: string; value: number; onSelect: (ch: number) => void; onClose: () => void }) {
@@ -56,7 +56,7 @@ function ChannelSelectPopup({ title, value, onSelect, onClose }: { title: string
                 onClick={() => { onSelect(ch); onClose(); }}
                 className={`h-12 rounded-lg border font-mono text-sm transition-colors ${
                   selected
-                    ? 'border-cyan-600/60 bg-cyan-500/20 font-bold text-cyan-400'
+                    ? 'border-indigo-500/60 bg-indigo-500/20 font-bold text-[var(--nexus-primary)]'
                     : 'border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'
                 }`}
               >
@@ -195,7 +195,7 @@ export default function App() {
   };
 
   const btnClass = "flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] active:scale-95 px-3 text-xs font-bold";
-  const btnActiveClass = "border-cyan-700/50 bg-cyan-900/30 text-cyan-500 shadow-[0_0_10px_rgba(8,145,178,0.2)]";
+  const btnActiveClass = "border-indigo-500/40 bg-indigo-500/15 text-[var(--nexus-primary)] shadow-[0_0_8px_rgba(99,102,241,0.15)]";
 
   return (
     <div className="nexus-app fixed inset-0 flex h-[100dvh] w-full select-none overflow-hidden font-sans antialiased bg-[var(--bg-app)] text-[var(--text-main)]">
@@ -207,7 +207,7 @@ export default function App() {
       <aside className={`fixed inset-y-0 left-0 z-[100] flex w-64 flex-col border-r border-[var(--border-color)] bg-[var(--bg-panel)] transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-14 items-center justify-between px-4 border-b border-[var(--border-color)] shrink-0">
           <span className="text-sm font-extrabold tracking-wider text-[var(--text-main)]">
-            NEXUSMIDI <span className="text-cyan-500">Pro</span>
+            NEXUSMIDI <span className="text-[var(--nexus-accent)]">Pro</span>
           </span>
           <button onClick={() => setIsSidebarOpen(false)} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition">
             <X size={20} />
@@ -223,9 +223,9 @@ export default function App() {
                   key={id}
                   type="button"
                   onClick={() => { setActiveTab(id); setIsSidebarOpen(false); setOpenMenu(null); }}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-3 transition-colors ${selected ? 'bg-cyan-500/15 text-cyan-400 font-bold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]'}`}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-3 transition-colors ${selected ? 'bg-indigo-500/15 text-[var(--nexus-primary)] font-bold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]'}`}
                 >
-                  <Icon size={20} className={selected ? 'text-cyan-400' : ''} />
+                  <Icon size={20} className={selected ? 'text-[var(--nexus-primary)]' : ''} />
                   <span className="text-sm">{tr(label)}</span>
                 </button>
               );
@@ -245,13 +245,13 @@ export default function App() {
           <div className="flex flex-col gap-2">
             <span className="text-xs font-bold uppercase text-[var(--text-muted)] px-3">{tr('Aparência')}</span>
             <div className="grid grid-cols-3 gap-1 bg-[var(--bg-app)] p-1 rounded-lg border border-[var(--border-color)]">
-              <button onClick={() => prefsStore.set({ theme: 'dark' })} className={`flex flex-col items-center justify-center py-2.5 rounded-md transition-all ${prefs.theme === 'dark' ? 'bg-cyan-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
+              <button onClick={() => prefsStore.set({ theme: 'dark' })} className={`flex flex-col items-center justify-center py-2.5 rounded-md transition-all ${prefs.theme === 'dark' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
                 <Moon size={16} className={prefs.theme === 'dark' ? 'text-white' : ''} /><span className="text-[10px] font-bold mt-1">Dark</span>
               </button>
-              <button onClick={() => prefsStore.set({ theme: 'light' })} className={`flex flex-col items-center justify-center py-2.5 rounded-md transition-all ${prefs.theme === 'light' ? 'bg-cyan-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
+              <button onClick={() => prefsStore.set({ theme: 'light' })} className={`flex flex-col items-center justify-center py-2.5 rounded-md transition-all ${prefs.theme === 'light' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
                 <Sun size={16} className={prefs.theme === 'light' ? 'text-white' : ''} /><span className="text-[10px] font-bold mt-1">Light</span>
               </button>
-              <button onClick={() => prefsStore.set({ theme: 'system' })} className={`flex flex-col items-center justify-center py-2.5 rounded-md transition-all ${prefs.theme === 'system' ? 'bg-cyan-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
+              <button onClick={() => prefsStore.set({ theme: 'system' })} className={`flex flex-col items-center justify-center py-2.5 rounded-md transition-all ${prefs.theme === 'system' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
                 <Monitor size={16} className={prefs.theme === 'system' ? 'text-white' : ''} /><span className="text-[10px] font-bold mt-1">Auto</span>
               </button>
             </div>
@@ -280,13 +280,13 @@ export default function App() {
 
             {activeTab === 'keyboard' && (
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-cyan-500 mr-2 px-1 shrink-0 hidden sm:block">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nexus-primary)] mr-2 px-1 shrink-0 hidden sm:block">
                   {tr('Teclado')}
                 </h2>
 
                 <div className="flex shrink-0 items-center gap-1">
                   <button type="button" disabled={startOctave <= 1} onClick={() => setStartOctave(v => Math.max(1, v - 1))} className={`${btnClass} w-10 text-lg`}>−</button>
-                  <div className="flex h-10 min-w-[44px] items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-2 font-mono text-sm font-bold text-cyan-500">C{startOctave}</div>
+                  <div className="flex h-10 min-w-[44px] items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-2 font-mono text-sm font-bold text-[var(--nexus-primary)]">C{startOctave}</div>
                   <button type="button" disabled={startOctave >= 6} onClick={() => setStartOctave(v => Math.min(6, v + 1))} className={`${btnClass} w-10 text-lg`}>+</button>
                 </div>
                 <button type="button" onClick={handleToggleSustain} className={`${btnClass} ${prefs.sustain ? btnActiveClass : ''} hidden sm:flex`}><Pause size={16} /> SUSTAIN</button>
@@ -297,7 +297,7 @@ export default function App() {
 
                 <button type="button" onClick={() => keyboardRef.current?.openChannelPopup()} className={`${btnClass}`}>
                   <span className="text-xs font-bold uppercase">CH</span>
-                  <span className="min-w-[16px] text-center font-mono text-sm font-bold text-cyan-500">{String(prefs.channel).padStart(2, '0')}</span>
+                  <span className="min-w-[16px] text-center font-mono text-sm font-bold text-[var(--nexus-primary)]">{String(prefs.channel).padStart(2, '0')}</span>
                   <ChevronDown size={14} />
                 </button>
                 <button type="button" onClick={() => keyboardRef.current?.openSettingsPopup()} className={`${btnClass} w-10`}>
@@ -308,19 +308,19 @@ export default function App() {
 
             {activeTab === 'pads' && (
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-cyan-500 mr-2 px-1 shrink-0 hidden sm:block">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nexus-primary)] mr-2 px-1 shrink-0 hidden sm:block">
                   {tr('PADS')}
                 </h2>
                 <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
                   {[0, 1, 2, 3].map((b) => (
-                    <button key={b} type="button" onClick={() => setPadBank(b)} className={`h-9 whitespace-nowrap rounded-md px-4 text-xs font-bold transition-all ${padBank === b ? 'bg-cyan-600 text-white shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]'}`}>{tr('BANCO {n}', { n: b + 1 })}</button>
+                    <button key={b} type="button" onClick={() => setPadBank(b)} className={`h-9 whitespace-nowrap rounded-md px-4 text-xs font-bold transition-all ${padBank === b ? 'bg-indigo-600 text-white shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]'}`}>{tr('BANCO {n}', { n: b + 1 })}</button>
                   ))}
                 </div>
                 
                 <div className="flex items-center gap-2 ml-2">
                   <button type="button" onClick={() => setIsPadChannelOpen(true)} className={`${btnClass}`}>
                     <span className="text-xs font-bold uppercase">CH</span>
-                    <span className="min-w-[16px] text-center font-mono text-sm font-bold text-cyan-500">{String(prefs.padsChannel).padStart(2, '0')}</span>
+                    <span className="min-w-[16px] text-center font-mono text-sm font-bold text-[var(--nexus-primary)]">{String(prefs.padsChannel).padStart(2, '0')}</span>
                     <ChevronDown size={14} />
                   </button>
                   
@@ -338,14 +338,14 @@ export default function App() {
 
             {activeTab === 'router' && (
               <div className="flex items-center gap-3">
-                <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-cyan-500 shrink-0 hidden sm:flex">
+                <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-[var(--nexus-primary)] shrink-0 hidden sm:flex">
                   <GitBranch size={18} /> {tr('Roteador MIDI Matriz')}
                 </h2>
                 <div className="flex items-center gap-2 shrink-0">
                   <button type="button" aria-label={tr('Atualizar lista')} onClick={() => void handleRefreshRouter()} disabled={isRouterRefreshing} className={`${btnClass} w-10`}>
                     <RefreshCw size={16} className={isRouterRefreshing ? 'animate-spin' : ''} />
                   </button>
-                  <button type="button" onClick={addNewRoute} className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-4 h-10 text-xs font-bold text-white shadow-lg shadow-black/20 transition hover:bg-cyan-500">
+                  <button type="button" onClick={addNewRoute} className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 h-10 text-xs font-bold text-white shadow-lg shadow-black/20 transition hover:bg-indigo-500">
                     <Plus size={18} /> <span className="hidden sm:inline">{tr('Nova Rota')}</span>
                   </button>
                 </div>
@@ -354,18 +354,18 @@ export default function App() {
 
             {activeTab === 'studio' && (
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-cyan-500 mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nexus-primary)] mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
                 <div className="flex items-center gap-1 shrink-0 bg-[var(--bg-app)] p-0.5 rounded-lg border border-[var(--border-color)]">
-                  <button type="button" onClick={() => setStudioTab('synth')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'synth' ? 'bg-cyan-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><AudioWaveform size={16} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
-                  <button type="button" onClick={() => setStudioTab('mixer')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'mixer' ? 'bg-cyan-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><SlidersHorizontal size={16} /> <span className="hidden sm:inline">{tr('Mixer / CC')}</span></button>
-                  <button type="button" onClick={() => setStudioTab('tools')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'tools' ? 'bg-cyan-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><Settings2 size={16} /> <span className="hidden sm:inline">{tr('Ferramentas')}</span></button>
+                  <button type="button" onClick={() => setStudioTab('synth')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'synth' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><AudioWaveform size={16} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
+                  <button type="button" onClick={() => setStudioTab('mixer')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'mixer' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><SlidersHorizontal size={16} /> <span className="hidden sm:inline">{tr('Mixer / CC')}</span></button>
+                  <button type="button" onClick={() => setStudioTab('tools')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'tools' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><Settings2 size={16} /> <span className="hidden sm:inline">{tr('Ferramentas')}</span></button>
                 </div>
               </div>
             )}
 
             {activeTab === 'monitor' && (
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-cyan-500 shrink-0 hidden sm:block">{tr('MIDI Monitor')}</h2>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--nexus-primary)] shrink-0 hidden sm:block">{tr('MIDI Monitor')}</h2>
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="relative">
                     <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} className={`${btnClass} h-10`}>
@@ -374,7 +374,7 @@ export default function App() {
                     {isFilterOpen && (
                       <div className="fixed top-[60px] left-[60px] z-[999] w-44 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl">
                         {(['all', 'RX', 'TX'] as const).map((f) => (
-                          <button type="button" key={f} onClick={() => { setMonitorFilter(f); setIsFilterOpen(false); }} className={`w-full px-3 py-3 text-left text-xs hover:bg-[var(--bg-elevated)] ${monitorFilter === f ? 'font-bold text-cyan-500 bg-cyan-500/10' : 'text-[var(--text-main)]'}`}>
+                          <button type="button" key={f} onClick={() => { setMonitorFilter(f); setIsFilterOpen(false); }} className={`w-full px-3 py-3 text-left text-xs hover:bg-[var(--bg-elevated)] ${monitorFilter === f ? 'font-bold text-[var(--nexus-primary)] bg-indigo-500/10' : 'text-[var(--text-main)]'}`}>
                             {f === 'all' ? tr('Todos') : f === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')}
                           </button>
                         ))}
@@ -397,7 +397,7 @@ export default function App() {
               type="button"
               onClick={handlePanic}
               title={tr('MIDI Panic')}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-red-800/60 bg-red-950/40 text-red-500 transition hover:bg-red-900/60 shadow-[inset_0_0_10px_rgba(220,38,38,0.2)]"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-red-800/60 bg-red-950/40 text-red-500 transition hover:bg-red-900/60"
             >
               <ShieldAlert size={18} />
             </button>
