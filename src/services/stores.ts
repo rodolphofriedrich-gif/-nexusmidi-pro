@@ -16,6 +16,7 @@ export interface Prefs {
   velocity: number;
   velocityCurve: VelocityCurve;
   channel: number;
+  padsChannel: number;
   language: Language;
   theme: 'dark' | 'light' | 'system';
   sustain: boolean;
@@ -26,6 +27,7 @@ export const DEFAULT_PREFS: Prefs = {
   velocity: 64,
   velocityCurve: 'linear',
   channel: 1,
+  padsChannel: 10,
   language: 'pt-BR',
   theme: 'dark',
   sustain: false,
@@ -46,6 +48,7 @@ export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
     velocity: clampInt(p.velocity, 1, 127),
     velocityCurve: CURVES.includes(p.velocityCurve) ? p.velocityCurve : 'linear',
     channel: clampInt(p.channel, 1, 16),
+    padsChannel: clampInt(p.padsChannel, 1, 16),
     language: p.language === 'en' ? 'en' : 'pt-BR',
     theme: ['dark', 'light', 'system'].includes(p.theme) ? p.theme : 'dark',
     sustain: Boolean(p.sustain),
@@ -53,7 +56,6 @@ export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
 });
 
 // ------------------------------------------------------------------- sintetizador
-// Mesma chave da versão anterior: as configurações do usuário são preservadas.
 export const synthSettingsStore = createStore<SynthSettings>('nexus_synth_settings', DEFAULT_SYNTH_SETTINGS);
 
 export interface ChannelState {
@@ -89,8 +91,8 @@ export interface ToolsState {
   chord: ChordId;
   chordInversion: number;
   scale: ScaleId;
-  scaleRoot: number; // 0 = C … 11 = B
-  metronomeVolume: number; // 0–100
+  scaleRoot: number;
+  metronomeVolume: number;
   beatsPerBar: number;
   fixedVelocity: number;
 }
@@ -128,7 +130,6 @@ export const toolsStore = createStore<ToolsState>('nexusmidi.tools', DEFAULT_TOO
   }),
 });
 
-/** Estado de execução (não persiste: o app sempre abre com arpejo, metrônomo e clock desligados). */
 export interface RuntimeState {
   arpEnabled: boolean;
   metronomeOn: boolean;
