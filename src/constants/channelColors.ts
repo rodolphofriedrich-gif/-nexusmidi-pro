@@ -1,9 +1,9 @@
 /** Uma cor por canal MIDI (como em uma DAW): ajuda a ver de relance qual canal toca cada instrumento. */
 export const CHANNEL_COLORS = [
-  '#F87171', '#FB923C', '#FBBF24', '#A3E635',
-  '#4ADE80', '#2DD4BF', '#22D3EE', '#60A5FA',
-  '#818CF8', '#A78BFA', '#C084FC', '#E879F9',
-  '#F472B6', '#FB7185', '#94A3B8', '#D6D3D1',
+  '#EF4444', '#F97316', '#EAB308', '#84CC16',
+  '#22C55E', '#14B8A6', '#06B6D4', '#3B82F6',
+  '#6366F1', '#8B5CF6', '#A855F7', '#D946EF',
+  '#EC4899', '#F43F5E', '#64748B', '#94A3B8',
 ] as const;
 
 /** Cor do canal (1–16). */
