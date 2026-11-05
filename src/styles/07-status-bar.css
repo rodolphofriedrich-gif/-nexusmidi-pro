@@ -5,7 +5,7 @@
 .nexus-midi-status {
   min-height: 34px;
   color: var(--nexus-text-muted);
-  background: rgba(26, 28, 33, 0.38);
+  background: rgba(20, 26, 40, 0.38);
   border: 1px solid rgba(255, 255, 255, 0.035);
   border-radius: 10px;
 }
@@ -15,16 +15,17 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #565b66;
+  background: #454f69;
 }
 
+/* Ciano = atividade MIDI em transmissão */
 .nexus-tx-indicator.is-active {
-  background: var(--nexus-success);
-  box-shadow: 0 0 9px rgba(16, 185, 129, 0.48);
+  background: var(--nexus-accent);
+  box-shadow: 0 0 9px var(--nexus-accent);
 }
 
 .nexus-midi-status-value {
-  color: #cbd5e1;
+  color: var(--nexus-text-secondary);
   font-size: 10px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -37,7 +38,7 @@
 }
 
 .nexus-studio-label {
-  color: #565b66;
+  color: var(--nexus-text-muted);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 1.15px;
