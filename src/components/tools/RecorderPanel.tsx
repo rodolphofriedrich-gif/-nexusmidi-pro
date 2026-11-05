@@ -33,15 +33,15 @@ export function RecorderPanel({ onStatus }: { onStatus: (message: string, type?:
 
   return (
     <Card title={tr('Gravador MIDI')} Icon={Mic} accent="text-rose-400">
-      <div className="flex items-center justify-between rounded-lg border border-[#2e323b] bg-[#121316] px-3 py-2">
+      <div className="flex items-center justify-between rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className={`h-2.5 w-2.5 rounded-full ${snap.recording ? 'animate-pulse bg-rose-500' : snap.playing ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-          <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+          <span className={`h-2.5 w-2.5 rounded-full ${snap.recording ? 'animate-pulse bg-rose-500' : snap.playing ? 'bg-emerald-400' : 'bg-[var(--text-muted)]'}`} />
+          <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
             {snap.recording ? tr('Gravando') : snap.playing ? tr('Reproduzindo') : tr('Parado')}
           </span>
         </div>
-        <span className="font-mono text-lg tabular-nums text-white">{formatTime(snap.durationMs)}</span>
-        <span className="font-mono text-[10px] text-slate-500">{tr('{count} eventos', { count: snap.eventCount })}</span>
+        <span className="font-mono text-lg tabular-nums text-[var(--text-main)]">{formatTime(snap.durationMs)}</span>
+        <span className="font-mono text-[10px] text-[var(--text-muted)]">{tr('{count} eventos', { count: snap.eventCount })}</span>
       </div>
 
       <div className="flex gap-2">
@@ -55,7 +55,7 @@ export function RecorderPanel({ onStatus }: { onStatus: (message: string, type?:
           </button>
         )}
         {snap.playing ? (
-          <button type="button" onClick={() => recorderService.stopPlayback()} className={`${btn} bg-slate-700 text-white hover:bg-slate-600`}>
+          <button type="button" onClick={() => recorderService.stopPlayback()} className={`${btn} bg-[var(--bg-elevated)] text-[var(--text-main)] hover:bg-[var(--bg-panel)]`}>
             <Square size={14} /> {tr('Parar')}
           </button>
         ) : (
@@ -66,14 +66,14 @@ export function RecorderPanel({ onStatus }: { onStatus: (message: string, type?:
       </div>
 
       <div className="flex gap-2">
-        <button type="button" disabled={!hasTake || snap.recording || exporting} onClick={() => void handleExport()} className={`${btn} border border-slate-700 bg-[#121316] text-slate-200 hover:bg-slate-800`}>
+        <button type="button" disabled={!hasTake || snap.recording || exporting} onClick={() => void handleExport()} className={`${btn} border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]`}>
           <Download size={14} /> {exporting ? tr('Exportando...') : tr('Exportar .mid')}
         </button>
-        <button type="button" disabled={!hasTake && !snap.recording} onClick={() => recorderService.clear()} className={`${btn} border border-slate-700 bg-[#121316] text-slate-300 hover:bg-red-950/40 hover:text-red-400`}>
+        <button type="button" disabled={!hasTake && !snap.recording} onClick={() => recorderService.clear()} className={`${btn} border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-muted)] hover:bg-red-950/40 hover:text-red-400`}>
           <Trash2 size={14} /> {tr('Limpar')}
         </button>
       </div>
-      <p className="text-[10px] text-slate-500">{tr('Grava o que você toca e também o que chega de dispositivos conectados.')}</p>
+      <p className="text-[10px] text-[var(--text-muted)]">{tr('Grava o que você toca e também o que chega de dispositivos conectados.')}</p>
     </Card>
   );
 }
