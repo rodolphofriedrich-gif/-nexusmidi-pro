@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import {
   Activity, AudioWaveform, GitBranch, LogOut, Music2, Menu, X, Usb, Bluetooth, type LucideIcon,
-  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Power, LayoutGrid, SlidersHorizontal, Globe, RotateCcw, Moon, Sun, Monitor, Lock, Unlock
+  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Power, LayoutGrid, SlidersHorizontal, Globe, RotateCcw, Moon, Sun, Monitor, Lock, Unlock, ShieldAlert
 } from 'lucide-react';
 import { ConnectionMenu } from './components/ConnectionMenu';
 import { ExitDialog } from './components/ExitDialog';
@@ -35,6 +35,42 @@ const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string; co
   { id: 'monitor', Icon: Activity, label: 'Monitor', color: 'text-cyan-400' },
 ];
 
+/** Popup de seleção de canal independente para os Pads (não depende do MidiKeyboard). */
+function ChannelSelectPopup({ title, value, onSelect, onClose }: { title: string; value: number; onSelect: (ch: number) => void; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="flex w-full max-w-xs flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-color)] px-4 py-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)]">{title}</h3>
+          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-muted)] transition hover:text-[var(--text-main)]">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="grid grid-cols-4 gap-2 p-4">
+          {Array.from({ length: 16 }, (_, i) => {
+            const ch = i + 1;
+            const selected = value === ch;
+            return (
+              <button
+                key={ch}
+                type="button"
+                onClick={() => { onSelect(ch); onClose(); }}
+                className={`h-12 rounded-lg border font-mono text-sm transition-colors ${
+                  selected
+                    ? 'border-cyan-600/60 bg-cyan-500/20 font-bold text-cyan-400'
+                    : 'border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'
+                }`}
+              >
+                {String(ch).padStart(2, '0')}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const prefs = useStore(prefsStore);
   const synth = useSyncExternalStore(synthService.subscribe, synthService.getSnapshot, synthService.getSnapshot);
@@ -50,7 +86,8 @@ export default function App() {
   const [activeNotes, setActiveNotes] = useState(0);
   const [keyboardEnabled, setKeyboardEnabled] = useState(true);
   const [isPadEditMode, setIsPadEditMode] = useState(false);
-  
+  const [isPadChannelOpen, setIsPadChannelOpen] = useState(false);
+
   const [startOctave, setStartOctave] = useState(3);
   const [padBank, setPadBank] = useState(0);
   const keyboardRef = useRef<MidiKeyboardHandle>(null);
@@ -61,19 +98,19 @@ export default function App() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [monitorPaused, setMonitorPaused] = useState(false);
 
-  // BOTÃO VOLTAR DO ANDROID
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     let backListener: any;
     const handleBack = () => {
       if (isSidebarOpen) { setIsSidebarOpen(false); return; }
       if (openMenu) { setOpenMenu(null); return; }
+      if (isPadChannelOpen) { setIsPadChannelOpen(false); return; }
       if (showExit) { setShowExit(false); return; }
       setShowExit(true);
     };
     CapApp.addListener('backButton', handleBack).then(l => { backListener = l; });
     return () => { if (backListener) backListener.remove(); };
-  }, [isSidebarOpen, openMenu, showExit]);
+  }, [isSidebarOpen, openMenu, isPadChannelOpen, showExit]);
 
   useEffect(() => {
     document.documentElement.lang = prefs.language;
@@ -104,7 +141,7 @@ export default function App() {
   const isBleConnected = devices.connected.some((d) => d.type === 'ble');
   const canPlay = devices.connected.length > 0 || devices.bleServerActive || synth.ready;
 
-  const handleNoteOn = useCallback((note: number, channel: number) => performanceEngine.noteOn(channel, note, prefsStore.get().velocity), []);
+  const handleNoteOn = useCallback((note: number, channel: number, velocity?: number) => performanceEngine.noteOn(channel, note, velocity ?? prefsStore.get().velocity), []);
   const handleNoteOff = useCallback((note: number, channel: number) => performanceEngine.noteOff(channel, note), []);
 
   const handleDisabledPress = useCallback(() => {
@@ -121,6 +158,15 @@ export default function App() {
       showMessage(tr('Erro ao enviar Sustain: {message}', { message: error instanceof Error ? error.message : '' }), 'error', 2500);
     }
   }, [prefs.sustain, showMessage]);
+
+  const handlePanic = useCallback(async () => {
+    try {
+      await midiManager.sendPanic();
+      showMessage(tr('MIDI Panic enviado'), 'info', 1500);
+    } catch {
+      showMessage(tr('Falha no MIDI Panic'), 'error', 2500);
+    }
+  }, [showMessage]);
 
   const handleConfirmExit = async () => {
     setShowExit(false);
@@ -194,14 +240,13 @@ export default function App() {
           <div className="h-px w-full bg-[var(--border-color)]" />
 
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-bold uppercase text-[var(--text-muted)] px-3">Conexões</span>
+            <span className="text-xs font-bold uppercase text-[var(--text-muted)] px-3">{tr('Conexões')}</span>
             <ConnectionMenu kind="usb" isOpen={openMenu === 'usb'} isConnected={isUsbConnected} statusLabel={isUsbConnected ? tr('Conectado') : tr('Desconectado')} devices={usbDevices} connectedIds={connectedIds} showDisconnectAll={isUsbConnected} onToggleOpen={() => toggleMenu('usb')} onRefresh={() => void devices.refresh()} onToggleDevice={(d) => void devices.toggleConnect(d)} onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }} />
             <ConnectionMenu kind="ble" isOpen={openMenu === 'ble'} isConnected={isBleConnected || devices.bleServerActive} statusLabel={devices.bleServerActive ? tr('Visível') : isBleConnected ? tr('Conectado') : tr('Desconectado')} devices={bleDevices} connectedIds={connectedIds} showDisconnectAll={devices.connected.length > 0 || devices.bleServerActive} onToggleOpen={() => toggleMenu('ble')} onRefresh={() => void devices.refresh()} onToggleDevice={(d) => void devices.toggleConnect(d)} onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }} isScanning={devices.scanningBle} isServerActive={devices.bleServerActive} onScan={() => void devices.scanBle()} onStartServer={() => void devices.startBleServer()} />
           </div>
           
           <div className="h-px w-full bg-[var(--border-color)]" />
 
-          {/* SELETOR DE TEMA */}
           <div className="flex flex-col gap-2">
             <span className="text-xs font-bold uppercase text-[var(--text-muted)] px-3">{tr('Aparência')}</span>
             <div className="grid grid-cols-3 gap-1 bg-[var(--bg-app)] p-1 rounded-lg border border-[var(--border-color)]">
@@ -238,11 +283,10 @@ export default function App() {
               <Menu size={22} />
             </button>
 
-            {/* CONTROLES DO TECLADO */}
             {activeTab === 'keyboard' && (
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-cyan-500 mr-2 px-1 shrink-0 hidden sm:block">
-                  Teclado
+                  {tr('Teclado')}
                 </h2>
 
                 <div className="flex shrink-0 items-center gap-1">
@@ -267,7 +311,6 @@ export default function App() {
               </div>
             )}
 
-            {/* CONTROLES DO PADS */}
             {activeTab === 'pads' && (
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-cyan-500 mr-2 px-1 shrink-0 hidden sm:block">
@@ -280,7 +323,7 @@ export default function App() {
                 </div>
                 
                 <div className="flex items-center gap-2 ml-2">
-                  <button type="button" onClick={() => keyboardRef.current?.openChannelPopup()} className={`${btnClass}`}>
+                  <button type="button" onClick={() => setIsPadChannelOpen(true)} className={`${btnClass}`}>
                     <span className="text-xs font-bold uppercase">CH</span>
                     <span className="min-w-[16px] text-center font-mono text-sm font-bold text-cyan-500">{String(prefs.padsChannel).padStart(2, '0')}</span>
                     <ChevronDown size={14} />
@@ -298,7 +341,6 @@ export default function App() {
               </div>
             )}
 
-            {/* CONTROLES DO ROTEADOR */}
             {activeTab === 'router' && (
               <div className="flex items-center gap-3">
                 <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-cyan-500 shrink-0 hidden sm:flex">
@@ -315,7 +357,6 @@ export default function App() {
               </div>
             )}
 
-            {/* CONTROLES DO ESTÚDIO */}
             {activeTab === 'studio' && (
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-cyan-500 mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
@@ -327,7 +368,6 @@ export default function App() {
               </div>
             )}
 
-            {/* CONTROLES DO MONITOR */}
             {activeTab === 'monitor' && (
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold uppercase tracking-wider text-cyan-500 shrink-0 hidden sm:block">{tr('MIDI Monitor')}</h2>
@@ -358,11 +398,15 @@ export default function App() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            {activeTab === 'studio' && studioTab === 'mixer' && (
-              <button type="button" onClick={handleResetMixer} className="flex h-10 items-center gap-1.5 rounded-md px-3 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
-                <RotateCcw size={14} /> {tr('RESET')}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handlePanic}
+              title={tr('MIDI Panic')}
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-red-800/60 bg-red-950/40 text-red-500 transition hover:bg-red-900/60 shadow-[inset_0_0_10px_rgba(220,38,38,0.2)]"
+            >
+              <ShieldAlert size={18} />
+            </button>
+
             {isUsbConnected && (
               <div className="flex items-center justify-center h-8 w-8 rounded-md bg-emerald-900/30 text-emerald-500 border border-emerald-800/50" title="USB Conectado">
                 <Usb size={16} />
@@ -378,6 +422,15 @@ export default function App() {
 
         {showExit && <ExitDialog onCancel={() => setShowExit(false)} onConfirm={() => void handleConfirmExit()} />}
         <StatusToast toast={toast} onClose={dismiss} />
+
+        {isPadChannelOpen && (
+          <ChannelSelectPopup
+            title={tr('Canal dos Pads')}
+            value={prefs.padsChannel}
+            onSelect={(ch) => { prefsStore.set({ padsChannel: ch }); showMessage(tr('Canal dos Pads: {n}', { n: ch }), 'info', 1500); }}
+            onClose={() => setIsPadChannelOpen(false)}
+          />
+        )}
 
         <main className="nexus-main flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[var(--bg-app)]">
           {activeTab === 'keyboard' && (
@@ -418,7 +471,7 @@ export default function App() {
                     bank={padBank} 
                     isActive={keyboardEnabled} 
                     isConnected={canPlay} 
-                    onNoteOn={(note) => handleNoteOn(note, prefs.padsChannel)} 
+                    onNoteOn={(note, velocity) => handleNoteOn(note, prefs.padsChannel, velocity)} 
                     onNoteOff={(note) => handleNoteOff(note, prefs.padsChannel)} 
                     onDisabledPress={handleDisabledPress} 
                     isEditMode={isPadEditMode}
