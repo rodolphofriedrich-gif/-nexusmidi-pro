@@ -35,6 +35,14 @@
   --nexus-border-strong: rgba(255, 255, 255, 0.1);
   --nexus-glass: rgba(255, 255, 255, 0.03);
 
+  /* Aliases usados pelos componentes (SoundFontScreen, Mixer, Menu...). Seguem o tema claro/escuro. */
+  --bg-app: var(--nexus-bg-bottom);
+  --bg-panel: var(--nexus-panel);
+  --bg-elevated: var(--nexus-panel-raised);
+  --border-color: var(--nexus-border-strong);
+  --text-main: var(--nexus-text);
+  --text-muted: var(--nexus-text-secondary);
+
   /* Cantos menores: aparência de equipamento, não de app genérico */
   --nexus-radius-sm: 6px;
   --nexus-radius-md: 8px;
