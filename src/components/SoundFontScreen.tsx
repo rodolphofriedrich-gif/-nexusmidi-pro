@@ -64,7 +64,7 @@ function MidiChannelsPanel({ activeChannel, muted, solo, onSelect, onToggleMute,
     <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2">
       <div className="mb-2 flex items-center justify-between px-1">
         <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{tr('Canais MIDI')}</span>
-        <div className="flex items-center gap-2 text-xs font-bold text-cyan-400">
+        <div className="flex items-center gap-2 text-xs font-bold text-indigo-400">
           <button type="button" disabled={page === 0} onClick={() => setPage(0)} className="px-2 disabled:opacity-30">‹</button>
           {page * 8 + 1}-{page * 8 + 8}
           <button type="button" disabled={page === 1} onClick={() => setPage(1)} className="px-2 disabled:opacity-30">›</button>
@@ -74,7 +74,7 @@ function MidiChannelsPanel({ activeChannel, muted, solo, onSelect, onToggleMute,
         {list.map((ch) => {
           const isActive = ch === activeChannel;
           return (
-            <div key={ch} className={`flex flex-col items-center gap-1 rounded-lg border bg-[var(--bg-app)] p-1 ${isActive ? 'border-rose-400/70' : 'border-[var(--border-color)]'}`}>
+            <div key={ch} className={`flex flex-col items-center gap-1 rounded-lg border bg-[var(--bg-app)] p-1 ${isActive ? 'border-indigo-400/70' : 'border-[var(--border-color)]'}`}>
               <button
                 type="button"
                 onClick={() => onSelect(ch)}
@@ -84,9 +84,9 @@ function MidiChannelsPanel({ activeChannel, muted, solo, onSelect, onToggleMute,
                 {ch}
               </button>
               <button type="button" onClick={() => onToggleMute(ch)}
-                className={`h-8 w-full rounded-md text-xs font-bold ${muted[ch] ? 'bg-red-600 text-white' : 'bg-[#23262D] text-slate-200'}`}>M</button>
+                className={`h-8 w-full rounded-md text-xs font-bold ${muted[ch] ? 'bg-red-600 text-white' : 'bg-[var(--bg-elevated)] text-[var(--text-main)]'}`}>M</button>
               <button type="button" onClick={() => onToggleSolo(ch)}
-                className={`h-8 w-full rounded-md text-xs font-bold ${solo === ch ? 'bg-amber-500 text-black' : 'bg-[#23262D] text-slate-200'}`}>S</button>
+                className={`h-8 w-full rounded-md text-xs font-bold ${solo === ch ? 'bg-amber-500 text-black' : 'bg-[var(--bg-elevated)] text-[var(--text-main)]'}`}>S</button>
             </div>
           );
         })}
@@ -108,7 +108,7 @@ function ChannelGrid({ value, onSelect }: { value: number; onSelect: (ch: number
             onClick={() => onSelect(ch)}
             className={`h-12 rounded-lg border font-mono text-sm transition-colors ${
               selected
-                ? 'border-cyan-600/60 bg-cyan-500/20 font-bold text-cyan-400'
+                ? 'border-indigo-500/60 bg-indigo-500/20 font-bold text-indigo-400'
                 : 'border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'
             }`}
           >
@@ -335,10 +335,10 @@ export function SoundFontScreen({ onStatus }: Props) {
   const tabClass = (mode: string, active: string) =>
     `flex h-8 items-center justify-center gap-1.5 px-4 text-xs font-bold rounded-lg transition-colors ${popupMode === mode ? active : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`;
 
-  const configBtnClass = (mode: ConfigTab, color: string) =>
+  const configBtnClass = (mode: ConfigTab) =>
     `flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-colors ${
       popupMode === mode
-        ? `bg-${color}-600/20 border-${color}-500/50 text-${color}-400`
+        ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400'
         : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'
     }`;
 
@@ -376,7 +376,7 @@ export function SoundFontScreen({ onStatus }: Props) {
             <div className="flex min-w-0 flex-1 overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
               {SCENES.map((s) => (
                 <button key={s} type="button" onClick={() => loadScene(s)}
-                  className={`flex h-8 flex-1 items-center justify-center rounded-md px-2 text-xs font-bold transition-colors ${activeScene === s ? 'bg-amber-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
+                  className={`flex h-8 flex-1 items-center justify-center rounded-md px-2 text-xs font-bold transition-colors ${activeScene === s ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
                   {s}
                 </button>
               ))}
@@ -389,7 +389,7 @@ export function SoundFontScreen({ onStatus }: Props) {
                 <Trash2 size={14} />
               </button>
             </div>
-            <button type="button" onClick={saveScene} className="h-8 shrink-0 whitespace-nowrap rounded-lg border border-amber-600/50 bg-amber-900/20 px-3 text-xs font-bold text-amber-500 hover:bg-amber-900/40">
+            <button type="button" onClick={saveScene} className="h-8 shrink-0 whitespace-nowrap rounded-lg border border-indigo-500/50 bg-indigo-900/20 px-3 text-xs font-bold text-indigo-400 hover:bg-indigo-900/40">
               {tr('Salvar Cena')}
             </button>
           </div>
@@ -397,32 +397,32 @@ export function SoundFontScreen({ onStatus }: Props) {
           <div className="flex items-center gap-2">
             <div className="flex flex-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
               <button type="button" onClick={() => setPopupMode('presets')}
-                className={tabClass('presets', 'bg-cyan-600 text-white')}>
+                className={tabClass('presets', 'bg-indigo-600 text-white')}>
                 <List size={14} /> PRESETS
               </button>
               <button type="button" onClick={() => setPopupMode('library')}
-                className={tabClass('library', 'bg-cyan-600 text-white')}>
+                className={tabClass('library', 'bg-indigo-600 text-white')}>
                 <Library size={14} /> BIBLIOTECA
               </button>
             </div>
             <input type="file" accept=".sf2" ref={fileInputRef} onChange={(e) => void handleFileChange(e)} className="hidden" />
             <button type="button" onClick={() => fileInputRef.current?.click()} disabled={busy}
-              className="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-cyan-600 px-3 text-xs font-bold text-white hover:bg-cyan-500 disabled:opacity-50">
+              className="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-indigo-600 px-3 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-50">
               <UploadCloud size={14} /> {busy ? '...' : 'Importar SF2'}
             </button>
           </div>
 
           <div className="flex items-center gap-1.5">
             <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('effects'); }}
-              className={configBtnClass('effects', 'fuchsia')}>
+              className={configBtnClass('effects')}>
               <SlidersHorizontal size={14} /> {tr('EFEITOS')}
             </button>
             <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('timbre'); }}
-              className={configBtnClass('timbre', 'amber')}>
+              className={configBtnClass('timbre')}>
               <Wand2 size={14} /> {tr('TIMBRE')}
             </button>
             <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('system'); }}
-              className={configBtnClass('system', 'emerald')}>
+              className={configBtnClass('system')}>
               <Cpu size={14} /> {tr('SISTEMA')}
             </button>
           </div>
@@ -496,7 +496,7 @@ export function SoundFontScreen({ onStatus }: Props) {
           <div className="flex flex-col gap-4">
             <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-3">
               <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{tr('Preset selecionado')}</p>
-              <p className="mt-1 text-sm font-bold text-cyan-400">{selectedPresetForChannel.name}</p>
+              <p className="mt-1 text-sm font-bold text-indigo-400">{selectedPresetForChannel.name}</p>
               <p className="text-[11px] text-[var(--text-muted)]">
                 {selectedPresetForChannel.libraryName} • PRG {selectedPresetForChannel.programNumber}
                 {selectedPresetForChannel.isDrum ? ' • Bateria' : ''}
@@ -532,7 +532,7 @@ export function SoundFontScreen({ onStatus }: Props) {
                   >
                     <span className="font-bold">Cena {scene}</span>
                     {hasData && (
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-red-500 border-red-500' : 'border-slate-500'}`}>
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'bg-red-500 border-red-500' : 'border-[var(--text-muted)]'}`}>
                         {isSelected && <div className="w-2 h-2 bg-white rounded-full" />}
                       </div>
                     )}
