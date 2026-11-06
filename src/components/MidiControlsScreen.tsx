@@ -69,10 +69,9 @@ function loadPresets(): MidiPreset[] {
 
 const errorText = (error: unknown): string => (error instanceof Error && error.message ? error.message : tr('erro desconhecido'));
 
-/** Badge compacto "CH XX" indicando o canal MIDI em que a tela opera. */
 function ChannelBadge({ channel }: { channel: number }) {
   return (
-    <span className="shrink-0 rounded border border-indigo-500/30 bg-indigo-500/10 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-indigo-400">
+    <span className="shrink-0 rounded border border-indigo-500/30 bg-indigo-500/10 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-[var(--nexus-primary)]">
       CH {String(channel).padStart(2, '0')}
     </span>
   );
@@ -198,14 +197,12 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     } finally { setBusy(false); }
   };
 
-  // Em telas baixas (celular na horizontal) os três cartões não cabem juntos: mostra um por vez.
   const [sideCard, setSideCard] = useState<'perf' | 'pitch' | 'presets'>('perf');
   const sideHidden = (id: 'perf' | 'pitch' | 'presets'): string => (sideCard === id ? '' : '[@media(max-height:520px)]:hidden');
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto custom-scrollbar bg-[var(--bg-app)] p-2 sm:p-3 md:flex-row md:overflow-hidden">
       
-      {/* MESA DE MIXAGEM */}
       <div className="grid grid-cols-4 gap-2 bg-[var(--bg-app)] p-2 rounded-2xl border border-[var(--border-color)] shadow-inner h-[240px] sm:h-[280px] shrink-0 md:h-auto md:min-h-0 md:min-w-0 md:flex-1 md:shrink md:grid-cols-8 md:grid-rows-1">
         <StudioFader label="MOD" sublabel="CC 1" value={modWheel} onChange={(v) => updateState('modWheel', v)} onCommit={(v) => void sendCC(1, v, 'Modulação')} />
         <StudioFader tone="level" label="VOL" sublabel="CC 7" value={volume} onChange={(v) => updateState('volume', v)} onCommit={(v) => void sendCC(7, v, 'Volume')} />
@@ -226,15 +223,14 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
               key={id}
               type="button"
               onClick={() => setSideCard(id)}
-              className={`h-9 truncate rounded-md px-1 text-[10px] font-bold uppercase transition-colors ${sideCard === id ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+              className={`h-9 truncate rounded-md px-1 text-[10px] font-bold uppercase transition-colors ${sideCard === id ? 'bg-indigo-600 text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
             >
-              <span className={`mr-1 font-mono ${sideCard === id ? 'text-white/80' : 'text-indigo-400/80'}`}>CH{String(channel).padStart(2, '0')}</span>
+              <span className={`mr-1 font-mono ${sideCard === id ? 'text-white/80' : 'text-[var(--nexus-primary)]'}`}>CH{String(channel).padStart(2, '0')}</span>
               {tr(label)}
             </button>
           ))}
         </div>
         
-        {/* CARD PERFORMANCE */}
         <div className={`${sideHidden('perf')} rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col`}>
           <div className="flex items-center justify-between gap-2 border-b border-[var(--border-color)] pb-2">
             <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">
@@ -265,7 +261,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
                 <input 
                   type="number" min="1" max="128" value={program} 
                   onChange={(event) => updateState('program', Math.max(1, Math.min(128, Number(event.target.value) || 1)))} 
-                  className="min-w-0 w-12 h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] px-1 font-mono text-sm text-center text-indigo-400 outline-none focus:border-indigo-500" 
+                  className="min-w-0 w-12 h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] px-1 font-mono text-sm text-center text-[var(--nexus-primary)] outline-none focus:border-indigo-500" 
                 />
                 <button 
                   disabled={busy || !isConnected} 
@@ -279,7 +275,6 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
           </div>
         </div>
 
-        {/* CARD PITCH BEND E PANIC */}
         <div className={`${sideHidden('pitch')} rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col`}>
           <div className="flex items-center justify-between gap-2 border-b border-[var(--border-color)] pb-2">
             <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">
@@ -291,7 +286,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
           <div className="rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)] p-3 flex flex-col justify-center gap-3">
             <div className="flex items-center justify-between text-xs font-bold uppercase text-[var(--text-muted)]">
               <span>{tr('Grave (-)')}</span>
-              <span className="font-mono text-indigo-400 text-sm">{pitchBend - 8192 > 0 ? '+' : ''}{pitchBend - 8192}</span>
+              <span className="font-mono text-[var(--nexus-primary)] text-sm">{pitchBend - 8192 > 0 ? '+' : ''}{pitchBend - 8192}</span>
               <span>{tr('Agudo (+)')}</span>
             </div>
             
@@ -343,11 +338,10 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
           </button>
         </div>
 
-        {/* PRESETS COMPACTOS */}
         <div className={`${sideHidden('presets')} rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm shrink-0 mb-4`}>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Save size={16} className="text-indigo-400" />
+              <Save size={16} className="text-[var(--nexus-primary)]" />
               <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">{tr('Presets Salvos')}</h3>
             </div>
             <ChannelBadge channel={channel} />
@@ -378,7 +372,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
                   <div className="flex gap-1">
                     <button 
                       title={tr('Aplicar')} disabled={busy || !isConnected} onClick={() => void applyPreset(preset)} 
-                      className="rounded bg-indigo-900/40 p-2 text-indigo-400 hover:bg-indigo-800/60 disabled:opacity-40 transition-colors"
+                      className="rounded bg-indigo-500/20 p-2 text-[var(--nexus-primary)] hover:bg-indigo-500/30 disabled:opacity-40 transition-colors"
                     >
                       <Play size={14} />
                     </button>
