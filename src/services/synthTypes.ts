@@ -76,3 +76,36 @@ export const DEFAULT_SYNTH_SETTINGS: SynthSettings = {
   volume: 85,
   transpose: 0,
 };
+
+/** Parâmetros que pertencem a CADA canal MIDI: um canal não interfere nos outros. */
+export type ChannelSettings = Pick<
+  SynthSettings,
+  'volume' | 'reverb' | 'chorus' | 'transpose' | 'attack' | 'release' | 'cutoff' | 'resonance' | 'vibrato' | 'fineTune' | 'pitchBendRange'
+>;
+
+/** Parâmetros globais: o motor de áudio só tem uma cadeia de efeitos (master) e um limite de vozes. */
+export type GlobalSettings = Pick<
+  SynthSettings,
+  'delayTime' | 'delayFeedback' | 'delayMix' | 'eqLow' | 'eqMid' | 'eqHigh' | 'compThreshold' | 'maxPolyphony'
+>;
+
+export const CHANNEL_SETTING_KEYS: ReadonlyArray<keyof ChannelSettings> = [
+  'volume', 'reverb', 'chorus', 'transpose', 'attack', 'release', 'cutoff', 'resonance', 'vibrato', 'fineTune', 'pitchBendRange',
+];
+
+export const DEFAULT_CHANNEL_SETTINGS: ChannelSettings = {
+  volume: DEFAULT_SYNTH_SETTINGS.volume,
+  reverb: DEFAULT_SYNTH_SETTINGS.reverb,
+  chorus: DEFAULT_SYNTH_SETTINGS.chorus,
+  transpose: DEFAULT_SYNTH_SETTINGS.transpose,
+  attack: DEFAULT_SYNTH_SETTINGS.attack,
+  release: DEFAULT_SYNTH_SETTINGS.release,
+  cutoff: DEFAULT_SYNTH_SETTINGS.cutoff,
+  resonance: DEFAULT_SYNTH_SETTINGS.resonance,
+  vibrato: DEFAULT_SYNTH_SETTINGS.vibrato,
+  fineTune: DEFAULT_SYNTH_SETTINGS.fineTune,
+  pitchBendRange: DEFAULT_SYNTH_SETTINGS.pitchBendRange,
+};
+
+export const isChannelSettingKey = (key: keyof SynthSettings): key is keyof ChannelSettings =>
+  (CHANNEL_SETTING_KEYS as ReadonlyArray<string>).includes(key);

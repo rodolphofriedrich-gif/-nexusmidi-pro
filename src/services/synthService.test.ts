@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SynthService } from './synthService';
-import { DEFAULT_SYNTH_SETTINGS, type SynthBackend } from './synthTypes';
+import { DEFAULT_CHANNEL_SETTINGS, DEFAULT_SYNTH_SETTINGS, type SynthBackend } from './synthTypes';
 
 function makeBackend() {
   const calls: string[] = [];
@@ -208,6 +208,32 @@ describe('SynthService', () => {
     synth.applyMix(100, {}, 3);
     expect(calls.filter((c) => c === 'cc:2:7:127')).toHaveLength(1);
     expect(calls.filter((c) => c === 'cc:0:7:0')).toHaveLength(1);
+  });
+
+  it('applyChannelSettings: o ajuste de um canal não toca nos outros', () => {
+    synth.applyChannelSettings(2, { ...DEFAULT_CHANNEL_SETTINGS, reverb: 80 }, DEFAULT_CHANNEL_SETTINGS);
+    expect(calls).toEqual(['cc:1:91:102']);
+  });
+
+  it('a transposição é independente por canal', () => {
+    synth.applyChannelSettings(1, { ...DEFAULT_CHANNEL_SETTINGS, transpose: 5 }, DEFAULT_CHANNEL_SETTINGS);
+    synth.noteOn(60, 100, 1);
+    synth.noteOn(60, 100, 2);
+    expect(calls).toEqual(['on:0:65:100', 'on:1:60:100']);
+  });
+
+  it('applyMix aceita um volume diferente para cada canal', () => {
+    synth.applyMix((ch) => (ch === 2 ? 50 : 100), {}, null);
+    expect(calls).toContain('cc:1:7:64');
+    expect(calls).toContain('cc:0:7:127');
+  });
+
+  it('applyChannelMix mexe só no canal pedido e respeita mute/solo', () => {
+    synth.applyChannelMix(3, 80, {}, null);
+    expect(calls).toEqual(['cc:2:7:102']);
+    calls.length = 0;
+    synth.applyChannelMix(3, 80, { 3: true }, null);
+    expect(calls).toEqual(['cc:2:7:0']);
   });
 
   it('dispose libera o backend', () => {

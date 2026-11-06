@@ -5,7 +5,7 @@ import { DEFAULT_ARP_CONFIG } from '../lib/arpeggiator';
 import type { CcMapping } from '../lib/midiLearn';
 import type { ChordId, ScaleId } from '../lib/scales';
 import type { VelocityCurve } from '../lib/velocity';
-import { DEFAULT_SYNTH_SETTINGS, type SynthSettings } from './synthTypes';
+import { CHANNEL_SETTING_KEYS, DEFAULT_CHANNEL_SETTINGS, DEFAULT_SYNTH_SETTINGS, type ChannelSettings, type SynthSettings } from './synthTypes';
 
 export type Language = 'pt-BR' | 'en';
 const CURVES: VelocityCurve[] = ['linear', 'soft', 'hard', 'fixed'];
@@ -58,6 +58,7 @@ export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
 // ------------------------------------------------------------------- sintetizador
 export const synthSettingsStore = createStore<SynthSettings>('nexus_synth_settings', DEFAULT_SYNTH_SETTINGS);
 
+// Configurações GLOBAIS (delay, EQ, compressor, polifonia). Os ajustes de cada canal ficam em `channelSettingsStore`.
 export interface ChannelState {
   assignments: Record<number, number>; // canal → programa (0–127)
   banks: Record<number, number>; // canal → banco do SF2 (128 = bateria). Ausente = 0
@@ -81,6 +82,50 @@ export const channelsStore = createStore<ChannelState>(
       assignments: parseJson<Record<number, number>>(storage.getItem('nexus_sf_channels'), {}),
       muted: parseJson<Record<number, boolean>>(storage.getItem('nexus_sf_mutes'), {}),
     }),
+  },
+);
+
+/** Ajustes independentes por canal MIDI (1–16). Canal sem entrada usa `DEFAULT_CHANNEL_SETTINGS`. */
+export interface ChannelSettingsState {
+  channels: Record<number, ChannelSettings>;
+}
+
+export const channelSettingsOf = (state: ChannelSettingsState, channel: number): ChannelSettings =>
+  state.channels[channel] ?? DEFAULT_CHANNEL_SETTINGS;
+
+/** Altera só alguns ajustes de UM canal; os outros canais não são tocados. */
+export function updateChannelSettings(channel: number, patch: Partial<ChannelSettings>): void {
+  channelSettingsStore.set((prev) => ({
+    channels: { ...prev.channels, [channel]: { ...channelSettingsOf(prev, channel), ...patch } },
+  }));
+}
+
+function cleanChannelSettings(raw: unknown): ChannelSettings {
+  const source = (raw && typeof raw === 'object' ? raw : {}) as Partial<Record<keyof ChannelSettings, unknown>>;
+  const out: ChannelSettings = { ...DEFAULT_CHANNEL_SETTINGS };
+  for (const key of CHANNEL_SETTING_KEYS) {
+    const value = source[key];
+    if (typeof value === 'number' && Number.isFinite(value)) out[key] = value;
+  }
+  return out;
+}
+
+export const channelSettingsStore = createStore<ChannelSettingsState>(
+  'nexusmidi.channelSettings',
+  { channels: {} },
+  {
+    // Migra o que a tela do sintetizador guardava na chave solta da versão anterior.
+    legacy: (storage) => ({
+      channels: parseJson<Record<number, ChannelSettings>>(storage.getItem('nexusmidi_channel_settings'), {}),
+    }),
+    sanitize: (state) => {
+      const channels: Record<number, ChannelSettings> = {};
+      for (const [key, value] of Object.entries(state.channels ?? {})) {
+        const channel = Number(key);
+        if (Number.isInteger(channel) && channel >= 1 && channel <= 16) channels[channel] = cleanChannelSettings(value);
+      }
+      return { channels };
+    },
   },
 );
 

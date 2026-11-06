@@ -1,5 +1,5 @@
 import { clampInt } from '../lib/midiMath';
-import type { BackendFactory, SynthBackend, SynthSettings } from './synthTypes';
+import type { BackendFactory, ChannelSettings, GlobalSettings, SynthBackend, SynthSettings } from './synthTypes';
 
 export interface SynthSnapshot {
   ready: boolean;
@@ -35,7 +35,10 @@ export class SynthService {
   /** SoundFonts carregados no motor, em ordem de prioridade (id → nome). */
   private readonly banks = new Map<string, string>();
   private maxPolyphony = 64;
+  /** Transposição padrão (usada por canais sem ajuste próprio). */
   private transpose = 0;
+  /** Transposição própria de cada canal (índice base 0). */
+  private readonly channelTranspose = new Map<number, number>();
 
   constructor(private readonly factory: BackendFactory) {}
 
@@ -188,7 +191,7 @@ export class SynthService {
       this.active.delete(oldKey);
     }
 
-    const shift = this.isDrumChannel(ch) ? 0 : this.transpose;
+    const shift = this.isDrumChannel(ch) ? 0 : (this.channelTranspose.get(ch) ?? this.transpose);
     const sounding = clampInt(original + shift, 0, 127);
     this.active.set(key, sounding);
     engine.noteOn(ch, sounding, clampInt(velocity, 1, 127));
@@ -290,44 +293,66 @@ export class SynthService {
   setDelay(timeMs: number, feedback: number, mix: number): void { this.backend?.fx.setDelay(timeMs, feedback, mix); }
   setEQ(low: number, mid: number, high: number): void { this.backend?.fx.setEQ(low, mid, high); }
   setCompressor(threshold: number, ratio: number): void { this.backend?.fx.setCompressor(threshold, ratio); }
-  setTranspose(semitones: number): void { this.transpose = clampInt(semitones, -24, 24); }
+  /** Sem `channel`: vale para todos os canais (e descarta ajustes individuais). Com `channel`: só para ele. */
+  setTranspose(semitones: number, channel?: number): void {
+    const value = clampInt(semitones, -24, 24);
+    if (channel === undefined) {
+      this.transpose = value;
+      this.channelTranspose.clear();
+      return;
+    }
+    this.channelTranspose.set(this.index(channel), value);
+  }
   setMaxPolyphony(max: number): void { this.maxPolyphony = clampInt(max, 1, 256); }
 
-  /**
-   * Aplica as configurações do painel. Com `previous`, só reenvia o que mudou
-   * (arrastar um slider não gera 144 mensagens por movimento).
-   */
-  applySettings(next: SynthSettings, previous?: SynthSettings): void {
+  /** Efeitos da cadeia master e limite de vozes: não existem por canal no motor de áudio. */
+  applyGlobalSettings(next: GlobalSettings, previous?: GlobalSettings): void {
     if (!this.snapshot.ready) return;
-    const changed = (...keys: Array<keyof SynthSettings>): boolean =>
-      !previous || keys.some((k) => previous[k] !== next[k]);
+    const changed = (...keys: Array<keyof GlobalSettings>): boolean => !previous || keys.some((k) => previous[k] !== next[k]);
 
-    if (changed('transpose')) this.setTranspose(next.transpose);
     if (changed('maxPolyphony')) this.setMaxPolyphony(next.maxPolyphony);
     if (changed('delayTime', 'delayFeedback', 'delayMix')) this.setDelay(next.delayTime, next.delayFeedback, next.delayMix);
     if (changed('eqLow', 'eqMid', 'eqHigh')) this.setEQ(next.eqLow, next.eqMid, next.eqHigh);
     if (changed('compThreshold')) this.setCompressor(next.compThreshold, 4);
-
-    for (let ch = 1; ch <= 16; ch++) {
-      if (changed('reverb')) this.setReverb(next.reverb, ch);
-      if (changed('chorus')) this.setChorus(next.chorus, ch);
-      if (changed('attack')) this.setAttack(next.attack, ch);
-      if (changed('release')) this.setRelease(next.release, ch);
-      if (changed('cutoff')) this.setFilterCutoff(next.cutoff, ch);
-      if (changed('resonance')) this.setFilterResonance(next.resonance, ch);
-      if (changed('vibrato')) this.setVibratoDepth(next.vibrato, ch);
-      if (changed('fineTune')) this.setFineTuning(next.fineTune, ch);
-      if (changed('pitchBendRange')) this.setPitchBendRange(next.pitchBendRange, ch);
-    }
   }
 
-  /** Mute/solo por canal usando o volume (CC 7). */
-  applyMix(volumePercent: number, muted: Record<number, boolean>, solo: number | null): void {
+  /**
+   * Aplica as configurações de UM canal, sem tocar nos outros. Com `previous`, só reenvia o que mudou.
+   * O volume não entra aqui: ele depende de mute/solo e vai por `applyMix`/`applyChannelMix`.
+   */
+  applyChannelSettings(channel: number, next: ChannelSettings, previous?: ChannelSettings): void {
     if (!this.snapshot.ready) return;
-    for (let ch = 1; ch <= 16; ch++) {
-      const silenced = muted[ch] === true || (solo !== null && solo !== ch);
-      this.setMasterVolume(silenced ? 0 : volumePercent, ch);
-    }
+    const changed = (...keys: Array<keyof ChannelSettings>): boolean => !previous || keys.some((k) => previous[k] !== next[k]);
+
+    if (changed('transpose')) this.setTranspose(next.transpose, channel);
+    if (changed('reverb')) this.setReverb(next.reverb, channel);
+    if (changed('chorus')) this.setChorus(next.chorus, channel);
+    if (changed('attack')) this.setAttack(next.attack, channel);
+    if (changed('release')) this.setRelease(next.release, channel);
+    if (changed('cutoff')) this.setFilterCutoff(next.cutoff, channel);
+    if (changed('resonance')) this.setFilterResonance(next.resonance, channel);
+    if (changed('vibrato')) this.setVibratoDepth(next.vibrato, channel);
+    if (changed('fineTune')) this.setFineTuning(next.fineTune, channel);
+    if (changed('pitchBendRange')) this.setPitchBendRange(next.pitchBendRange, channel);
+  }
+
+  /** Aplica o mesmo conjunto a todos os canais (uso simples; o app usa as versões por canal). */
+  applySettings(next: SynthSettings, previous?: SynthSettings): void {
+    this.applyGlobalSettings(next, previous);
+    for (let ch = 1; ch <= 16; ch++) this.applyChannelSettings(ch, next, previous);
+  }
+
+  /** Mute/solo por canal usando o volume (CC 7). `volume` pode ser um número único ou um valor por canal. */
+  applyMix(volume: number | ((channel: number) => number), muted: Record<number, boolean>, solo: number | null): void {
+    if (!this.snapshot.ready) return;
+    for (let ch = 1; ch <= 16; ch++) this.applyChannelMix(ch, typeof volume === 'function' ? volume(ch) : volume, muted, solo);
+  }
+
+  /** Mesmo que `applyMix`, mas só para um canal. */
+  applyChannelMix(channel: number, volumePercent: number, muted: Record<number, boolean>, solo: number | null): void {
+    if (!this.snapshot.ready) return;
+    const silenced = muted[channel] === true || (solo !== null && solo !== channel);
+    this.setMasterVolume(silenced ? 0 : volumePercent, channel);
   }
 }
 
