@@ -1,5 +1,6 @@
 /** Traduções para inglês. A chave é o texto original em português (pt-BR). */
 export const en: Record<string, string> = {
+  "...": "...",
   "1 nota ativa": "1 active note",
   "ALOCAR": "ASSIGN",
   "ARRANJADOR": "ARRANGER",
