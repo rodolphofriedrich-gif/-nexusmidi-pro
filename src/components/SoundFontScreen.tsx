@@ -6,9 +6,9 @@ import { useStore } from '../hooks/useStore';
 import type { ToastType } from '../hooks/useToast';
 import { tr } from '../i18n';
 import { soundFontLibrary } from '../services/soundFontLibrary';
-import { channelsStore, prefsStore, synthSettingsStore } from '../services/stores';
-import type { SynthSettings } from '../services/synthTypes';
-import { DEFAULT_SYNTH_SETTINGS } from '../services/synthTypes';
+import { channelSettingsOf, channelSettingsStore, channelsStore, prefsStore, synthSettingsStore } from '../services/stores';
+import type { ChannelSettings, SynthSettings } from '../services/synthTypes';
+import { DEFAULT_CHANNEL_SETTINGS, isChannelSettingKey } from '../services/synthTypes';
 import { synthService } from '../services/synthService';
 import type { SoundFontPreset } from '../types/soundfont';
 import { ActiveSoundFontCard } from './soundfont/ActiveSoundFontCard';
@@ -25,7 +25,6 @@ type PopupMode = 'presets' | 'library' | ConfigTab | null;
 
 const SCENES = ['A', 'B', 'C', 'D'];
 const SCENES_KEY = 'nexusmidi_studio_scenes';
-const CHANNEL_SETTINGS_KEY = 'nexusmidi_channel_settings';
 
 function Popup({ title, onClose, children, widthClass = 'max-w-2xl' }: { title: string; onClose: () => void; children: React.ReactNode; widthClass?: string }) {
   useEffect(() => {
@@ -133,17 +132,9 @@ export function SoundFontScreen({ onStatus }: Props) {
   const [popupMode, setPopupMode] = useState<PopupMode>(null);
   const [selectedPresetForChannel, setSelectedPresetForChannel] = useState<SoundFontPreset | null>(null);
 
-  const [channelSettings, setChannelSettings] = useState<Record<number, SynthSettings>>(() => {
-    try {
-      const saved = localStorage.getItem(CHANNEL_SETTINGS_KEY);
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
+  const channelSettingsState = useStore(channelSettingsStore);
+  const globalSettings = useStore(synthSettingsStore);
   const [configChannel, setConfigChannel] = useState<number>(activeChannel);
-
-  useEffect(() => {
-    try { localStorage.setItem(CHANNEL_SETTINGS_KEY, JSON.stringify(channelSettings)); } catch { /* */ }
-  }, [channelSettings]);
 
   const [scenes, setScenes] = useState<Record<string, any>>(() => {
     try {
@@ -158,13 +149,6 @@ export function SoundFontScreen({ onStatus }: Props) {
   useEffect(() => {
     if (library.error) onStatus(library.error, 'error');
   }, [library.error, onStatus]);
-
-  useEffect(() => {
-    const snapshot = channelSettings[activeChannel];
-    if (snapshot) {
-      synthSettingsStore.set(snapshot);
-    }
-  }, [activeChannel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const instruments = useMemo<SoundFontPreset[]>(() => {
     const seen = new Set<string>();
@@ -196,34 +180,26 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const hasLibrary = library.items.length > 0;
 
-  const getChannelSettings = (ch: number): SynthSettings =>
-    channelSettings[ch] ?? DEFAULT_SYNTH_SETTINGS;
+  const getChannelSettings = (ch: number): ChannelSettings => channelSettingsOf(channelSettingsState, ch);
 
-  const updateSetting = (key: keyof SynthSettings, value: number) => {
-    const ch = activeChannel;
-    synthSettingsStore.set({ [key]: value });
-    setChannelSettings((prev) => ({
-      ...prev,
-      [ch]: { ...(prev[ch] ?? synthSettingsStore.get()), [key]: value },
+  /** O que o painel mostra: ajustes do canal escolhido + os globais (delay, EQ, compressor, polifonia). */
+  const panelSettings = (ch: number): SynthSettings => ({ ...globalSettings, ...getChannelSettings(ch) });
+
+  const setChannelSetting = (ch: number, key: keyof ChannelSettings, value: number) =>
+    channelSettingsStore.set((prev) => ({
+      channels: { ...prev.channels, [ch]: { ...channelSettingsOf(prev, ch), [key]: value } },
     }));
-  };
+
+  const updateSetting = (key: keyof ChannelSettings, value: number) => setChannelSetting(activeChannel, key, value);
 
   const updateConfigSetting = (key: keyof SynthSettings, value: number) => {
-    const ch = configChannel;
-    const current = channelSettings[ch] ?? DEFAULT_SYNTH_SETTINGS;
-    const updated = { ...current, [key]: value };
-    setChannelSettings((prev) => ({ ...prev, [ch]: updated }));
-    if (ch === activeChannel) {
-      synthSettingsStore.set({ [key]: value });
-    }
+    if (isChannelSettingKey(key)) setChannelSetting(configChannel, key, value);
+    else synthSettingsStore.set({ [key]: value });
   };
 
   const handleResetChannel = () => {
     const ch = configChannel;
-    setChannelSettings((prev) => ({ ...prev, [ch]: DEFAULT_SYNTH_SETTINGS }));
-    if (ch === activeChannel) {
-      synthSettingsStore.set(DEFAULT_SYNTH_SETTINGS);
-    }
+    channelSettingsStore.set((prev) => ({ channels: { ...prev.channels, [ch]: { ...DEFAULT_CHANNEL_SETTINGS } } }));
     onStatus(tr('Configurações do canal {ch} restauradas.', { ch }), 'info');
   };
 
@@ -233,7 +209,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     if (!file) return;
     onStatus(tr('Carregando e salvando SoundFont...'), 'info');
     if (await soundFontLibrary.importFile(file)) {
-      channelsStore.set({ assignments: {}, muted: {}, solo: null });
       onStatus(tr('SoundFont "{name}" carregado!', { name: file.name }), 'success');
     }
   };
@@ -261,7 +236,7 @@ export function SoundFontScreen({ onStatus }: Props) {
       onStatus(tr('Importe um arquivo SF2 primeiro.'), 'warn');
       return;
     }
-    synthService.programChange(selectedPresetForChannel.programNumber, ch);
+    synthService.programChange(selectedPresetForChannel.programNumber, ch, selectedPresetForChannel.bankNumber);
     channelsStore.set((s) => ({
       ...s,
       assignments: { ...s.assignments, [ch]: selectedPresetForChannel.programNumber },
@@ -298,8 +273,11 @@ export function SoundFontScreen({ onStatus }: Props) {
   const loadScene = (scene: string) => {
     setActiveScene(scene);
     if (scenes[scene]) {
-      channelsStore.set(scenes[scene].channels);
+      const saved = scenes[scene].channels;
+      channelsStore.set(saved);
+      synthService.setChannelPrograms(saved.assignments ?? {}, saved.banks ?? {});
       synthSettingsStore.set(scenes[scene].settings);
+      if (scenes[scene].channelSettings) channelSettingsStore.set(scenes[scene].channelSettings);
       onStatus(tr('Cena {scene} carregada.', { scene }), 'info');
     } else {
       onStatus(tr('Cena {scene} está vazia.', { scene }), 'warn');
@@ -307,7 +285,7 @@ export function SoundFontScreen({ onStatus }: Props) {
   };
 
   const saveScene = () => {
-    const newScenes = { ...scenes, [activeScene]: { channels: channelsStore.get(), settings: synthSettingsStore.get() } };
+    const newScenes = { ...scenes, [activeScene]: { channels: channelsStore.get(), settings: synthSettingsStore.get(), channelSettings: channelSettingsStore.get() } };
     setScenes(newScenes);
     localStorage.setItem(SCENES_KEY, JSON.stringify(newScenes));
     onStatus(tr('Cena {scene} salva com sucesso.', { scene: activeScene }), 'success');
@@ -482,7 +460,7 @@ export function SoundFontScreen({ onStatus }: Props) {
             </div>
 
             <SynthSettingsPanel
-              settings={getChannelSettings(configChannel)}
+              settings={panelSettings(configChannel)}
               onUpdateSetting={updateConfigSetting}
               onReset={handleResetChannel}
               defaultTab={popupMode === 'effects' ? 'fx' : popupMode === 'timbre' ? 'sound' : 'system'}
