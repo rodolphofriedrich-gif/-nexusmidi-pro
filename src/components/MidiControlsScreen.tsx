@@ -69,6 +69,15 @@ function loadPresets(): MidiPreset[] {
 
 const errorText = (error: unknown): string => (error instanceof Error && error.message ? error.message : tr('erro desconhecido'));
 
+/** Badge compacto "CH XX" indicando o canal MIDI em que a tela opera. */
+function ChannelBadge({ channel }: { channel: number }) {
+  return (
+    <span className="shrink-0 rounded border border-indigo-500/30 bg-indigo-500/10 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-indigo-400">
+      CH {String(channel).padStart(2, '0')}
+    </span>
+  );
+}
+
 export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
   const prefs = useStore(prefsStore);
 
@@ -219,6 +228,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
               onClick={() => setSideCard(id)}
               className={`h-9 truncate rounded-md px-1 text-[10px] font-bold uppercase transition-colors ${sideCard === id ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
             >
+              <span className={`mr-1 font-mono ${sideCard === id ? 'text-white/80' : 'text-indigo-400/80'}`}>CH{String(channel).padStart(2, '0')}</span>
               {tr(label)}
             </button>
           ))}
@@ -226,9 +236,12 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
         
         {/* CARD PERFORMANCE */}
         <div className={`${sideHidden('perf')} rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col`}>
-          <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
-            <span className="w-2 h-2 rounded-full bg-[var(--nexus-primary)]"></span> {tr('Performance')}
-          </h3>
+          <div className="flex items-center justify-between gap-2 border-b border-[var(--border-color)] pb-2">
+            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">
+              <span className="h-2 w-2 rounded-full bg-[var(--nexus-primary)]"></span> {tr('Performance')}
+            </h3>
+            <ChannelBadge channel={channel} />
+          </div>
           
           <div className="grid grid-cols-2 gap-3 flex-1">
             <div className="flex flex-col justify-between gap-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)] p-3">
@@ -268,9 +281,12 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
 
         {/* CARD PITCH BEND E PANIC */}
         <div className={`${sideHidden('pitch')} rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col`}>
-          <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
-            <span className="w-2 h-2 rounded-full bg-[var(--nexus-primary)]"></span> {tr('Pitch Bend')}
-          </h3>
+          <div className="flex items-center justify-between gap-2 border-b border-[var(--border-color)] pb-2">
+            <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">
+              <span className="h-2 w-2 rounded-full bg-[var(--nexus-primary)]"></span> {tr('Pitch Bend')}
+            </h3>
+            <ChannelBadge channel={channel} />
+          </div>
           
           <div className="rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)] p-3 flex flex-col justify-center gap-3">
             <div className="flex items-center justify-between text-xs font-bold uppercase text-[var(--text-muted)]">
@@ -329,11 +345,12 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
 
         {/* PRESETS COMPACTOS */}
         <div className={`${sideHidden('presets')} rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm shrink-0 mb-4`}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Save size={16} className="text-indigo-400" />
               <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">{tr('Presets Salvos')}</h3>
             </div>
+            <ChannelBadge channel={channel} />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2">
