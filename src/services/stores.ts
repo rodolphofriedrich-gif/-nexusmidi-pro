@@ -20,6 +20,7 @@ export interface Prefs {
   language: Language;
   theme: 'dark' | 'light' | 'system';
   sustain: boolean;
+  wakeLock: boolean; // NOVO
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -31,6 +32,7 @@ export const DEFAULT_PREFS: Prefs = {
   language: 'pt-BR',
   theme: 'dark',
   sustain: false,
+  wakeLock: true, // NOVO — tela acesa por padrão
 };
 
 export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
@@ -52,6 +54,7 @@ export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
     language: p.language === 'en' ? 'en' : 'pt-BR',
     theme: ['dark', 'light', 'system'].includes(p.theme) ? p.theme : 'dark',
     sustain: Boolean(p.sustain),
+    wakeLock: typeof p.wakeLock === 'boolean' ? p.wakeLock : true, // NOVO
   }),
 });
 
