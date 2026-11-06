@@ -2,52 +2,29 @@ import { useEffect, useState } from 'react';
 import { RotateCcw, Settings2, Volume2, Zap } from 'lucide-react';
 import { tr } from '../../i18n';
 import type { SynthSettings } from '../../services/synthTypes';
+import { StudioSlider } from '../StudioSlider';
 
 interface Props {
   settings: SynthSettings;
   onUpdateSetting: (key: keyof SynthSettings, value: number) => void;
   onReset: () => void;
+  /** Canal MIDI em edição (mostrado no dropdown do header). */
+  channel: number;
+  /** Chamado quando o usuário escolhe outro canal no dropdown. */
+  onChannelChange: (channel: number) => void;
   defaultTab?: TabId;
-}
-
-interface SliderRowProps {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  unit?: string;
-  onChange: (value: number) => void;
-}
-
-// Definido FORA do painel: se fosse criado dentro, cada movimento do slider remontaria o componente
-// e o arraste seria interrompido.
-function SliderRow({ label, value, min, max, step = 1, unit = '%', onChange }: SliderRowProps) {
-  return (
-    <div className="mb-3 flex flex-col gap-1">
-      <label className="flex items-center justify-between text-[11px] font-bold text-[var(--text-main)]">
-        <span>{label}</span>
-        <span className="rounded border border-indigo-900/50 bg-indigo-950/50 px-1.5 py-0.5 font-mono text-indigo-400">
-          {value}
-          {unit}
-        </span>
-      </label>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-full cursor-pointer accent-indigo-500"
-      />
-    </div>
-  );
 }
 
 type TabId = 'fx' | 'sound' | 'system';
 
-export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, defaultTab = 'fx' }: Props) {
+export function SynthSettingsPanel({
+  settings,
+  onUpdateSetting,
+  onReset,
+  channel,
+  onChannelChange,
+  defaultTab = 'fx',
+}: Props) {
   const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
 
   useEffect(() => {
@@ -62,8 +39,9 @@ export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, default
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)]">
-      <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-app)] p-2">
-        <div className="flex rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] p-0.5">
+      {/* Header: abas (esquerda) + canal/reset (direita). Quebra em 2 linhas em telas estreitas. */}
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-app)] p-2">
+        <div className="flex shrink-0 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] p-0.5">
           <button type="button" onClick={() => setActiveTab('fx')} className={tabClass('fx', 'bg-indigo-600 text-white')}>
             <Zap size={12} /> {tr('EFEITOS')}
           </button>
@@ -74,13 +52,30 @@ export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, default
             <Settings2 size={12} /> {tr('SISTEMA')}
           </button>
         </div>
-        <button
-          type="button"
-          onClick={onReset}
-          className="flex items-center gap-1 rounded-md border border-rose-900/50 bg-rose-950/30 px-2 py-1 text-[10px] font-bold text-rose-400 transition-colors hover:bg-rose-900/50"
-        >
-          <RotateCcw size={12} /> {tr('Reset')}
-        </button>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          <select
+            value={channel}
+            onChange={(e) => onChannelChange(Number(e.target.value))}
+            aria-label={tr('Canal MIDI')}
+            title={tr('Canal MIDI')}
+            className="h-7 cursor-pointer rounded-md border border-indigo-500/40 bg-indigo-500/10 px-2 font-mono text-[10px] font-bold text-indigo-400 outline-none transition-colors hover:bg-indigo-500/20 focus:border-indigo-500"
+          >
+            {Array.from({ length: 16 }, (_, i) => i + 1).map((ch) => (
+              <option key={ch} value={ch} className="bg-[var(--bg-panel)] text-[var(--text-main)]">
+                CH {String(ch).padStart(2, '0')}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={onReset}
+            className="flex items-center gap-1 rounded-md border border-rose-900/50 bg-rose-950/30 px-2 py-1 text-[10px] font-bold text-rose-400 transition-colors hover:bg-rose-900/50"
+          >
+            <RotateCcw size={12} /> {tr('Reset')}
+          </button>
+        </div>
       </div>
 
       <div className="custom-scrollbar flex-1 overflow-y-auto p-4">
@@ -89,17 +84,17 @@ export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, default
             <div>
               <h3 className={sectionTitle}>{tr('Delay Customizado')}</h3>
               {globalNote}
-              <SliderRow label={tr('Tempo (Delay)')} value={settings.delayTime} min={0} max={1000} step={10} unit="ms" onChange={set('delayTime')} />
-              <SliderRow label={tr('Feedback')} value={settings.delayFeedback} min={0} max={90} onChange={set('delayFeedback')} />
-              <SliderRow label={tr('Mix (Nível)')} value={settings.delayMix} min={0} max={100} onChange={set('delayMix')} />
+              <StudioSlider label={tr('Tempo (Delay)')} sublabel="ms" value={settings.delayTime} min={0} max={1000} step={10} onChange={set('delayTime')} />
+              <StudioSlider label={tr('Feedback')} value={settings.delayFeedback} min={0} max={90} onChange={set('delayFeedback')} />
+              <StudioSlider label={tr('Mix (Nível)')} value={settings.delayMix} min={0} max={100} onChange={set('delayMix')} />
             </div>
             <div>
               <h3 className={sectionTitle}>{tr('EQ & Compressor')}</h3>
               {globalNote}
-              <SliderRow label={tr('EQ Graves (Low)')} value={settings.eqLow} min={-15} max={15} unit="dB" onChange={set('eqLow')} />
-              <SliderRow label={tr('EQ Médios (Mid)')} value={settings.eqMid} min={-15} max={15} unit="dB" onChange={set('eqMid')} />
-              <SliderRow label={tr('EQ Agudos (High)')} value={settings.eqHigh} min={-15} max={15} unit="dB" onChange={set('eqHigh')} />
-              <SliderRow label={tr('Compressor Threshold')} value={settings.compThreshold} min={-60} max={0} unit="dB" onChange={set('compThreshold')} />
+              <StudioSlider label={tr('EQ Graves (Low)')} sublabel="dB" value={settings.eqLow} min={-15} max={15} onChange={set('eqLow')} />
+              <StudioSlider label={tr('EQ Médios (Mid)')} sublabel="dB" value={settings.eqMid} min={-15} max={15} onChange={set('eqMid')} />
+              <StudioSlider label={tr('EQ Agudos (High)')} sublabel="dB" value={settings.eqHigh} min={-15} max={15} onChange={set('eqHigh')} />
+              <StudioSlider label={tr('Compressor Threshold')} sublabel="dB" value={settings.compThreshold} min={-60} max={0} onChange={set('compThreshold')} />
             </div>
           </div>
         )}
@@ -108,14 +103,14 @@ export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, default
           <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
             <div>
               <h3 className={sectionTitle}>{tr('Envelope (ADSR)')}</h3>
-              <SliderRow label={tr('Attack (Ataque)')} value={settings.attack} min={0} max={127} unit="" onChange={set('attack')} />
-              <SliderRow label={tr('Release (Liberação)')} value={settings.release} min={0} max={127} unit="" onChange={set('release')} />
+              <StudioSlider label={tr('Attack (Ataque)')} value={settings.attack} min={0} max={127} onChange={set('attack')} />
+              <StudioSlider label={tr('Release (Liberação)')} value={settings.release} min={0} max={127} onChange={set('release')} />
             </div>
             <div>
               <h3 className={sectionTitle}>{tr('Filtro & Modulação')}</h3>
-              <SliderRow label={tr('Cutoff (Corte)')} value={settings.cutoff} min={0} max={127} unit="" onChange={set('cutoff')} />
-              <SliderRow label={tr('Resonance (Ressonância)')} value={settings.resonance} min={0} max={127} unit="" onChange={set('resonance')} />
-              <SliderRow label={tr('Vibrato (Profundidade)')} value={settings.vibrato} min={0} max={127} unit="" onChange={set('vibrato')} />
+              <StudioSlider label={tr('Cutoff (Corte)')} value={settings.cutoff} min={0} max={127} onChange={set('cutoff')} />
+              <StudioSlider label={tr('Resonance (Ressonância)')} value={settings.resonance} min={0} max={127} onChange={set('resonance')} />
+              <StudioSlider label={tr('Vibrato (Profundidade)')} value={settings.vibrato} min={0} max={127} onChange={set('vibrato')} />
             </div>
           </div>
         )}
@@ -124,13 +119,13 @@ export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, default
           <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
             <div>
               <h3 className={sectionTitle}>{tr('Afinação e Pitch')}</h3>
-              <SliderRow label={tr('Ajuste Fino (Fine Tune)')} value={settings.fineTune} min={-100} max={100} unit="ct" onChange={set('fineTune')} />
-              <SliderRow label={tr('Alcance do Pitch Bend')} value={settings.pitchBendRange} min={1} max={24} unit="st" onChange={set('pitchBendRange')} />
+              <StudioSlider label={tr('Ajuste Fino (Fine Tune)')} sublabel="ct" value={settings.fineTune} min={-100} max={100} onChange={set('fineTune')} />
+              <StudioSlider label={tr('Alcance do Pitch Bend')} sublabel="st" value={settings.pitchBendRange} min={1} max={24} onChange={set('pitchBendRange')} />
             </div>
             <div>
               <h3 className={sectionTitle}>{tr('Desempenho (Mobile)')}</h3>
               {globalNote}
-              <SliderRow label={tr('Polifonia Máxima')} value={settings.maxPolyphony} min={1} max={128} unit={` ${tr('vozes')}`} onChange={set('maxPolyphony')} />
+              <StudioSlider label={tr('Polifonia Máxima')} sublabel={tr('vozes')} value={settings.maxPolyphony} min={1} max={128} onChange={set('maxPolyphony')} />
               <p className="mt-2 text-[10px] leading-tight text-[var(--text-muted)]">
                 {tr('Ao atingir o limite, a nota mais antiga é encerrada para dar lugar à nova. Reduza em celulares mais antigos.')}
               </p>
