@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import {
   Activity, AudioWaveform, GitBranch, LogOut, Music2, Menu, X, Usb, Bluetooth, type LucideIcon,
-  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Power, LayoutGrid, SlidersHorizontal, Globe, Moon, Sun, Monitor, Lock, Unlock, ShieldAlert
+  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Power, LayoutGrid, SlidersHorizontal, Globe, Moon, Sun, SunDim, Monitor, Lock, Unlock, ShieldAlert
 } from 'lucide-react';
 import { ConnectionMenu } from './components/ConnectionMenu';
 import { ExitDialog } from './components/ExitDialog';
@@ -24,6 +24,7 @@ import { NativeMidi } from './services/nativeMidi';
 import { performanceEngine } from './services/performanceService';
 import { prefsStore } from './services/stores';
 import { synthService } from './services/synthService';
+import { acquireWakeLock, releaseWakeLock, isWakeLockSupported } from './services/wakeLockService';
 
 type AppTab = 'keyboard' | 'pads' | 'router' | 'studio' | 'monitor';
 
@@ -116,6 +117,31 @@ export default function App() {
     document.documentElement.lang = prefs.language;
   }, [prefs.language]);
 
+  // Wake Lock: mantém a tela acesa enquanto a preferência estiver ligada.
+  // Re-adquire automaticamente quando o app volta a ficar visível.
+  useEffect(() => {
+    let cancelled = false;
+
+    const apply = () => {
+      if (cancelled) return;
+      if (prefs.wakeLock) void acquireWakeLock();
+      else void releaseWakeLock();
+    };
+
+    apply();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && prefs.wakeLock) void acquireWakeLock();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', handleVisibility);
+      void releaseWakeLock();
+    };
+  }, [prefs.wakeLock]);
+
   useEffect(() => {
     let lastActivity = 0;
     const onActivity = (velocity: number) => {
@@ -167,6 +193,20 @@ export default function App() {
       showMessage(tr('Falha no MIDI Panic'), 'error', 2500);
     }
   }, [showMessage]);
+
+  const handleToggleWakeLock = useCallback(() => {
+    const next = !prefs.wakeLock;
+    prefsStore.set({ wakeLock: next });
+    if (next) {
+      if (!isWakeLockSupported()) {
+        showMessage(tr('Este dispositivo não suporta manter a tela acesa'), 'warn', 2500);
+      } else {
+        showMessage(tr('Tela sempre acesa'), 'info', 1500);
+      }
+    } else {
+      showMessage(tr('Tela pode apagar'), 'info', 1500);
+    }
+  }, [prefs.wakeLock, showMessage]);
 
   const handleConfirmExit = async () => {
     setShowExit(false);
@@ -402,6 +442,21 @@ export default function App() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={handleToggleWakeLock}
+              title={prefs.wakeLock ? tr('Tela sempre acesa') : tr('Tela pode apagar')}
+              aria-label={prefs.wakeLock ? tr('Tela sempre acesa') : tr('Tela pode apagar')}
+              aria-pressed={prefs.wakeLock}
+              className={`flex h-10 w-10 items-center justify-center rounded-lg border transition ${
+                prefs.wakeLock
+                  ? 'border-indigo-500/40 bg-indigo-500/15 text-[var(--nexus-primary)]'
+                  : 'border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'
+              }`}
+            >
+              {prefs.wakeLock ? <Sun size={18} /> : <SunDim size={18} />}
+            </button>
+
             <button
               type="button"
               onClick={handlePanic}
