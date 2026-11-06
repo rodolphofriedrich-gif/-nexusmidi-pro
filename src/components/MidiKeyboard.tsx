@@ -337,14 +337,6 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
                 </div>
               </div>
 
-              <div>
-                <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase text-[var(--text-muted)]">{tr('Cores do Teclado')}</label>
-                <div className="flex h-12 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-xs text-[var(--text-muted)]">
-                  Cor Oficial Padrão (Off-white / Grafite)
-                </div>
-              </div>
-            </div>
-
             <div className="flex flex-col gap-4">
               <div>
                 <label className="mb-2 flex items-center justify-between text-xs font-bold uppercase text-[var(--text-muted)]"><span>{tr('Zoom do Teclado')}</span><span className="font-mono text-[var(--nexus-primary)]">{keyWidth}px</span></label>
