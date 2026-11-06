@@ -189,6 +189,10 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
     } finally { setBusy(false); }
   };
 
+  // Em telas baixas (celular na horizontal) os três cartões não cabem juntos: mostra um por vez.
+  const [sideCard, setSideCard] = useState<'perf' | 'pitch' | 'presets'>('perf');
+  const sideHidden = (id: 'perf' | 'pitch' | 'presets'): string => (sideCard === id ? '' : '[@media(max-height:520px)]:hidden');
+
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto custom-scrollbar bg-[var(--bg-app)] p-2 sm:p-3 md:flex-row md:overflow-hidden">
       
@@ -206,9 +210,22 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
       </div>
 
       <div className="flex shrink-0 flex-col gap-3 md:min-h-0 md:w-72 lg:w-[340px] md:overflow-y-auto md:pr-1 custom-scrollbar">
+
+        <div className="hidden shrink-0 grid-cols-3 gap-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] p-0.5 [@media(max-height:520px)]:grid">
+          {([['perf', 'Performance'], ['pitch', 'Pitch Bend'], ['presets', 'Presets Salvos']] as const).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setSideCard(id)}
+              className={`h-9 truncate rounded-md px-1 text-[10px] font-bold uppercase transition-colors ${sideCard === id ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+            >
+              {tr(label)}
+            </button>
+          ))}
+        </div>
         
         {/* CARD PERFORMANCE */}
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col">
+        <div className={`${sideHidden('perf')} rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col`}>
           <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
             <span className="w-2 h-2 rounded-full bg-[var(--nexus-primary)]"></span> {tr('Performance')}
           </h3>
@@ -250,7 +267,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
         </div>
 
         {/* CARD PITCH BEND E PANIC */}
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col">
+        <div className={`${sideHidden('pitch')} rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col`}>
           <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2 border-b border-[var(--border-color)] pb-2">
             <span className="w-2 h-2 rounded-full bg-[var(--nexus-primary)]"></span> {tr('Pitch Bend')}
           </h3>
@@ -311,7 +328,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
         </div>
 
         {/* PRESETS COMPACTOS */}
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm shrink-0 mb-4">
+        <div className={`${sideHidden('presets')} rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm shrink-0 mb-4`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Save size={16} className="text-indigo-400" />

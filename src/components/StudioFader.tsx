@@ -38,7 +38,7 @@ export function StudioFader({
       {/* Cabeçalho do Fader */}
       <div className="text-center w-full shrink-0">
         <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-main)] truncate">{label}</span>
-        {sublabel && <span className="block text-[9px] text-[var(--text-muted)] font-mono mt-0.5">{sublabel}</span>}
+        {sublabel && <span className="mt-0.5 block whitespace-nowrap text-[9px] font-mono text-[var(--text-muted)]">{sublabel}</span>}
       </div>
 
       {/* Área do Fader Vertical (Flexível). A "pista" fica 16px mais curta em cima e embaixo:

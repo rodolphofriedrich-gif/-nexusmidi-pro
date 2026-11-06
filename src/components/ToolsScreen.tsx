@@ -13,17 +13,17 @@ export function ToolsScreen({ onStatus }: { onStatus: (message: string, type?: T
   const [activeTool, setActiveTool] = useState<'performance' | 'arp' | 'metronome'>('performance');
 
   const btnClass = (active: boolean) =>
-    `flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-bold transition-all ${
+    `flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
       active ? 'bg-indigo-600 text-white shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]/50 hover:text-[var(--text-main)]'
     }`;
 
   const iconClass = (active: boolean) => (active ? 'text-white' : 'text-indigo-400/70');
 
   return (
-    <div className="flex w-full h-full flex-col bg-[var(--bg-app)]">
+    <div className="flex min-h-0 w-full flex-1 flex-col bg-[var(--bg-app)]">
       
       {/* SUB-ABAS DE FERRAMENTAS */}
-      <div className="flex flex-wrap items-center gap-2 p-2 border-b border-[var(--border-color)] bg-[var(--bg-panel)] shrink-0">
+      <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-[var(--border-color)] bg-[var(--bg-panel)] shrink-0">
         <button onClick={() => setActiveTool('performance')} className={btnClass(activeTool === 'performance')}>
           <Sparkles size={14} className={iconClass(activeTool === 'performance')} /> {tr('PERFORMANCE')}
         </button>
@@ -36,7 +36,7 @@ export function ToolsScreen({ onStatus }: { onStatus: (message: string, type?: T
       </div>
 
       {/* CONTEÚDO DA ABA ATIVA */}
-      <div className="custom-scrollbar w-full flex-1 overflow-y-auto p-2 sm:p-4 text-[var(--text-main)]">
+      <div className="custom-scrollbar min-h-0 w-full flex-1 overflow-y-auto p-2 sm:p-4 text-[var(--text-main)]">
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-3 lg:grid-cols-2">
           {activeTool === 'performance' && (
             <>
