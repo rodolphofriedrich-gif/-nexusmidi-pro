@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { RotateCcw, Settings2, Volume2, Zap } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { RotateCcw, Settings2, Volume2, Zap, ChevronDown } from 'lucide-react';
 import { tr } from '../../i18n';
 import type { SynthSettings } from '../../services/synthTypes';
 import { StudioSlider } from '../StudioSlider';
@@ -8,9 +8,7 @@ interface Props {
   settings: SynthSettings;
   onUpdateSetting: (key: keyof SynthSettings, value: number) => void;
   onReset: () => void;
-  /** Canal MIDI em edição (mostrado no dropdown do header). */
   channel: number;
-  /** Chamado quando o usuário escolhe outro canal no dropdown. */
   onChannelChange: (channel: number) => void;
   defaultTab?: TabId;
 }
@@ -26,10 +24,24 @@ export function SynthSettingsPanel({
   defaultTab = 'fx',
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
+  const [isChannelOpen, setIsChannelOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setActiveTab(defaultTab);
   }, [defaultTab]);
+
+  // Fecha o dropdown ao clicar fora
+  useEffect(() => {
+    if (!isChannelOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsChannelOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isChannelOpen]);
 
   const set = (key: keyof SynthSettings) => (value: number) => onUpdateSetting(key, value);
   const tabClass = (id: TabId, active: string) =>
@@ -54,19 +66,35 @@ export function SynthSettingsPanel({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
-          <select
-            value={channel}
-            onChange={(e) => onChannelChange(Number(e.target.value))}
-            aria-label={tr('Canal MIDI')}
-            title={tr('Canal MIDI')}
-            className="h-7 cursor-pointer rounded-md border border-indigo-500/40 bg-indigo-500/10 px-2 font-mono text-[10px] font-bold text-indigo-400 outline-none transition-colors hover:bg-indigo-500/20 focus:border-indigo-500"
-          >
-            {Array.from({ length: 16 }, (_, i) => i + 1).map((ch) => (
-              <option key={ch} value={ch} className="bg-[var(--bg-panel)] text-[var(--text-main)]">
-                CH {String(ch).padStart(2, '0')}
-              </option>
-            ))}
-          </select>
+          
+          {/* DROPDOWN CUSTOMIZADO DE CANAL */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsChannelOpen(!isChannelOpen)}
+              className="flex h-7 min-w-[64px] items-center justify-between gap-2 rounded-md border border-indigo-500/40 bg-indigo-500/10 px-2 font-mono text-[10px] font-bold text-indigo-400 outline-none transition-colors hover:bg-indigo-500/20 focus:border-indigo-500"
+            >
+              CH {String(channel).padStart(2, '0')}
+              <ChevronDown size={12} className={`transition-transform ${isChannelOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isChannelOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 max-h-48 w-24 overflow-y-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] p-1 shadow-2xl custom-scrollbar">
+                {Array.from({ length: 16 }, (_, i) => i + 1).map((ch) => (
+                  <button
+                    key={ch}
+                    type="button"
+                    onClick={() => { onChannelChange(ch); setIsChannelOpen(false); }}
+                    className={`flex w-full items-center rounded px-2 py-1.5 font-mono text-[10px] font-bold transition-colors ${
+                      ch === channel ? 'bg-indigo-500/20 text-indigo-400' : 'text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'
+                    }`}
+                  >
+                    CH {String(ch).padStart(2, '0')}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
