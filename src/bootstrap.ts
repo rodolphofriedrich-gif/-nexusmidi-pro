@@ -2,7 +2,7 @@ import './services/learnService';
 import './services/performanceService';
 import './services/metronomeService';
 import { flushAllStores } from './lib/storeCore';
-import { channelsStore, synthSettingsStore } from './services/stores';
+import { channelSettingsOf, channelSettingsStore, channelsStore, synthSettingsStore } from './services/stores';
 import { soundFontLibrary } from './services/soundFontLibrary';
 import { synthService } from './services/synthService';
 
@@ -13,33 +13,49 @@ export function startAppServices(): void {
   if (started) return;
   started = true;
 
-  const applyAll = (): void => {
-    const settings = synthSettingsStore.get();
-    const channels = channelsStore.get();
-    synthService.setChannelPrograms(channels.assignments, channels.banks);
-    synthService.applySettings(settings);
-    synthService.applyMix(settings.volume, channels.muted, channels.solo);
+  const volumeOf = (channel: number): number => channelSettingsOf(channelSettingsStore.get(), channel).volume;
+
+  const applyMix = (): void => {
+    const c = channelsStore.get();
+    synthService.applyMix(volumeOf, c.muted, c.solo);
   };
 
-  // Configurações do sintetizador → motor de áudio (só o que mudou).
+  const applyAll = (): void => {
+    const channels = channelsStore.get();
+    synthService.setChannelPrograms(channels.assignments, channels.banks);
+    synthService.applyGlobalSettings(synthSettingsStore.get());
+    const perChannel = channelSettingsStore.get();
+    for (let ch = 1; ch <= 16; ch++) synthService.applyChannelSettings(ch, channelSettingsOf(perChannel, ch));
+    applyMix();
+  };
+
+  // Efeitos globais (delay, EQ, compressor, polifonia) → motor de áudio (só o que mudou).
   let previousSettings = synthSettingsStore.get();
   synthSettingsStore.subscribe(() => {
     const next = synthSettingsStore.get();
-    synthService.applySettings(next, previousSettings);
-    if (next.volume !== previousSettings.volume) {
-      const c = channelsStore.get();
-      synthService.applyMix(next.volume, c.muted, c.solo);
-    }
+    synthService.applyGlobalSettings(next, previousSettings);
     previousSettings = next;
+  });
+
+  // Ajustes de cada canal: só o canal alterado é reenviado, e só o que mudou nele.
+  let previousChannelSettings = channelSettingsStore.get();
+  channelSettingsStore.subscribe(() => {
+    const next = channelSettingsStore.get();
+    const c = channelsStore.get();
+    for (let ch = 1; ch <= 16; ch++) {
+      const before = channelSettingsOf(previousChannelSettings, ch);
+      const after = channelSettingsOf(next, ch);
+      synthService.applyChannelSettings(ch, after, before);
+      if (before.volume !== after.volume) synthService.applyChannelMix(ch, after.volume, c.muted, c.solo);
+    }
+    previousChannelSettings = next;
   });
 
   // Mute/solo
   let previousChannels = channelsStore.get();
   channelsStore.subscribe(() => {
     const next = channelsStore.get();
-    if (next.muted !== previousChannels.muted || next.solo !== previousChannels.solo) {
-      synthService.applyMix(synthSettingsStore.get().volume, next.muted, next.solo);
-    }
+    if (next.muted !== previousChannels.muted || next.solo !== previousChannels.solo) applyMix();
     previousChannels = next;
   });
 
