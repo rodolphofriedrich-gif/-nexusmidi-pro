@@ -184,7 +184,6 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const getChannelSettings = (ch: number): ChannelSettings => channelSettingsOf(channelSettingsState, ch);
 
-  /** O que o painel mostra: ajustes do canal escolhido + os globais (delay, EQ, compressor, polifonia). */
   const panelSettings = (ch: number): SynthSettings => ({ ...globalSettings, ...getChannelSettings(ch) });
 
   const setChannelSetting = (ch: number, key: keyof ChannelSettings, value: number) =>
@@ -323,7 +322,6 @@ export function SoundFontScreen({ onStatus }: Props) {
         : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'
     }`;
 
-  /** Fecha o submenu inline (presets/biblioteca) e volta para o estado padrão. */
   const closeInline = () => setInlineView(null);
   const toggleInline = (view: 'presets' | 'library') => setInlineView((v) => (v === view ? null : view));
 
@@ -356,75 +354,76 @@ export function SoundFontScreen({ onStatus }: Props) {
 
       {/* COLUNA DIREITA */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2 min-h-0 h-full">
-        <div className="mb-2 flex shrink-0 flex-col gap-2 border-b border-[var(--border-color)] pb-2">
-          {/* Linha 1: cenas (A/B/C/D) + lixeira + salvar (ícone) */}
-          <div className="flex items-center gap-2">
-            <div className="flex min-w-0 flex-1 overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
-              {SCENES.map((s) => (
-                <button key={s} type="button" onClick={() => loadScene(s)}
-                  className={`flex h-8 flex-1 items-center justify-center rounded-md px-2 text-xs font-bold transition-colors ${activeScene === s ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
-                  {s}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-red-500/70 transition-colors hover:bg-red-900/20 hover:text-red-400 ml-1"
-                title={tr('Apagar Cenas')}
-                aria-label={tr('Apagar Cenas')}
-              >
-                <Trash2 size={14} />
+        
+        {/* Topo Fixo: Cenas + Botão Salvar */}
+        <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-[var(--border-color)] pb-2">
+          <div className="flex min-w-0 flex-1 overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
+            {SCENES.map((s) => (
+              <button key={s} type="button" onClick={() => loadScene(s)}
+                className={`flex h-8 flex-1 items-center justify-center rounded-md px-2 text-xs font-bold transition-colors ${activeScene === s ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
+                {s}
               </button>
-            </div>
+            ))}
             <button
               type="button"
-              onClick={saveScene}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-indigo-500/50 bg-indigo-900/20 text-indigo-400 transition-colors hover:bg-indigo-900/40"
-              title={tr('Salvar Cena')}
-              aria-label={tr('Salvar Cena')}
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-red-500/70 transition-colors hover:bg-red-900/20 hover:text-red-400 ml-1"
+              title={tr('Apagar Cenas')}
+              aria-label={tr('Apagar Cenas')}
             >
-              <Save size={14} />
+              <Trash2 size={14} />
             </button>
           </div>
-
-          {/* Linha 2: Presets / Biblioteca (inline) + Importar SF2 */}
-          <div className="flex items-center gap-2">
-            <div className="flex flex-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
-              <button type="button" onClick={() => toggleInline('presets')} className={inlineTabClass('presets')}>
-                <List size={14} /> {tr('PRESETS')}
-              </button>
-              <button type="button" onClick={() => toggleInline('library')} className={inlineTabClass('library')}>
-                <Library size={14} /> {tr('BIBLIOTECA')}
-              </button>
-            </div>
-            <input type="file" accept=".sf2" ref={fileInputRef} onChange={(e) => void handleFileChange(e)} className="hidden" />
-            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={busy}
-              className="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-indigo-600 px-3 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-50">
-              <UploadCloud size={14} /> {busy ? '...' : 'Importar SF2'}
-            </button>
-          </div>
-
-          {/* Linha 3: Efeitos / Timbre / Sistema (popup) */}
-          <div className="flex items-center gap-1.5">
-            <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('effects'); }}
-              className={configBtnClass('effects')}>
-              <SlidersHorizontal size={14} /> {tr('EFEITOS')}
-            </button>
-            <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('timbre'); }}
-              className={configBtnClass('timbre')}>
-              <Wand2 size={14} /> {tr('TIMBRE')}
-            </button>
-            <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('system'); }}
-              className={configBtnClass('system')}>
-              <Cpu size={14} /> {tr('SISTEMA')}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={saveScene}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-indigo-500/50 bg-indigo-900/20 text-indigo-400 transition-colors hover:bg-indigo-900/40"
+            title={tr('Salvar Cena')}
+            aria-label={tr('Salvar Cena')}
+          >
+            <Save size={14} />
+          </button>
         </div>
 
-        {/* Corpo: instruções, PRESETS inline ou BIBLIOTECA inline */}
-        <div className="relative flex-1 min-h-0 flex flex-col">
-          {inlineView === null && (
-            <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--border-color)] p-6 text-center">
+        {/* Corpo: Muda totalmente dependendo do estado (Default vs Inline) */}
+        {inlineView === null ? (
+          <>
+            {/* Botões de Ação - SÓ APARECEM SE inlineView FOR NULL */}
+            <div className="mb-2 flex shrink-0 flex-col gap-2 border-b border-[var(--border-color)] pb-2">
+              <div className="flex items-center gap-2">
+                <div className="flex flex-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
+                  <button type="button" onClick={() => toggleInline('presets')} className={inlineTabClass('presets')}>
+                    <List size={14} /> {tr('PRESETS')}
+                  </button>
+                  <button type="button" onClick={() => toggleInline('library')} className={inlineTabClass('library')}>
+                    <Library size={14} /> {tr('BIBLIOTECA')}
+                  </button>
+                </div>
+                <input type="file" accept=".sf2" ref={fileInputRef} onChange={(e) => void handleFileChange(e)} className="hidden" />
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={busy}
+                  className="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-indigo-600 px-3 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-50">
+                  <UploadCloud size={14} /> {busy ? '...' : 'Importar SF2'}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('effects'); }}
+                  className={configBtnClass('effects')}>
+                  <SlidersHorizontal size={14} /> {tr('EFEITOS')}
+                </button>
+                <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('timbre'); }}
+                  className={configBtnClass('timbre')}>
+                  <Wand2 size={14} /> {tr('TIMBRE')}
+                </button>
+                <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('system'); }}
+                  className={configBtnClass('system')}>
+                  <Cpu size={14} /> {tr('SISTEMA')}
+                </button>
+              </div>
+            </div>
+
+            {/* Placeholder Inicial */}
+            <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--border-color)] p-6 text-center">
               <Settings2 size={32} className="text-[var(--text-muted)] opacity-40" />
               <p className="text-xs text-[var(--text-muted)] max-w-xs">
                 {tr('Abra PRESETS para escolher um instrumento ou BIBLIOTECA para gerenciar seus SoundFonts.')}
@@ -435,19 +434,28 @@ export function SoundFontScreen({ onStatus }: Props) {
                 </p>
               )}
             </div>
-          )}
-
-          {inlineView === 'presets' && (
-            <>
+          </>
+        ) : (
+          /* Estado Inline (Presets ou Biblioteca) - OS BOTÕES SOMEM */
+          <div className="relative flex flex-1 min-h-0 flex-col">
+            {/* Header do Inline com botão de fechar */}
+            <div className="mb-2 flex shrink-0 items-center justify-between border-b border-[var(--border-color)] pb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                {tr(inlineView === 'presets' ? 'PRESETS' : 'BIBLIOTECA')}
+              </span>
               <button
                 type="button"
                 onClick={closeInline}
-                className="absolute right-1 top-1 z-10 flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] shadow-sm transition-colors hover:text-[var(--text-main)]"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-muted)] transition-colors hover:text-[var(--text-main)]"
                 aria-label={tr('Fechar')}
                 title={tr('Fechar')}
               >
                 <X size={16} />
               </button>
+            </div>
+
+            {/* Lista ou Biblioteca */}
+            {inlineView === 'presets' && (
               <SoundFontList
                 activeChannel={activeChannel}
                 channelAssignments={channels.assignments}
@@ -458,20 +466,9 @@ export function SoundFontScreen({ onStatus }: Props) {
                 showLibraryName={library.activeIds.length > 1}
                 onOpenLibrary={() => setInlineView('library')}
               />
-            </>
-          )}
+            )}
 
-          {inlineView === 'library' && (
-            <>
-              <button
-                type="button"
-                onClick={closeInline}
-                className="absolute right-1 top-1 z-10 flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] shadow-sm transition-colors hover:text-[var(--text-main)]"
-                aria-label={tr('Fechar')}
-                title={tr('Fechar')}
-              >
-                <X size={16} />
-              </button>
+            {inlineView === 'library' && (
               <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
                 <SoundFontLibraryPanel
                   library={library}
@@ -480,9 +477,9 @@ export function SoundFontScreen({ onStatus }: Props) {
                   onRemove={handleRemove}
                 />
               </div>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* POPUP DE CONFIGURAÇÃO (Efeitos/Timbre/Sistema) */}
