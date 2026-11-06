@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
-export function Card({ title, Icon, accent = 'text-indigo-400', children }: { title: string; Icon: LucideIcon; accent?: string; children: ReactNode }) {
+export function Card({ title, Icon, accent = 'text-[var(--nexus-primary)]', children }: { title: string; Icon: LucideIcon; accent?: string; children: ReactNode }) {
   return (
     <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-4 shadow-md">
       <h3 className={`mb-3 flex items-center gap-2 border-b border-[var(--border-color)] pb-2 text-xs font-bold uppercase tracking-wider ${accent}`}>
@@ -73,12 +73,12 @@ export function RangeRow({ label, value, min, max, step = 1, unit = '', onChange
     <label className="flex flex-col gap-1">
       <span className="flex items-center justify-between text-[11px] font-bold text-[var(--text-main)]">
         <span>{label}</span>
-        <span className="rounded border border-indigo-900/50 bg-indigo-950/50 px-1.5 py-0.5 font-mono text-indigo-400">
+        <span className="rounded border border-indigo-500/30 bg-indigo-500/10 px-1.5 py-0.5 font-mono text-[var(--nexus-primary)]">
           {value}
           {unit}
         </span>
       </span>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 w-full cursor-pointer accent-indigo-500" />
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 w-full cursor-pointer accent-[var(--nexus-primary)]" />
     </label>
   );
 }
