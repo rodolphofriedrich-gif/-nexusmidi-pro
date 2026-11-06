@@ -72,7 +72,7 @@ function Popup({ title, onClose, children, widthClass = 'max-w-md' }: PopupProps
       <div
         role="dialog"
         aria-modal="true"
-        className={`flex max-h-[92dvh] w-full ${widthClass} flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl`}
+        className={`flex max-h-[92vh] w-full ${widthClass} flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-color)] px-4 py-3">
           <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)]">{title}</h3>
@@ -138,10 +138,9 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
       const container = containerRef.current;
       if (!container) return;
       const availableWidth = Math.max(0, container.clientWidth - 12);
-      // Em telas largas as teclas crescem para preencher a largura (sem sobrar espaço vazio ao lado).
       const calculatedMin = Math.max(MIN_KEY_WIDTH, Math.floor(availableWidth / TOTAL_WHITE_KEYS));
-      setMinKeyWidth(calculatedMin);
-      setKeyWidth((current) => Math.min(Math.max(MAX_KEY_WIDTH, calculatedMin), Math.max(calculatedMin, current)));
+      setMinKeyWidth(Math.min(MAX_KEY_WIDTH, calculatedMin));
+      setKeyWidth((current) => Math.max(Math.min(MAX_KEY_WIDTH, calculatedMin), Math.min(MAX_KEY_WIDTH, current)));
     };
     updateMinSize();
     let observer: ResizeObserver | undefined;
@@ -336,11 +335,12 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
                   ))}
                 </div>
               </div>
+            </div>
 
             <div className="flex flex-col gap-4">
               <div>
                 <label className="mb-2 flex items-center justify-between text-xs font-bold uppercase text-[var(--text-muted)]"><span>{tr('Zoom do Teclado')}</span><span className="font-mono text-[var(--nexus-primary)]">{keyWidth}px</span></label>
-                <input type="range" min={minKeyWidth} max={Math.max(MAX_KEY_WIDTH, minKeyWidth)} value={keyWidth} onChange={(e) => setKeyWidth(Number(e.target.value))} className="h-2 w-full cursor-pointer accent-indigo-500" />
+                <input type="range" min={minKeyWidth} max={MAX_KEY_WIDTH} value={keyWidth} onChange={(e) => setKeyWidth(Number(e.target.value))} className="h-2 w-full cursor-pointer accent-indigo-500" />
               </div>
 
               <button type="button" onClick={() => setIsScrollLocked(!isScrollLocked)} className={`flex w-full items-center justify-between rounded-lg border p-3 transition-colors ${isScrollLocked ? 'bg-amber-900/20 border-amber-700/50 text-amber-500' : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)]'}`}>
@@ -396,14 +396,10 @@ export const MidiKeyboard = forwardRef<MidiKeyboardHandle, MidiKeyboardProps>(({
             <div
               ref={scrollViewportRef}
               onScroll={updateScrollState}
-              className={`nexus-midi-viewport relative z-0 flex min-w-0 flex-1 flex-col ${isScrollLocked ? 'overflow-hidden' : 'overflow-x-auto overflow-y-hidden'}`}
+              className={`nexus-midi-viewport relative z-0 min-w-0 flex-1 ${isScrollLocked ? 'overflow-hidden' : 'overflow-x-auto overflow-y-hidden'}`}
               style={{ background: 'var(--bg-app)', touchAction: isScrollLocked ? 'none' : 'pan-x', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
             >
-              {/* A tecla nunca fica mais alta que ~7x a largura: mantém a proporção de um piano em telas altas. */}
-              <div
-                className="relative mt-auto flex h-full shrink-0 items-stretch p-0.5"
-                style={{ width: `${keyboardWidth}px`, minWidth: `${keyboardWidth}px`, maxHeight: `${Math.round(keyWidth * 7)}px`, marginInline: isScrollLocked ? 'auto' : undefined }}
-              >
+              <div className="relative flex h-full items-stretch p-0.5" style={{ width: `${keyboardWidth}px`, minWidth: `${keyboardWidth}px`, marginInline: isScrollLocked ? 'auto' : undefined }}>
                 {renderKeys()}
               </div>
             </div>
