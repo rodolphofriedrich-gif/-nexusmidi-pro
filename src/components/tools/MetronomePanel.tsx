@@ -14,27 +14,27 @@ export function MetronomePanel() {
   const setBpm = (bpm: number) => toolsStore.set({ bpm });
 
   return (
-    <Card title={tr('Metrônomo e MIDI Clock')} Icon={Timer} accent="text-emerald-400">
+    <Card title={tr('Metrônomo e MIDI Clock')} Icon={Timer} accent="text-[var(--nexus-primary)]">
       <div className="flex items-center justify-between gap-3">
-        <button type="button" aria-label={tr('Diminuir BPM')} onClick={() => setBpm(tools.bpm - 1)} className="h-11 w-11 rounded-xl bg-slate-800 text-xl font-bold text-slate-200 hover:bg-slate-700">
+        <button type="button" aria-label={tr('Diminuir BPM')} onClick={() => setBpm(tools.bpm - 1)} className="h-11 w-11 rounded-xl bg-[var(--bg-elevated)] text-xl font-bold text-[var(--text-main)] hover:bg-[var(--bg-panel)] transition-colors">
           −
         </button>
         <div className="text-center">
-          <div className="font-mono text-4xl font-bold tabular-nums text-white">{tools.bpm}</div>
-          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">BPM</div>
+          <div className="font-mono text-4xl font-bold tabular-nums text-[var(--text-main)]">{tools.bpm}</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">BPM</div>
         </div>
-        <button type="button" aria-label={tr('Aumentar BPM')} onClick={() => setBpm(tools.bpm + 1)} className="h-11 w-11 rounded-xl bg-slate-800 text-xl font-bold text-slate-200 hover:bg-slate-700">
+        <button type="button" aria-label={tr('Aumentar BPM')} onClick={() => setBpm(tools.bpm + 1)} className="h-11 w-11 rounded-xl bg-[var(--bg-elevated)] text-xl font-bold text-[var(--text-main)] hover:bg-[var(--bg-panel)] transition-colors">
           +
         </button>
       </div>
-      <input type="range" aria-label="BPM" min={20} max={300} value={tools.bpm} onChange={(e) => setBpm(Number(e.target.value))} className="h-1.5 w-full cursor-pointer accent-emerald-500" />
+      <input type="range" aria-label="BPM" min={20} max={300} value={tools.bpm} onChange={(e) => setBpm(Number(e.target.value))} className="h-1.5 w-full cursor-pointer accent-[var(--nexus-primary)]" />
       <button
         type="button"
         onClick={() => {
           const bpm = tapper.current.tap(performance.now());
           if (bpm) setBpm(bpm);
         }}
-        className="rounded-lg border border-slate-700 bg-[#121316] py-2 text-xs font-bold uppercase tracking-wider text-slate-200 transition hover:bg-slate-800 active:scale-[0.98]"
+        className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] py-2 text-xs font-bold uppercase tracking-wider text-[var(--text-main)] transition hover:bg-[var(--bg-elevated)] active:scale-[0.98]"
       >
         {tr('Tap tempo')}
       </button>
