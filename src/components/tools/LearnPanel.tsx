@@ -14,7 +14,7 @@ export function LearnPanel() {
   const armed = useSyncExternalStore(subscribeLearn, getArmed, getArmed);
 
   return (
-    <Card title="MIDI Learn" Icon={Link2} accent="text-indigo-400">
+    <Card title="MIDI Learn" Icon={Link2} accent="text-[var(--nexus-primary)]">
       <p className="text-[11px] leading-snug text-[var(--text-muted)]">
         {tr('Toque em "Aprender" e mexa em um knob ou fader do seu controlador. Ele passa a controlar aquele parâmetro.')}
       </p>
