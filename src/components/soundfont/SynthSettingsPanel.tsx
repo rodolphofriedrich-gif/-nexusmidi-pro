@@ -58,6 +58,7 @@ export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, default
   const tabClass = (id: TabId, active: string) =>
     `flex h-7 items-center gap-1.5 rounded-md px-3 text-[10px] font-bold transition-colors ${activeTab === id ? active : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`;
   const sectionTitle = 'mb-3 border-b border-[var(--border-color)] pb-1 text-xs font-bold text-indigo-400';
+  const globalNote = <p className="-mt-2 mb-2 text-[10px] text-[var(--text-muted)]">{tr('Global: vale para todos os canais')}</p>;
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)]">
@@ -87,12 +88,14 @@ export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, default
           <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
             <div>
               <h3 className={sectionTitle}>{tr('Delay Customizado')}</h3>
+              {globalNote}
               <SliderRow label={tr('Tempo (Delay)')} value={settings.delayTime} min={0} max={1000} step={10} unit="ms" onChange={set('delayTime')} />
               <SliderRow label={tr('Feedback')} value={settings.delayFeedback} min={0} max={90} onChange={set('delayFeedback')} />
               <SliderRow label={tr('Mix (Nível)')} value={settings.delayMix} min={0} max={100} onChange={set('delayMix')} />
             </div>
             <div>
               <h3 className={sectionTitle}>{tr('EQ & Compressor')}</h3>
+              {globalNote}
               <SliderRow label={tr('EQ Graves (Low)')} value={settings.eqLow} min={-15} max={15} unit="dB" onChange={set('eqLow')} />
               <SliderRow label={tr('EQ Médios (Mid)')} value={settings.eqMid} min={-15} max={15} unit="dB" onChange={set('eqMid')} />
               <SliderRow label={tr('EQ Agudos (High)')} value={settings.eqHigh} min={-15} max={15} unit="dB" onChange={set('eqHigh')} />
@@ -126,6 +129,7 @@ export function SynthSettingsPanel({ settings, onUpdateSetting, onReset, default
             </div>
             <div>
               <h3 className={sectionTitle}>{tr('Desempenho (Mobile)')}</h3>
+              {globalNote}
               <SliderRow label={tr('Polifonia Máxima')} value={settings.maxPolyphony} min={1} max={128} unit={` ${tr('vozes')}`} onChange={set('maxPolyphony')} />
               <p className="mt-2 text-[10px] leading-tight text-[var(--text-muted)]">
                 {tr('Ao atingir o limite, a nota mais antiga é encerrada para dar lugar à nova. Reduza em celulares mais antigos.')}
