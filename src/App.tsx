@@ -1,3 +1,4 @@
+import { applyTheme, subscribeSystemTheme } from './lib/applyTheme';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
@@ -117,6 +118,13 @@ export default function App() {
     document.documentElement.lang = prefs.language;
   }, [prefs.language]);
 
+// Reage à troca Dark/Light/Auto. Em 'system', também escuta mudança de preferência do SO.
+useEffect(() => {
+  applyTheme(prefs.theme);
+  if (prefs.theme !== 'system') return;
+  return subscribeSystemTheme(() => applyTheme('system'));
+}, [prefs.theme]);
+  
   // Wake Lock: mantém a tela acesa enquanto a preferência estiver ligada.
   // Re-adquire automaticamente quando o app volta a ficar visível.
   useEffect(() => {
