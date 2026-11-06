@@ -11,6 +11,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Cor por canal MIDI (como em uma DAW) nos canais e na lista de instrumentos.
 
 ### Alterado
+- **Cada canal MIDI tem seus próprios ajustes** (volume, reverb, chorus, transposição, envelope, filtro, vibrato, afinação e pitch bend), sem interferir nos outros. Delay, EQ, compressor e polifonia continuam globais (o motor de áudio tem uma única cadeia de efeitos). As cenas também guardam os ajustes de cada canal.
 - **A lista de instrumentos vem do SoundFont importado** (nomes, bancos e programas lidos do arquivo), e não mais de uma lista fixa de 128 sons. Sem SF2 ligado, a lista fica vazia com instruções.
 - Seleção de instrumento guarda banco + programa por canal (`channelsStore.banks`).
 - **Novo tema "DAW"**: grafite neutro, ciano como única cor de destaque, M em amarelo e S em azul. A escala `slate` do Tailwind foi redefinida em `00-theme-tokens.css`.
