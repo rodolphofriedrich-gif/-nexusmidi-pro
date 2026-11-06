@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
-import { Library, List, UploadCloud, X, Settings2, Trash2, SlidersHorizontal, Wand2, Cpu } from 'lucide-react';
+import { Library, List, Save, UploadCloud, X, Settings2, Trash2, SlidersHorizontal, Wand2, Cpu } from 'lucide-react';
 import { channelColor } from '../constants/channelColors';
 import { categoryOfProgram } from '../constants/gm';
 import { useStore } from '../hooks/useStore';
@@ -21,7 +21,8 @@ interface Props {
 }
 
 type ConfigTab = 'effects' | 'timbre' | 'system';
-type PopupMode = 'presets' | 'library' | ConfigTab | null;
+type PopupMode = ConfigTab | null;
+type InlineView = 'presets' | 'library' | null;
 
 const SCENES = ['A', 'B', 'C', 'D'];
 const SCENES_KEY = 'nexusmidi_studio_scenes';
@@ -130,6 +131,7 @@ export function SoundFontScreen({ onStatus }: Props) {
   const busy = library.busy || synth.loading;
 
   const [popupMode, setPopupMode] = useState<PopupMode>(null);
+  const [inlineView, setInlineView] = useState<InlineView>(null);
   const [selectedPresetForChannel, setSelectedPresetForChannel] = useState<SoundFontPreset | null>(null);
 
   const channelSettingsState = useStore(channelSettingsStore);
@@ -244,7 +246,6 @@ export function SoundFontScreen({ onStatus }: Props) {
     }));
     onStatus(tr('Preset aplicado ao canal {ch}.', { ch }), 'success');
     setSelectedPresetForChannel(null);
-    setPopupMode(null);
   };
 
   const selectChannel = (ch: number) => prefsStore.set({ channel: ch });
@@ -310,8 +311,10 @@ export function SoundFontScreen({ onStatus }: Props) {
     setScenesToDelete([]);
   };
 
-  const tabClass = (mode: string, active: string) =>
-    `flex h-8 items-center justify-center gap-1.5 px-4 text-xs font-bold rounded-lg transition-colors ${popupMode === mode ? active : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`;
+  const inlineTabClass = (view: 'presets' | 'library') =>
+    `flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-xs font-bold transition-colors ${
+      inlineView === view ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+    }`;
 
   const configBtnClass = (mode: ConfigTab) =>
     `flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-colors ${
@@ -319,6 +322,10 @@ export function SoundFontScreen({ onStatus }: Props) {
         ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400'
         : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'
     }`;
+
+  /** Fecha o submenu inline (presets/biblioteca) e volta para o estado padrão. */
+  const closeInline = () => setInlineView(null);
+  const toggleInline = (view: 'presets' | 'library') => setInlineView((v) => (v === view ? null : view));
 
   return (
     <div className="flex w-full flex-1 flex-row gap-2 overflow-hidden bg-[var(--bg-app)] p-2 text-[var(--text-main)]">
@@ -350,6 +357,7 @@ export function SoundFontScreen({ onStatus }: Props) {
       {/* COLUNA DIREITA */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2 min-h-0 h-full">
         <div className="mb-2 flex shrink-0 flex-col gap-2 border-b border-[var(--border-color)] pb-2">
+          {/* Linha 1: cenas (A/B/C/D) + lixeira + salvar (ícone) */}
           <div className="flex items-center gap-2">
             <div className="flex min-w-0 flex-1 overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
               {SCENES.map((s) => (
@@ -361,25 +369,31 @@ export function SoundFontScreen({ onStatus }: Props) {
               <button
                 type="button"
                 onClick={() => setIsDeleteModalOpen(true)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-red-500/70 hover:bg-red-900/20 hover:text-red-400 transition-colors ml-1"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-red-500/70 transition-colors hover:bg-red-900/20 hover:text-red-400 ml-1"
                 title={tr('Apagar Cenas')}
+                aria-label={tr('Apagar Cenas')}
               >
                 <Trash2 size={14} />
               </button>
             </div>
-            <button type="button" onClick={saveScene} className="h-8 shrink-0 whitespace-nowrap rounded-lg border border-indigo-500/50 bg-indigo-900/20 px-3 text-xs font-bold text-indigo-400 hover:bg-indigo-900/40">
-              {tr('Salvar Cena')}
+            <button
+              type="button"
+              onClick={saveScene}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-indigo-500/50 bg-indigo-900/20 text-indigo-400 transition-colors hover:bg-indigo-900/40"
+              title={tr('Salvar Cena')}
+              aria-label={tr('Salvar Cena')}
+            >
+              <Save size={14} />
             </button>
           </div>
 
+          {/* Linha 2: Presets / Biblioteca (inline) + Importar SF2 */}
           <div className="flex items-center gap-2">
             <div className="flex flex-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
-              <button type="button" onClick={() => setPopupMode('presets')}
-                className={tabClass('presets', 'bg-indigo-600 text-white')}>
+              <button type="button" onClick={() => toggleInline('presets')} className={inlineTabClass('presets')}>
                 <List size={14} /> PRESETS
               </button>
-              <button type="button" onClick={() => setPopupMode('library')}
-                className={tabClass('library', 'bg-indigo-600 text-white')}>
+              <button type="button" onClick={() => toggleInline('library')} className={inlineTabClass('library')}>
                 <Library size={14} /> BIBLIOTECA
               </button>
             </div>
@@ -390,6 +404,7 @@ export function SoundFontScreen({ onStatus }: Props) {
             </button>
           </div>
 
+          {/* Linha 3: Efeitos / Timbre / Sistema (popup) */}
           <div className="flex items-center gap-1.5">
             <button type="button" onClick={() => { setConfigChannel(activeChannel); setPopupMode('effects'); }}
               className={configBtnClass('effects')}>
@@ -406,66 +421,85 @@ export function SoundFontScreen({ onStatus }: Props) {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--border-color)] p-6 text-center">
-          <Settings2 size={32} className="text-[var(--text-muted)] opacity-40" />
-          <p className="text-xs text-[var(--text-muted)] max-w-xs">
-            {tr('Abra PRESETS para escolher um instrumento ou BIBLIOTECA para gerenciar seus SoundFonts.')}
-          </p>
-          {hasLibrary && (
-            <p className="text-[11px] text-emerald-500">
-              {instruments.length} {tr('instrumentos disponíveis')}
-            </p>
+        {/* Corpo: instruções, PRESETS inline ou BIBLIOTECA inline */}
+        <div className="relative flex-1 min-h-0 flex flex-col">
+          {inlineView === null && (
+            <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--border-color)] p-6 text-center">
+              <Settings2 size={32} className="text-[var(--text-muted)] opacity-40" />
+              <p className="text-xs text-[var(--text-muted)] max-w-xs">
+                {tr('Abra PRESETS para escolher um instrumento ou BIBLIOTECA para gerenciar seus SoundFonts.')}
+              </p>
+              {hasLibrary && (
+                <p className="text-[11px] text-emerald-500">
+                  {instruments.length} {tr('instrumentos disponíveis')}
+                </p>
+              )}
+            </div>
+          )}
+
+          {inlineView === 'presets' && (
+            <>
+              <button
+                type="button"
+                onClick={closeInline}
+                className="absolute right-1 top-1 z-10 flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] shadow-sm transition-colors hover:text-[var(--text-main)]"
+                aria-label={tr('Fechar')}
+                title={tr('Fechar')}
+              >
+                <X size={16} />
+              </button>
+              <SoundFontList
+                activeChannel={activeChannel}
+                channelAssignments={channels.assignments}
+                onAssignProgram={handlePresetSelected}
+                instruments={instruments}
+                channelBanks={channels.banks ?? {}}
+                hasLibrary={hasLibrary}
+                showLibraryName={library.activeIds.length > 1}
+                onOpenLibrary={() => setInlineView('library')}
+              />
+            </>
+          )}
+
+          {inlineView === 'library' && (
+            <>
+              <button
+                type="button"
+                onClick={closeInline}
+                className="absolute right-1 top-1 z-10 flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] shadow-sm transition-colors hover:text-[var(--text-main)]"
+                aria-label={tr('Fechar')}
+                title={tr('Fechar')}
+              >
+                <X size={16} />
+              </button>
+              <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
+                <SoundFontLibraryPanel
+                  library={library}
+                  onToggle={handleActivate}
+                  onMove={handleMove}
+                  onRemove={handleRemove}
+                />
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {popupMode === 'presets' && (
-        <Popup title={tr('PRESETS')} onClose={() => setPopupMode(null)} widthClass="max-w-4xl">
-          <SoundFontList
-            activeChannel={activeChannel}
-            channelAssignments={channels.assignments}
-            onAssignProgram={handlePresetSelected}
-            instruments={instruments}
-            channelBanks={channels.banks ?? {}}
-            hasLibrary={hasLibrary}
-            showLibraryName={library.activeIds.length > 1}
-            onOpenLibrary={() => setPopupMode('library')}
-          />
-        </Popup>
-      )}
-
-      {popupMode === 'library' && (
-        <Popup title={tr('BIBLIOTECA')} onClose={() => setPopupMode(null)} widthClass="max-w-2xl">
-          <SoundFontLibraryPanel
-            library={library}
-            onToggle={handleActivate}
-            onMove={handleMove}
-            onRemove={handleRemove}
-          />
-        </Popup>
-      )}
-
+      {/* POPUP DE CONFIGURAÇÃO (Efeitos/Timbre/Sistema) */}
       {(popupMode === 'effects' || popupMode === 'timbre' || popupMode === 'system') && (
         <Popup
           title={`${tr('Configurações')} • ${tr(popupMode === 'effects' ? 'EFEITOS' : popupMode === 'timbre' ? 'TIMBRE' : 'SISTEMA')} • CH ${String(configChannel).padStart(2, '0')}`}
           onClose={() => setPopupMode(null)}
           widthClass="max-w-2xl"
         >
-          <div className="flex flex-col gap-4">
-            <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-app)] p-3">
-              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                {tr('Canal MIDI a editar')}
-              </p>
-              <ChannelGrid value={configChannel} onSelect={setConfigChannel} />
-            </div>
-
-            <SynthSettingsPanel
-              settings={panelSettings(configChannel)}
-              onUpdateSetting={updateConfigSetting}
-              onReset={handleResetChannel}
-              defaultTab={popupMode === 'effects' ? 'fx' : popupMode === 'timbre' ? 'sound' : 'system'}
-            />
-          </div>
+          <SynthSettingsPanel
+            settings={panelSettings(configChannel)}
+            onUpdateSetting={updateConfigSetting}
+            onReset={handleResetChannel}
+            channel={configChannel}
+            onChannelChange={setConfigChannel}
+            defaultTab={popupMode === 'effects' ? 'fx' : popupMode === 'timbre' ? 'sound' : 'system'}
+          />
         </Popup>
       )}
 
