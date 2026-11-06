@@ -64,7 +64,7 @@ function MidiChannelsPanel({ activeChannel, muted, solo, onSelect, onToggleMute,
     <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2">
       <div className="mb-2 flex items-center justify-between px-1">
         <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{tr('Canais MIDI')}</span>
-        <div className="flex items-center gap-2 text-xs font-bold text-indigo-400">
+        <div className="flex items-center gap-2 text-xs font-bold text-[var(--nexus-primary)]">
           <button type="button" disabled={page === 0} onClick={() => setPage(0)} className="px-2 disabled:opacity-30">‹</button>
           {page * 8 + 1}-{page * 8 + 8}
           <button type="button" disabled={page === 1} onClick={() => setPage(1)} className="px-2 disabled:opacity-30">›</button>
@@ -108,7 +108,7 @@ function ChannelGrid({ value, onSelect }: { value: number; onSelect: (ch: number
             onClick={() => onSelect(ch)}
             className={`h-12 rounded-lg border font-mono text-sm transition-colors ${
               selected
-                ? 'border-indigo-500/60 bg-indigo-500/20 font-bold text-indigo-400'
+                ? 'border-indigo-500/60 bg-indigo-500/20 font-bold text-[var(--nexus-primary)]'
                 : 'border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'
             }`}
           >
@@ -312,13 +312,13 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const inlineTabClass = (view: 'presets' | 'library') =>
     `flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-xs font-bold transition-colors ${
-      inlineView === view ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+      inlineView === view ? 'bg-indigo-600 text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
     }`;
 
   const configBtnClass = (mode: ConfigTab) =>
     `flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border text-xs font-bold transition-colors ${
       popupMode === mode
-        ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400'
+        ? 'bg-indigo-500/20 border-indigo-500/50 text-[var(--nexus-primary)]'
         : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'
     }`;
 
@@ -327,7 +327,6 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   return (
     <div className="flex w-full flex-1 flex-row gap-2 overflow-hidden bg-[var(--bg-app)] p-2 text-[var(--text-main)]">
-      {/* COLUNA ESQUERDA */}
       <div className="flex min-h-0 shrink-0 flex-col gap-2 overflow-y-auto custom-scrollbar" style={{ width: '46%' }}>
         <div className="w-full shrink-0">
           <ActiveSoundFontCard
@@ -352,15 +351,13 @@ export function SoundFontScreen({ onStatus }: Props) {
         />
       </div>
 
-      {/* COLUNA DIREITA */}
       <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2 min-h-0 h-full">
         
-        {/* Topo Fixo: Cenas + Botão Salvar */}
         <div className="mb-2 flex shrink-0 items-center gap-2 border-b border-[var(--border-color)] pb-2">
           <div className="flex min-w-0 flex-1 overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
             {SCENES.map((s) => (
               <button key={s} type="button" onClick={() => loadScene(s)}
-                className={`flex h-8 flex-1 items-center justify-center rounded-md px-2 text-xs font-bold transition-colors ${activeScene === s ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
+                className={`flex h-8 flex-1 items-center justify-center rounded-md px-2 text-xs font-bold transition-colors ${activeScene === s ? 'bg-indigo-600 text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
                 {s}
               </button>
             ))}
@@ -377,7 +374,7 @@ export function SoundFontScreen({ onStatus }: Props) {
           <button
             type="button"
             onClick={saveScene}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-indigo-500/50 bg-indigo-900/20 text-indigo-400 transition-colors hover:bg-indigo-900/40"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-indigo-500/50 bg-indigo-900/20 text-[var(--nexus-primary)] transition-colors hover:bg-indigo-900/40"
             title={tr('Salvar Cena')}
             aria-label={tr('Salvar Cena')}
           >
@@ -385,10 +382,8 @@ export function SoundFontScreen({ onStatus }: Props) {
           </button>
         </div>
 
-        {/* Corpo: Muda totalmente dependendo do estado (Default vs Inline) */}
         {inlineView === null ? (
           <>
-            {/* Botões de Ação - SÓ APARECEM SE inlineView FOR NULL */}
             <div className="mb-2 flex shrink-0 flex-col gap-2 border-b border-[var(--border-color)] pb-2">
               <div className="flex items-center gap-2">
                 <div className="flex flex-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
@@ -422,7 +417,6 @@ export function SoundFontScreen({ onStatus }: Props) {
               </div>
             </div>
 
-            {/* Placeholder Inicial */}
             <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--border-color)] p-6 text-center">
               <Settings2 size={32} className="text-[var(--text-muted)] opacity-40" />
               <p className="text-xs text-[var(--text-muted)] max-w-xs">
@@ -436,9 +430,7 @@ export function SoundFontScreen({ onStatus }: Props) {
             </div>
           </>
         ) : (
-          /* Estado Inline (Presets ou Biblioteca) - OS BOTÕES SOMEM */
           <div className="relative flex flex-1 min-h-0 flex-col">
-            {/* Header do Inline com botão de fechar */}
             <div className="mb-2 flex shrink-0 items-center justify-between border-b border-[var(--border-color)] pb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 {tr(inlineView === 'presets' ? 'PRESETS' : 'BIBLIOTECA')}
@@ -454,7 +446,6 @@ export function SoundFontScreen({ onStatus }: Props) {
               </button>
             </div>
 
-            {/* Lista ou Biblioteca */}
             {inlineView === 'presets' && (
               <SoundFontList
                 activeChannel={activeChannel}
@@ -482,7 +473,6 @@ export function SoundFontScreen({ onStatus }: Props) {
         )}
       </div>
 
-      {/* POPUP DE CONFIGURAÇÃO (Efeitos/Timbre/Sistema) */}
       {(popupMode === 'effects' || popupMode === 'timbre' || popupMode === 'system') && (
         <Popup
           title={`${tr('Configurações')} • ${tr(popupMode === 'effects' ? 'EFEITOS' : popupMode === 'timbre' ? 'TIMBRE' : 'SISTEMA')} • CH ${String(configChannel).padStart(2, '0')}`}
@@ -505,7 +495,7 @@ export function SoundFontScreen({ onStatus }: Props) {
           <div className="flex flex-col gap-4">
             <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-3">
               <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{tr('Preset selecionado')}</p>
-              <p className="mt-1 text-sm font-bold text-indigo-400">{selectedPresetForChannel.name}</p>
+              <p className="mt-1 text-sm font-bold text-[var(--nexus-primary)]">{selectedPresetForChannel.name}</p>
               <p className="text-[11px] text-[var(--text-muted)]">
                 {selectedPresetForChannel.libraryName} • PRG {selectedPresetForChannel.programNumber}
                 {selectedPresetForChannel.isDrum ? ' • Bateria' : ''}
