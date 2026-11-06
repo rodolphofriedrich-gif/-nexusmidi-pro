@@ -11,6 +11,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Cor por canal MIDI (como em uma DAW) nos canais e na lista de instrumentos.
 
 ### Alterado
+- **Layout em tablets e telas largas:** o cabeçalho acompanha a área segura (o botão deixava de caber com a barra de status), as abas ficam centralizadas em telas grandes, o teclado virtual preenche a largura e mantém a proporção das teclas, a grade de pads não estica demais, a matriz de roteamento e o Mixer ficam centralizados e limitados em largura, o menu do filtro do Monitor abre junto do botão e os diálogos usam `dvh` em vez de `vh`.
 - **Cada canal MIDI tem seus próprios ajustes** (volume, reverb, chorus, transposição, envelope, filtro, vibrato, afinação e pitch bend), sem interferir nos outros. Delay, EQ, compressor e polifonia continuam globais (o motor de áudio tem uma única cadeia de efeitos). As cenas também guardam os ajustes de cada canal.
 - **A lista de instrumentos vem do SoundFont importado** (nomes, bancos e programas lidos do arquivo), e não mais de uma lista fixa de 128 sons. Sem SF2 ligado, a lista fica vazia com instruções.
 - Seleção de instrumento guarda banco + programa por canal (`channelsStore.banks`).
