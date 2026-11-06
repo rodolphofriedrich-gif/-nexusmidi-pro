@@ -9,10 +9,6 @@ interface StudioSliderProps {
   onChange: (value: number) => void;
 }
 
-/**
- * Slider horizontal com o DNA visual do StudioFader (Mixer/CC):
- * cabo metálico, trilho escuro, preenchimento índigo e visor de valor em mono.
- */
 export function StudioSlider({
   label,
   sublabel,
@@ -29,7 +25,6 @@ export function StudioSlider({
   return (
     <div className="mb-2 flex w-full items-center gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2 shadow-sm">
       
-      {/* Label e Sublabel */}
       <div className="flex w-[90px] shrink-0 flex-col sm:w-[110px]">
         <span className="truncate text-[11px] font-bold uppercase tracking-wider text-[var(--text-main)]">
           {label}
@@ -39,18 +34,14 @@ export function StudioSlider({
         )}
       </div>
 
-      {/* Área do Trilho (Track) e do Cabo */}
       <div className="relative flex h-9 flex-1 items-center select-none">
-        
-        {/* Trilho de Fundo (Sulco) */}
-        <div className="absolute inset-x-0 h-2.5 overflow-hidden rounded-full border border-[var(--border-color)] bg-[#0e0f12] shadow-inner">
+        <div className="absolute inset-x-0 h-2.5 overflow-hidden rounded-full border border-[var(--border-color)] bg-[var(--bg-app)] shadow-inner">
           <div
-            className="absolute bottom-0 left-0 top-0 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.35)] transition-all duration-75 ease-out"
+            className="absolute bottom-0 left-0 top-0 rounded-full bg-[var(--nexus-primary)] shadow-[0_0_8px_rgba(99,102,241,0.35)] transition-all duration-75 ease-out"
             style={{ width: `${percent}%` }}
           />
         </div>
 
-        {/* Cabo do Fader (Handle) */}
         <div
           className="pointer-events-none absolute z-10 flex h-8 w-5 -translate-x-1/2 flex-col items-center justify-center gap-[2px] rounded-[4px] border border-slate-400/60 bg-gradient-to-b from-slate-500 via-slate-600 to-slate-800 shadow-[0_2px_5px_rgba(0,0,0,0.7)] transition-all duration-75 ease-out"
           style={{ left: `${percent}%` }}
@@ -60,7 +51,6 @@ export function StudioSlider({
           <div className="h-[1px] w-3 bg-slate-900/90 shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
         </div>
 
-        {/* Input Invisível */}
         <input
           type="range"
           min={min}
@@ -73,9 +63,8 @@ export function StudioSlider({
         />
       </div>
 
-      {/* Visor do Valor */}
-      <div className="flex w-12 shrink-0 items-center justify-center rounded-md border border-[var(--border-color)] bg-[#121316] py-1 shadow-inner">
-        <span className="font-mono text-[12px] font-bold text-indigo-400">
+      <div className="flex w-12 shrink-0 items-center justify-center rounded-md border border-[var(--border-color)] bg-[var(--bg-app)] py-1 shadow-inner">
+        <span className="font-mono text-[12px] font-bold text-[var(--nexus-primary)]">
           {value}
           {unit && <span className="ml-0.5 text-[9px] text-[var(--text-muted)]">{unit}</span>}
         </span>
