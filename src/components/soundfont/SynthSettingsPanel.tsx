@@ -31,7 +31,6 @@ export function SynthSettingsPanel({
     setActiveTab(defaultTab);
   }, [defaultTab]);
 
-  // Fecha o dropdown ao clicar fora
   useEffect(() => {
     if (!isChannelOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
@@ -46,12 +45,13 @@ export function SynthSettingsPanel({
   const set = (key: keyof SynthSettings) => (value: number) => onUpdateSetting(key, value);
   const tabClass = (id: TabId, active: string) =>
     `flex h-7 items-center gap-1.5 rounded-md px-3 text-[10px] font-bold transition-colors ${activeTab === id ? active : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`;
-  const sectionTitle = 'mb-3 border-b border-[var(--border-color)] pb-1 text-xs font-bold text-indigo-400';
+  
+  // AQUI: Mudança para var(--nexus-primary)
+  const sectionTitle = 'mb-3 border-b border-[var(--border-color)] pb-1 text-xs font-bold text-[var(--nexus-primary)]';
   const globalNote = <p className="-mt-2 mb-2 text-[10px] text-[var(--text-muted)]">{tr('Global: vale para todos os canais')}</p>;
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)]">
-      {/* Header: abas (esquerda) + canal/reset (direita). Quebra em 2 linhas em telas estreitas. */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-app)] p-2">
         <div className="flex shrink-0 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] p-0.5">
           <button type="button" onClick={() => setActiveTab('fx')} className={tabClass('fx', 'bg-indigo-600 text-white')}>
@@ -67,12 +67,11 @@ export function SynthSettingsPanel({
 
         <div className="flex shrink-0 items-center gap-1.5">
           
-          {/* DROPDOWN CUSTOMIZADO DE CANAL */}
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
               onClick={() => setIsChannelOpen(!isChannelOpen)}
-              className="flex h-7 min-w-[64px] items-center justify-between gap-2 rounded-md border border-indigo-500/40 bg-indigo-500/10 px-2 font-mono text-[10px] font-bold text-indigo-400 outline-none transition-colors hover:bg-indigo-500/20 focus:border-indigo-500"
+              className="flex h-7 min-w-[64px] items-center justify-between gap-2 rounded-md border border-indigo-500/50 bg-indigo-500/10 px-2 font-mono text-[10px] font-bold text-[var(--nexus-primary)] outline-none transition-colors hover:bg-indigo-500/20 focus:border-indigo-500"
             >
               CH {String(channel).padStart(2, '0')}
               <ChevronDown size={12} className={`transition-transform ${isChannelOpen ? 'rotate-180' : ''}`} />
@@ -86,7 +85,7 @@ export function SynthSettingsPanel({
                     type="button"
                     onClick={() => { onChannelChange(ch); setIsChannelOpen(false); }}
                     className={`flex w-full items-center rounded px-2 py-1.5 font-mono text-[10px] font-bold transition-colors ${
-                      ch === channel ? 'bg-indigo-500/20 text-indigo-400' : 'text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'
+                      ch === channel ? 'bg-indigo-500/20 text-[var(--nexus-primary)]' : 'text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'
                     }`}
                   >
                     CH {String(ch).padStart(2, '0')}
