@@ -12,6 +12,21 @@
   min-height: 140px; 
 }
 
+/* Recortes (notch/câmera) nas laterais em modo paisagem: o app é `fixed`, então ignora o padding do body. */
+.nexus-app {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Nada ultrapassa a largura da tela: filhos flex podem encolher abaixo do conteúdo. */
+.nexus-main,
+.nexus-screen-container,
+.nexus-keyboard-page,
+.nexus-pads-page {
+  min-width: 0;
+  max-width: 100%;
+}
+
 /* Evita que a altura da tela varie com as barras do navegador */
 @supports (height: 100dvh) {
   .nexus-app {
