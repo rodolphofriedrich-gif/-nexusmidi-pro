@@ -15,7 +15,6 @@ interface Props {
   onRefresh: () => void;
   onToggleDevice: (device: MidiDestination) => void;
   onDisconnectAll: () => void;
-  /** Somente BLE */
   isScanning?: boolean;
   isServerActive?: boolean;
   onScan?: () => void;
@@ -30,7 +29,7 @@ export function ConnectionMenu(props: Props) {
   const header: ReactNode = (
     <div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3">
       <div>
-        <p className="text-[10px] font-bold text-indigo-400">{kind === 'usb' ? tr('CONEXÃO USB') : tr('CONECTIVIDADE')}</p>
+        <p className="text-[10px] font-bold text-[var(--nexus-primary)]">{kind === 'usb' ? tr('CONEXÃO USB') : tr('CONECTIVIDADE')}</p>
         <p className="mt-1 text-sm font-semibold text-[var(--text-main)]">{kind === 'usb' ? tr('Selecione múltiplos') : tr('Bluetooth MIDI')}</p>
       </div>
       <div className="flex items-center gap-1">
@@ -77,7 +76,7 @@ export function ConnectionMenu(props: Props) {
               </button>
             )}
 
-            <div className="custom-scrollbar max-h-[50dvh] min-h-[150px] overflow-y-auto overscroll-contain p-2">
+            <div className="custom-scrollbar max-h-[50vh] min-h-[150px] overflow-y-auto overscroll-contain p-2">
               {devices.length === 0 ? (
                 <div className="flex h-full items-center justify-center p-6 text-center">
                   <p className="text-sm text-[var(--text-muted)]">
