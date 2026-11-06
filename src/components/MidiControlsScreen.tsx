@@ -205,7 +205,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
         <StudioFader label="RES" sublabel="CC 71" value={resonance} onChange={(v) => updateState('resonance', v)} onCommit={(v) => void sendCC(71, v, 'Ressonância')} />
       </div>
 
-      <div className="flex shrink-0 flex-col gap-3 md:min-h-0 md:w-[340px] md:overflow-y-auto md:pr-1 custom-scrollbar">
+      <div className="flex shrink-0 flex-col gap-3 md:min-h-0 md:w-72 lg:w-[340px] md:overflow-y-auto md:pr-1 custom-scrollbar">
         
         {/* CARD PERFORMANCE */}
         <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-3 space-y-3 shadow-sm flex flex-col">

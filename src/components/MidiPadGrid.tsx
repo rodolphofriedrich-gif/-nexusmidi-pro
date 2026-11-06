@@ -144,7 +144,7 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
 
       {editPadIndex !== null && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <form onSubmit={handleSavePad} className="max-h-[92vh] w-full max-w-sm space-y-4 overflow-y-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-5 shadow-2xl">
+          <form onSubmit={handleSavePad} className="max-h-[92dvh] w-full max-w-sm space-y-4 overflow-y-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-5 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
               <h3 className="text-sm font-bold text-[var(--text-main)]">{tr('Editar Pad')}</h3>
               <button type="button" onClick={() => setEditPadIndex(null)} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-main)]"><X size={18} /></button>
@@ -180,7 +180,9 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
         </div>
       )}
 
-      <div className="grid min-h-0 w-full flex-1 grid-cols-4 grid-rows-4 gap-1.5 p-1.5">
+      {/* Em telas muito largas a grade para de esticar (pads no máximo 3:1) e fica centralizada. */}
+      <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden p-1.5">
+      <div className="grid h-full max-w-full aspect-[3/1] grid-cols-4 grid-rows-4 gap-1.5">
         {banksData[bank].map((pad, index) => {
           const isPressed = pressedPads.has(pad.note);
           return (
@@ -218,6 +220,7 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

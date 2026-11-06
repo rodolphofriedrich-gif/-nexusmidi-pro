@@ -47,7 +47,7 @@ export function NavMenu({ items, activeId, isOpen, onToggle, onClose, onSelect }
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-[150] mt-2 flex max-h-[80vh] w-56 flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl">
+        <div className="absolute left-0 top-full z-[150] mt-2 flex max-h-[80dvh] w-56 flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl">
           <div className="shrink-0 border-b border-[var(--border-color)] bg-[var(--bg-app)] px-4 py-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{tr('Navegação')}</p>
           </div>

@@ -23,7 +23,7 @@ export function ToolsScreen({ onStatus }: { onStatus: (message: string, type?: T
     <div className="flex w-full h-full flex-col bg-[var(--bg-app)]">
       
       {/* SUB-ABAS DE FERRAMENTAS */}
-      <div className="flex items-center gap-2 p-2 border-b border-[var(--border-color)] bg-[var(--bg-panel)] shrink-0">
+      <div className="flex flex-wrap items-center gap-2 p-2 border-b border-[var(--border-color)] bg-[var(--bg-panel)] shrink-0">
         <button onClick={() => setActiveTool('performance')} className={btnClass(activeTool === 'performance')}>
           <Sparkles size={14} className={iconClass(activeTool === 'performance')} /> {tr('PERFORMANCE')}
         </button>

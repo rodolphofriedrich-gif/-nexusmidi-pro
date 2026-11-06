@@ -77,7 +77,7 @@ export function ConnectionMenu(props: Props) {
               </button>
             )}
 
-            <div className="custom-scrollbar max-h-[50vh] min-h-[150px] overflow-y-auto overscroll-contain p-2">
+            <div className="custom-scrollbar max-h-[50dvh] min-h-[150px] overflow-y-auto overscroll-contain p-2">
               {devices.length === 0 ? (
                 <div className="flex h-full items-center justify-center p-6 text-center">
                   <p className="text-sm text-[var(--text-muted)]">

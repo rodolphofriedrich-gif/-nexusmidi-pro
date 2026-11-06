@@ -67,7 +67,7 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
   return (
     <div className="custom-scrollbar flex w-full flex-1 flex-col gap-4 overflow-y-auto bg-[var(--bg-app)] p-3 pb-32 text-[var(--text-main)] sm:p-5">
       {routes.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border-color)] py-20 text-[var(--text-muted)]">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border-color)] py-20 text-[var(--text-muted)]">
           <ArrowRightLeft size={48} className="mb-4 opacity-20" />
           <p className="text-sm font-medium">{tr('Nenhuma rota configurada.')}</p>
           <p className="mt-1 px-6 text-center text-xs">
@@ -75,7 +75,7 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3" ref={dropdownRef}>
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3" ref={dropdownRef}>
           {routes.map((route, index) => (
             <div
               key={route.id}
