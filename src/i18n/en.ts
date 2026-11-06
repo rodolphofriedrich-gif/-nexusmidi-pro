@@ -56,7 +56,6 @@ export const en: Record<string, string> = {
   "Caixa": "Snare",
   "Canal In": "Channel In",
   "Canal MIDI": "MIDI Channel",
-  "Canal MIDI a editar": "MIDI Channel to edit",
   "Canal Out": "Channel Out",
   "Canal {n}": "Channel {n}",
   "Canal: {n}": "Channel: {n}",
