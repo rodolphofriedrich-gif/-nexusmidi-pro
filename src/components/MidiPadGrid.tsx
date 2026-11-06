@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Settings2, X, Save } from 'lucide-react';
 import { tr } from '../i18n';
+import { CHORD_BADGE, resolveChordNotes, type ChordType } from '../constants/chords';
 
 interface MidiPadGridProps {
   bank: number;
@@ -17,7 +18,29 @@ export interface PadData {
   label: string;
   color: string;
   velocity?: number;
+  chordType?: ChordType;
+  chordIntervals?: number[];
 }
+
+/**
+ * Tabela de acordes disponíveis no seletor de edição.
+ * As labels são traduzíveis — o `i18n.test.ts` as encontra via padrão `label: '...'`.
+ */
+const CHORD_TYPES: ReadonlyArray<{ id: ChordType; label: string }> = [
+  { id: 'single', label: 'Nota única' },
+  { id: 'maj', label: 'Maior' },
+  { id: 'min', label: 'Menor' },
+  { id: 'dim', label: 'Diminuto' },
+  { id: 'aug', label: 'Aumentado' },
+  { id: 'sus2', label: 'Sus2' },
+  { id: 'sus4', label: 'Sus4' },
+  { id: '7', label: 'Sétima (7)' },
+  { id: 'maj7', label: 'Sétima maior (maj7)' },
+  { id: 'm7', label: 'Menor com sétima (m7)' },
+  { id: 'dim7', label: 'Diminuto com sétima (dim7)' },
+  { id: 'm7b5', label: 'Meio-diminuto (m7b5)' },
+  { id: 'custom', label: 'Customizado' },
+];
 
 const DEFAULT_BANKS: PadData[][] = [
   [
@@ -63,50 +86,95 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
   });
   const [pressedPads, setPressedPads] = useState<Set<number>>(() => new Set());
   const [editPadIndex, setEditPadIndex] = useState<number | null>(null);
+  const [editChordType, setEditChordType] = useState<ChordType>('single');
 
+  // pointerId → padIndex (índice do pad, não nota — necessário para acordes)
   const activePointersRef = useRef<Map<number, number>>(new Map());
-  const activeNotesRef = useRef<Set<number>>(new Set());
+  // padIndex → notas enviadas (para saber o que soltar)
+  const activePadNotesRef = useRef<Map<number, number[]>>(new Map());
+  // nota → quantos pads a estão usando (evita noteOff prematuro entre pads que compartilham nota)
+  const noteRefCountRef = useRef<Map<number, number>>(new Map());
+
   const onNoteOffRef = useRef(onNoteOff);
 
   useEffect(() => { onNoteOffRef.current = onNoteOff; }, [onNoteOff]);
   useEffect(() => { localStorage.setItem('nexus_pads_data_v2', JSON.stringify(banksData)); }, [banksData]);
 
-  const pressPad = (pad: PadData, pointerId: number) => {
-    if (!isActive || !isConnected) { onDisabledPress(); return; }
-    const note = pad.note;
-    const previousNote = activePointersRef.current.get(pointerId);
-    if (previousNote !== undefined && previousNote !== note) releasePad(previousNote, pointerId);
-    if (!activeNotesRef.current.has(note)) {
-      activeNotesRef.current.add(note);
-      setPressedPads((current) => { const next = new Set(current); next.add(note); return next; });
-      void onNoteOn(note, pad.velocity);
-    }
-    activePointersRef.current.set(pointerId, note);
+  const incNote = (note: number): boolean => {
+    const count = noteRefCountRef.current.get(note) ?? 0;
+    noteRefCountRef.current.set(note, count + 1);
+    return count === 0;
   };
 
-  const releasePad = (note: number, pointerId: number) => {
+  const decNote = (note: number): boolean => {
+    const count = noteRefCountRef.current.get(note) ?? 0;
+    if (count <= 1) {
+      noteRefCountRef.current.delete(note);
+      return true;
+    }
+    noteRefCountRef.current.set(note, count - 1);
+    return false;
+  };
+
+  const pressPad = (padIndex: number, pointerId: number) => {
+    if (!isActive || !isConnected) { onDisabledPress(); return; }
+    const pad = banksData[bank][padIndex];
+    if (!pad) return;
+
+    const previousPadIndex = activePointersRef.current.get(pointerId);
+    if (previousPadIndex !== undefined && previousPadIndex !== padIndex) {
+      releasePad(previousPadIndex, pointerId);
+    }
+
+    if (activePadNotesRef.current.has(padIndex)) {
+      activePointersRef.current.set(pointerId, padIndex);
+      return;
+    }
+
+    const notes = resolveChordNotes(pad.note, pad.chordType ?? 'single', pad.chordIntervals);
+    const velocity = pad.velocity ?? 100;
+
+    activePadNotesRef.current.set(padIndex, notes);
+    activePointersRef.current.set(pointerId, padIndex);
+    setPressedPads((current) => { const next = new Set(current); next.add(padIndex); return next; });
+
+    for (const note of notes) {
+      if (incNote(note)) void onNoteOn(note, velocity);
+    }
+  };
+
+  const releasePad = (padIndex: number, pointerId: number) => {
     activePointersRef.current.delete(pointerId);
-    let isStillPressed = false;
-    activePointersRef.current.forEach((heldNote) => { if (heldNote === note) isStillPressed = true; });
-    if (!isStillPressed && activeNotesRef.current.has(note)) {
-      activeNotesRef.current.delete(note);
-      setPressedPads((current) => { const next = new Set(current); next.delete(note); return next; });
-      void onNoteOffRef.current(note);
+
+    let stillPressed = false;
+    activePointersRef.current.forEach((idx) => { if (idx === padIndex) stillPressed = true; });
+    if (stillPressed) return;
+
+    const notes = activePadNotesRef.current.get(padIndex);
+    if (!notes) return;
+    activePadNotesRef.current.delete(padIndex);
+    setPressedPads((current) => { const next = new Set(current); next.delete(padIndex); return next; });
+
+    for (const note of notes) {
+      if (decNote(note)) void onNoteOffRef.current(note);
     }
   };
 
   const releaseAllNotes = () => {
-    const notes = Array.from(activeNotesRef.current);
-    activeNotesRef.current.clear();
+    const entries = Array.from(activePadNotesRef.current.entries());
+    activePadNotesRef.current.clear();
     activePointersRef.current.clear();
+    noteRefCountRef.current.clear();
     setPressedPads(new Set());
-    for (const note of notes) void onNoteOffRef.current(note);
+    for (const [, notes] of entries) {
+      for (const note of notes) void onNoteOffRef.current(note);
+    }
   };
 
   useEffect(() => {
     const handleGlobalPointerUp = (e: PointerEvent) => {
-      const note = activePointersRef.current.get(e.pointerId);
-      if (note !== undefined) releasePad(note, e.pointerId);
+      const padIndex = activePointersRef.current.get(e.pointerId);
+      if (padIndex !== undefined) releasePad(padIndex, e.pointerId);
     };
     window.addEventListener('blur', releaseAllNotes);
     window.addEventListener('pointerup', handleGlobalPointerUp);
@@ -128,11 +196,23 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
     e.preventDefault();
     if (editPadIndex === null) return;
     const formData = new FormData(e.target as HTMLFormElement);
+    const chordType = String(formData.get('chordType') ?? 'single') as ChordType;
+    let chordIntervals: number[] | undefined;
+    if (chordType === 'custom') {
+      const raw = String(formData.get('chordIntervals') ?? '');
+      chordIntervals = raw
+        .split(',')
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isFinite(n) && n >= 0 && n <= 127);
+      if (chordIntervals.length === 0) chordIntervals = [0];
+    }
     const newPad: PadData = {
       note: Number(formData.get('note')),
       label: String(formData.get('label')),
       color: String(formData.get('color')),
       velocity: Number(formData.get('velocity')),
+      chordType,
+      chordIntervals,
     };
     const newBanks = banksData.map((b, bi) => (bi === bank ? b.map((p, pi) => (pi === editPadIndex ? newPad : p)) : b));
     setBanksData(newBanks);
@@ -163,6 +243,31 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
               <input name="velocity" type="number" min="0" max="127" defaultValue={banksData[bank][editPadIndex].velocity ?? 100} className="w-full h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 text-sm text-[var(--text-main)]" required />
             </div>
             <div>
+              <label className="mb-1 block text-xs text-[var(--text-muted)]">{tr('Tipo de Acorde')}</label>
+              <select
+                name="chordType"
+                value={editChordType}
+                onChange={(e) => setEditChordType(e.target.value as ChordType)}
+                className="w-full h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 text-sm text-[var(--text-main)]"
+              >
+                {CHORD_TYPES.map(({ id, label }) => (
+                  <option key={id} value={id}>{tr(label)}</option>
+                ))}
+              </select>
+            </div>
+            {editChordType === 'custom' && (
+              <div>
+                <label className="mb-1 block text-xs text-[var(--text-muted)]">{tr('Intervalos (semitons, separados por vírgula)')}</label>
+                <input
+                  name="chordIntervals"
+                  type="text"
+                  defaultValue={(banksData[bank][editPadIndex].chordIntervals ?? [0, 4, 7]).join(', ')}
+                  placeholder="0, 4, 7"
+                  className="w-full h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 text-sm text-[var(--text-main)]"
+                />
+              </div>
+            )}
+            <div>
               <label className="mb-1 block text-xs text-[var(--text-muted)]">{tr('Cor')}</label>
               <div className="flex flex-wrap gap-3">
                 {COLORS.map((c) => (
@@ -184,15 +289,16 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
       <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden p-1.5">
       <div className="grid h-full max-w-full aspect-[3/1] grid-cols-4 grid-rows-4 gap-1.5">
         {banksData[bank].map((pad, index) => {
-          const isPressed = pressedPads.has(pad.note);
+          const isPressed = pressedPads.has(index);
+          const chordBadge = pad.chordType ? CHORD_BADGE[pad.chordType] : '';
           return (
             <div key={index}
-              onPointerDown={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); pressPad(pad, e.pointerId); }}
-              onPointerEnter={(e) => { if (activePointersRef.current.has(e.pointerId)) pressPad(pad, e.pointerId); }}
-              onPointerUp={(e) => { releasePad(pad.note, e.pointerId); }}
-              onPointerCancel={(e) => { releasePad(pad.note, e.pointerId); }}
-              onLostPointerCapture={() => releasePad(pad.note, -1)}
-              onContextMenu={(e) => { e.preventDefault(); if (isEditMode) setEditPadIndex(index); }}
+              onPointerDown={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); pressPad(index, e.pointerId); }}
+              onPointerEnter={(e) => { if (activePointersRef.current.has(e.pointerId)) pressPad(index, e.pointerId); }}
+              onPointerUp={(e) => { releasePad(index, e.pointerId); }}
+              onPointerCancel={(e) => { releasePad(index, e.pointerId); }}
+              onLostPointerCapture={() => releasePad(index, -1)}
+              onContextMenu={(e) => { e.preventDefault(); if (isEditMode) { setEditPadIndex(index); setEditChordType(pad.chordType ?? 'single'); } }}
               role="button"
               className={`relative flex min-h-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-xl border-2 transition-all duration-100 ease-out ${
                 isPressed 
@@ -207,8 +313,18 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
 
               {isPressed && <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />}
 
+              {chordBadge && (
+                <span className="pointer-events-none absolute left-1 top-1 z-20 rounded bg-black/45 px-1 py-0.5 font-mono text-[8px] font-bold text-white/90">
+                  {chordBadge}
+                </span>
+              )}
+
               {isEditMode && (
-                <button type="button" onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); }} className={`absolute right-1.5 top-1.5 z-20 rounded-md p-1.5 transition-all ${isPressed ? 'bg-black/20 text-white/80' : 'bg-black/10 text-black/50 hover:bg-black/30 dark:bg-black/40 dark:text-white/50 dark:hover:bg-black/80 dark:hover:text-white'}`}>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); setEditChordType(pad.chordType ?? 'single'); }}
+                  className={`absolute right-1.5 top-1.5 z-20 rounded-md p-1.5 transition-all ${isPressed ? 'bg-black/20 text-white/80' : 'bg-black/10 text-black/50 hover:bg-black/30 dark:bg-black/40 dark:text-white/50 dark:hover:bg-black/80 dark:hover:text-white'}`}
+                >
                   <Settings2 size={12} />
                 </button>
               )}
