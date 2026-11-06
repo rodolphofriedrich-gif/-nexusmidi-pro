@@ -391,10 +391,10 @@ export function SoundFontScreen({ onStatus }: Props) {
           <div className="flex items-center gap-2">
             <div className="flex flex-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
               <button type="button" onClick={() => toggleInline('presets')} className={inlineTabClass('presets')}>
-                <List size={14} /> PRESETS
+                <List size={14} /> {tr('PRESETS')}
               </button>
               <button type="button" onClick={() => toggleInline('library')} className={inlineTabClass('library')}>
-                <Library size={14} /> BIBLIOTECA
+                <Library size={14} /> {tr('BIBLIOTECA')}
               </button>
             </div>
             <input type="file" accept=".sf2" ref={fileInputRef} onChange={(e) => void handleFileChange(e)} className="hidden" />
