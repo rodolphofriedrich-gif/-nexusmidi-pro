@@ -90,7 +90,6 @@ export const en: Record<string, string> = {
   "Controles redefinidos localmente.": "Controls reset locally.",
   "Cor": "Color",
   "Cordas": "Strings",
-  "Cores do Teclado": "Keyboard Colors",
   "Cromática (livre)": "Chromatic (free)",
   "Curva de velocity": "Velocity curve",
   "Customizado": "Custom",
