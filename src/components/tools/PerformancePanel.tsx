@@ -19,7 +19,7 @@ export function PerformancePanel() {
   const tools = useStore(toolsStore);
 
   return (
-    <Card title={tr('Performance')} Icon={Sparkles} accent="text-indigo-400">
+    <Card title={tr('Performance')} Icon={Sparkles} accent="text-[var(--nexus-primary)]">
       <Field label={tr('Curva de velocity')}>
         <Segmented
           value={prefs.velocityCurve}
