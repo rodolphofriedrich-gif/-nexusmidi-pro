@@ -152,6 +152,7 @@ export const en: Record<string, string> = {
   "Fixa": "Fixed",
   "Forte": "Hard",
   "Geral": "General",
+  "Global: vale para todos os canais": "Global: applies to all channels",
   "Grava o que você toca e também o que chega de dispositivos conectados.": "Records what you play and also what arrives from connected devices.",
   "Gravador MIDI": "MIDI Recorder",
   "Gravando": "Recording",
