@@ -1,20 +1,18 @@
-import { Globe } from 'lucide-react';
-import { useStore } from '../../hooks/useStore';
-import { LANGUAGES, setLanguage } from '../../i18n';
+import { Info } from 'lucide-react';
 import { tr } from '../../i18n';
-import { prefsStore } from '../../services/stores';
-import { Card, Field, Segmented } from './ui';
+import { Card } from './ui';
 
 const APP_VERSION = typeof __APP_VERSION__ === 'undefined' ? '' : __APP_VERSION__;
 
 export function GeneralPanel() {
-  const prefs = useStore(prefsStore);
   return (
-    <Card title={tr('Geral')} Icon={Globe} accent="text-indigo-400">
-      <Field label={tr('Idioma')}>
-        <Segmented value={prefs.language} options={LANGUAGES.map((l) => ({ id: l.id, label: l.label }))} onChange={setLanguage} />
-      </Field>
-      <p className="text-[10px] text-[var(--text-muted)]">NexusMIDI Pro {APP_VERSION && `v${APP_VERSION}`}</p>
+    <Card title={tr('Geral')} Icon={Info} accent="text-indigo-400">
+      <div className="flex flex-col gap-1 py-1">
+        <p className="text-sm font-bold text-[var(--text-main)]">NexusMIDI Pro</p>
+        <p className="text-[11px] text-[var(--text-muted)]">
+          {APP_VERSION ? `Versão v${APP_VERSION}` : 'Versão de desenvolvimento'}
+        </p>
+      </div>
     </Card>
   );
 }
