@@ -95,6 +95,7 @@ export default function App() {
   const [isRouterRefreshing, setIsRouterRefreshing] = useState(false);
   const [monitorFilter, setMonitorFilter] = useState<'all' | 'RX' | 'TX'>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filterPos, setFilterPos] = useState({ top: 60, left: 8 });
   const [monitorPaused, setMonitorPaused] = useState(false);
 
   useEffect(() => {
@@ -271,7 +272,7 @@ export default function App() {
       </aside>
 
       <div className="flex h-full flex-1 flex-col overflow-hidden">
-        <header className="relative z-[80] flex h-14 w-full shrink-0 items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-panel)] px-2 pt-[env(safe-area-inset-top)] sm:px-3">
+        <header className="relative z-[80] flex h-[calc(3.5rem+env(safe-area-inset-top))] w-full shrink-0 items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-panel)] px-2 pt-[env(safe-area-inset-top)] sm:px-3 lg:px-5">
           
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
             <button type="button" onClick={() => setIsSidebarOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] transition-colors" title={tr('Menu')}>
@@ -279,7 +280,7 @@ export default function App() {
             </button>
 
             {activeTab === 'keyboard' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nexus-primary)] mr-2 px-1 shrink-0 hidden sm:block">
                   {tr('Teclado')}
                 </h2>
@@ -307,7 +308,7 @@ export default function App() {
             )}
 
             {activeTab === 'pads' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nexus-primary)] mr-2 px-1 shrink-0 hidden sm:block">
                   {tr('PADS')}
                 </h2>
@@ -337,7 +338,7 @@ export default function App() {
             )}
 
             {activeTab === 'router' && (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 lg:flex-1 lg:justify-center">
                 <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-[var(--nexus-primary)] shrink-0 hidden sm:flex">
                   <GitBranch size={18} /> {tr('Roteador MIDI Matriz')}
                 </h2>
@@ -353,7 +354,7 @@ export default function App() {
             )}
 
             {activeTab === 'studio' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nexus-primary)] mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
                 <div className="flex items-center gap-1 shrink-0 bg-[var(--bg-app)] p-0.5 rounded-lg border border-[var(--border-color)]">
                   <button type="button" onClick={() => setStudioTab('synth')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'synth' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><AudioWaveform size={16} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
@@ -364,15 +365,23 @@ export default function App() {
             )}
 
             {activeTab === 'monitor' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
                 <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--nexus-primary)] shrink-0 hidden sm:block">{tr('MIDI Monitor')}</h2>
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="relative">
-                    <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} className={`${btnClass} h-10`}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        const r = e.currentTarget.getBoundingClientRect();
+                        setFilterPos({ top: r.bottom + 4, left: Math.max(8, Math.min(r.left, window.innerWidth - 184)) });
+                        setIsFilterOpen(!isFilterOpen);
+                      }}
+                      className={`${btnClass} h-10`}
+                    >
                       {monitorFilter === 'all' ? tr('Todos') : monitorFilter === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')} <ChevronDown size={14} />
                     </button>
                     {isFilterOpen && (
-                      <div className="fixed top-[60px] left-[60px] z-[999] w-44 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl">
+                      <div style={{ top: filterPos.top, left: filterPos.left }} className="fixed z-[999] w-44 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl">
                         {(['all', 'RX', 'TX'] as const).map((f) => (
                           <button type="button" key={f} onClick={() => { setMonitorFilter(f); setIsFilterOpen(false); }} className={`w-full px-3 py-3 text-left text-xs hover:bg-[var(--bg-elevated)] ${monitorFilter === f ? 'font-bold text-[var(--nexus-primary)] bg-indigo-500/10' : 'text-[var(--text-main)]'}`}>
                             {f === 'all' ? tr('Todos') : f === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')}
