@@ -57,39 +57,49 @@ function MidiChannelsPanel({ activeChannel, muted, solo, onSelect, onToggleMute,
   onToggleMute: (ch: number) => void;
   onToggleSolo: (ch: number) => void;
 }) {
-  const [page, setPage] = useState(0);
-  const list = Array.from({ length: 8 }, (_, i) => page * 8 + 1 + i);
+  const [page, setPage] = useState(0); // 0 = 1-8, 1 = 9-16
+
+  const renderChannel = (ch: number) => {
+    const isActive = ch === activeChannel;
+    return (
+      <div key={ch} className={`flex flex-col items-center gap-1 rounded-lg border bg-[var(--bg-app)] p-1 ${isActive ? 'border-indigo-400/70' : 'border-[var(--border-color)]'}`}>
+        <button
+          type="button"
+          onClick={() => onSelect(ch)}
+          className="flex h-8 w-full items-center justify-center rounded-md text-sm font-bold"
+          style={isActive ? { backgroundColor: channelColor(ch), color: '#121316' } : { color: channelColor(ch) }}
+        >
+          {ch}
+        </button>
+        <button type="button" onClick={() => onToggleMute(ch)}
+          className={`h-8 w-full rounded-md text-xs font-bold ${muted[ch] ? 'bg-red-600 text-white' : 'bg-[var(--bg-elevated)] text-[var(--text-main)]'}`}>M</button>
+        <button type="button" onClick={() => onToggleSolo(ch)}
+          className={`h-8 w-full rounded-md text-xs font-bold ${solo === ch ? 'bg-amber-500 text-black' : 'bg-[var(--bg-elevated)] text-[var(--text-main)]'}`}>S</button>
+      </div>
+    );
+  };
 
   return (
     <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2">
       <div className="mb-2 flex items-center justify-between px-1">
         <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{tr('Canais MIDI')}</span>
-        <div className="flex items-center gap-2 text-xs font-bold text-[var(--nexus-primary)]">
+        {/* Paginação só aparece em telas menores que lg (tablets) */}
+        <div className="flex items-center gap-2 text-xs font-bold text-[var(--nexus-primary)] lg:hidden">
           <button type="button" disabled={page === 0} onClick={() => setPage(0)} className="px-2 disabled:opacity-30">‹</button>
           {page * 8 + 1}-{page * 8 + 8}
           <button type="button" disabled={page === 1} onClick={() => setPage(1)} className="px-2 disabled:opacity-30">›</button>
         </div>
       </div>
-      <div className="grid grid-cols-8 gap-1">
-        {list.map((ch) => {
-          const isActive = ch === activeChannel;
-          return (
-            <div key={ch} className={`flex flex-col items-center gap-1 rounded-lg border bg-[var(--bg-app)] p-1 ${isActive ? 'border-indigo-400/70' : 'border-[var(--border-color)]'}`}>
-              <button
-                type="button"
-                onClick={() => onSelect(ch)}
-                className="flex h-8 w-full items-center justify-center rounded-md text-sm font-bold"
-                style={isActive ? { backgroundColor: channelColor(ch), color: '#121316' } : { color: channelColor(ch) }}
-              >
-                {ch}
-              </button>
-              <button type="button" onClick={() => onToggleMute(ch)}
-                className={`h-8 w-full rounded-md text-xs font-bold ${muted[ch] ? 'bg-red-600 text-white' : 'bg-[var(--bg-elevated)] text-[var(--text-main)]'}`}>M</button>
-              <button type="button" onClick={() => onToggleSolo(ch)}
-                className={`h-8 w-full rounded-md text-xs font-bold ${solo === ch ? 'bg-amber-500 text-black' : 'bg-[var(--bg-elevated)] text-[var(--text-main)]'}`}>S</button>
-            </div>
-          );
-        })}
+
+      <div className="flex flex-col gap-2">
+        {/* Canais 1-8 */}
+        <div className={`grid grid-cols-8 gap-1 ${page === 1 ? 'hidden lg:grid' : 'grid'}`}>
+          {Array.from({ length: 8 }, (_, i) => renderChannel(i + 1))}
+        </div>
+        {/* Canais 9-16 */}
+        <div className={`grid grid-cols-8 gap-1 ${page === 0 ? 'hidden lg:grid' : 'grid'}`}>
+          {Array.from({ length: 8 }, (_, i) => renderChannel(i + 9))}
+        </div>
       </div>
     </div>
   );
