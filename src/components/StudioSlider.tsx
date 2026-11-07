@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 interface StudioSliderProps {
   label: string;
   sublabel?: string;
@@ -9,7 +11,7 @@ interface StudioSliderProps {
   onChange: (value: number) => void;
 }
 
-export function StudioSlider({
+export const StudioSlider = memo(function StudioSlider({
   label,
   sublabel,
   value,
@@ -24,7 +26,6 @@ export function StudioSlider({
 
   return (
     <div className="mb-2 flex w-full items-center gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2 shadow-sm">
-      
       <div className="flex w-[90px] shrink-0 flex-col sm:w-[110px]">
         <span className="truncate text-[11px] font-bold uppercase tracking-wider text-[var(--text-main)]">
           {label}
@@ -69,7 +70,6 @@ export function StudioSlider({
           {unit && <span className="ml-0.5 text-[9px] text-[var(--text-muted)]">{unit}</span>}
         </span>
       </div>
-      
     </div>
   );
-}
+});
