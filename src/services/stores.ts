@@ -1,11 +1,8 @@
-import { clampInt } from '../lib/midiMath';
-import { createMemoryStorage, createStore } from '../lib/storeCore';
-import type { ArpConfig } from '../lib/arpeggiator';
-import { DEFAULT_ARP_CONFIG } from '../lib/arpeggiator';
-import type { CcMapping } from '../lib/midiLearn';
+import { clampInt } from '../lib/midiMath';import { createMemoryStorage, createStore } from '../lib/storeCore';import type { ArpConfig } from '../lib/arpeggiator';import { DEFAULT_ARP_CONFIG } from '../lib/arpeggiator';import type { CcMapping } from '../lib/midiLearn';
 import type { ChordId, ScaleId } from '../lib/scales';
 import type { VelocityCurve } from '../lib/velocity';
 import { CHANNEL_SETTING_KEYS, DEFAULT_CHANNEL_SETTINGS, DEFAULT_SYNTH_SETTINGS, type ChannelSettings, type SynthSettings } from './synthTypes';
+import type { ChordType } from '../constants/chords'; // NOVO IMPORT
 
 export type Language = 'pt-BR' | 'en';
 const CURVES: VelocityCurve[] = ['linear', 'soft', 'hard', 'fixed'];
@@ -32,11 +29,10 @@ export const DEFAULT_PREFS: Prefs = {
   language: 'pt-BR',
   theme: 'dark',
   sustain: false,
-  wakeLock: true, // NOVO — tela acesa por padrão
+  wakeLock: true, // NOVO
 };
 
 export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
-  // Migra as chaves soltas da versão anterior do app.
   legacy: (storage) => {
     const out: Partial<Prefs> = {};
     const palette = storage.getItem('midi_palette_id');
@@ -61,10 +57,9 @@ export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
 // ------------------------------------------------------------------- sintetizador
 export const synthSettingsStore = createStore<SynthSettings>('nexus_synth_settings', DEFAULT_SYNTH_SETTINGS);
 
-// Configurações GLOBAIS (delay, EQ, compressor, polifonia). Os ajustes de cada canal ficam em `channelSettingsStore`.
 export interface ChannelState {
-  assignments: Record<number, number>; // canal → programa (0–127)
-  banks: Record<number, number>; // canal → banco do SF2 (128 = bateria). Ausente = 0
+  assignments: Record<number, number>;
+  banks: Record<number, number>;
   muted: Record<number, boolean>;
   solo: number | null;
 }
@@ -88,7 +83,6 @@ export const channelsStore = createStore<ChannelState>(
   },
 );
 
-/** Ajustes independentes por canal MIDI (1–16). Canal sem entrada usa `DEFAULT_CHANNEL_SETTINGS`. */
 export interface ChannelSettingsState {
   channels: Record<number, ChannelSettings>;
 }
@@ -96,7 +90,6 @@ export interface ChannelSettingsState {
 export const channelSettingsOf = (state: ChannelSettingsState, channel: number): ChannelSettings =>
   state.channels[channel] ?? DEFAULT_CHANNEL_SETTINGS;
 
-/** Altera só alguns ajustes de UM canal; os outros canais não são tocados. */
 export function updateChannelSettings(channel: number, patch: Partial<ChannelSettings>): void {
   channelSettingsStore.set((prev) => ({
     channels: { ...prev.channels, [channel]: { ...channelSettingsOf(prev, channel), ...patch } },
@@ -117,7 +110,6 @@ export const channelSettingsStore = createStore<ChannelSettingsState>(
   'nexusmidi.channelSettings',
   { channels: {} },
   {
-    // Migra o que a tela do sintetizador guardava na chave solta da versão anterior.
     legacy: (storage) => ({
       channels: parseJson<Record<number, ChannelSettings>>(storage.getItem('nexusmidi_channel_settings'), {}),
     }),
@@ -191,3 +183,59 @@ export const runtimeStore = createStore<RuntimeState>(
 );
 
 export const learnStore = createStore<{ mappings: CcMapping[] }>('nexusmidi.learn', { mappings: [] });
+
+// ----------------------------------------------------------------------- PADS
+export interface PadData {
+  note: number;
+  label: string;
+  color: string;
+  velocity?: number;
+  chordType?: ChordType;
+  chordIntervals?: number[];
+}
+
+const DEFAULT_BANKS: PadData[][] = [
+  [
+    { note: 36, label: 'Bumbo', color: 'bg-blue-500', velocity: 100 },
+    { note: 38, label: 'Caixa', color: 'bg-red-500', velocity: 100 },
+    { note: 42, label: 'Chimbal F.', color: 'bg-yellow-500', velocity: 100 },
+    { note: 46, label: 'Chimbal A.', color: 'bg-yellow-400', velocity: 100 },
+    { note: 41, label: 'Tom Grave', color: 'bg-green-500', velocity: 100 },
+    { note: 45, label: 'Tom Médio', color: 'bg-green-400', velocity: 100 },
+    { note: 48, label: 'Tom Agudo', color: 'bg-green-300', velocity: 100 },
+    { note: 50, label: 'Tom Alto', color: 'bg-teal-500', velocity: 100 },
+    { note: 49, label: 'Prato Ataque', color: 'bg-cyan-500', velocity: 100 },
+    { note: 51, label: 'Prato Cond.', color: 'bg-cyan-400', velocity: 100 },
+    { note: 39, label: 'Palmas', color: 'bg-orange-500', velocity: 100 },
+    { note: 56, label: 'Cabaça', color: 'bg-amber-500', velocity: 100 },
+    { note: 54, label: 'Pandeiro', color: 'bg-pink-500', velocity: 100 },
+    { note: 60, label: 'Bongo A.', color: 'bg-purple-500', velocity: 100 },
+    { note: 61, label: 'Bongo G.', color: 'bg-purple-400', velocity: 100 },
+    { note: 76, label: 'Bloco Mad.', color: 'bg-stone-500', velocity: 100 },
+  ],
+  [...Array(16)].map((_, i) => ({ note: 60 + i, label: `Nota ${60 + i}`, color: 'bg-slate-600', velocity: 100 })),
+  [...Array(16)].map((_, i) => ({ note: 72 + i, label: `Nota ${72 + i}`, color: 'bg-slate-500', velocity: 100 })),
+  [...Array(16)].map((_, i) => ({ note: 84 + i, label: `Nota ${84 + i}`, color: 'bg-slate-400', velocity: 100 })),
+];
+
+export interface PadsState {
+  banks: PadData[][];
+}
+
+export const padsStore = createStore<PadsState>('nexusmidi.pads', { banks: DEFAULT_BANKS }, {
+  legacy: (storage) => {
+    // Migra a versão antiga do localStorage para a store central
+    const saved = storage.getItem('nexus_pads_data_v2');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return { banks: parsed };
+      } catch { /* ignora */ }
+    }
+    return { banks: DEFAULT_BANKS };
+  },
+  sanitize: (state) => {
+    if (!Array.isArray(state.banks) || state.banks.length === 0) return { banks: DEFAULT_BANKS };
+    return { banks: state.banks };
+  }
+});
