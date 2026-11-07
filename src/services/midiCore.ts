@@ -1,3 +1,4 @@
+
 import { dedupeDestinations } from '../lib/destinations';
 import { getNoteName, toHex, clampInt, describeMessage, channelStatus, channelMessageLength } from '../lib/midiMath';
 import { parseMidiBytes } from '../lib/midiParser';
@@ -16,7 +17,8 @@ const MAX_SEND_FAILURES = 3;
 const LOG_LIMIT = 300;
 const CLOCK_OR_SENSING = new Set([0xf8, 0xfe]);
 
-type NativeMidiPort = Pick<
+// CORREÇÃO AQUI: Adicionado o export
+export type NativeMidiPort = Pick<
   NativeMidiPlugin,
   | 'initialize'
   | 'getDevices'
@@ -33,6 +35,7 @@ type NativeMidiPort = Pick<
   | 'addListener'
 >;
 
+// CORREÇÃO AQUI: Mantido o export
 export interface SynthPort {
   getIsReady(): boolean;
   noteOn(note: number, velocity: number, channel?: number): void;
@@ -45,6 +48,7 @@ export interface SynthPort {
   allNotesOff(): void;
 }
 
+// CORREÇÃO AQUI: Mantido o export
 export interface MidiServiceDeps {
   native: NativeMidiPort;
   synth: SynthPort;
@@ -628,4 +632,4 @@ function safe(fn: () => void, message = 'Erro em listener:'): void {
   } catch (error) {
     console.error(message, error);
   }
-}
+          }
