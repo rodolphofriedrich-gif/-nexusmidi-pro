@@ -58,7 +58,7 @@ export class PerformanceEngine {
   noteOff(_channel: number, note: number): void {
     // Ignora o canal passado pela UI (que pode ter mudado no meio do toque).
     // Procura em todas as notas ativas qual delas corresponde a essa nota física.
-    for (const [key, entry] of this.sounding.entries()) {
+    for (const key of this.sounding.keys()) {
       if (key.endsWith(`:${note}`)) {
         this.releaseKey(key);
         return;
