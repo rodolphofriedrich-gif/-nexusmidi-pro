@@ -25,16 +25,18 @@ export function useMidiDevices(notify: Notify) {
 
   useEffect(() => {
     let mounted = true;
-    midiManager.setCallbacks(
-      () => {
-        if (mounted) void refresh();
-      },
-      (lost) => {
-        if (!mounted) return;
-        void refresh();
-        notify(tr('Destino "{name}" desconectado.', { name: lost.displayName }), 'warn', 4000);
-      },
-    );
+
+    const handleRefresh = () => {
+      if (mounted) void refresh();
+    };
+    const handleDisconnect = (lost: MidiDestination) => {
+      if (!mounted) return;
+      void refresh();
+      notify(tr('Destino "{name}" desconectado.', { name: lost.displayName }), 'warn', 4000);
+    };
+
+    midiManager.setCallbacks(handleRefresh, handleDisconnect);
+
     void (async () => {
       try {
         await midiManager.initWebMidi();
@@ -44,8 +46,11 @@ export function useMidiDevices(notify: Notify) {
       await midiManager.isBleServerRunning();
       if (mounted) void refresh();
     })();
+
     return () => {
       mounted = false;
+      // NOVO: Limpa os callbacks para evitar memory leaks ao desmontar
+      midiManager.clearCallbacks();
     };
   }, [refresh, notify]);
 
