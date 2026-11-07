@@ -59,6 +59,14 @@ describe('PerformanceEngine', () => {
     expect(sent).toEqual(['off:1:60:0', 'off:1:64:0', 'off:1:67:0']); // desliga o que LIGOU (maior)
   });
 
+  it('mudar de canal com a tecla pressionada não deixa notas presas', () => {
+    engine.noteOn(1, 60, 100);
+    sent.length = 0;
+    // A UI simula a mudança de canal passando o canal 2 no NoteOff
+    engine.noteOff(2, 60);
+    expect(sent).toEqual(['off:1:60:0']); // Deve desligar no canal 1
+  });
+
   it('quantiza para a escala', () => {
     settings.scale = 'major';
     engine.noteOn(1, 61, 100);
