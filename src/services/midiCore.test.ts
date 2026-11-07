@@ -159,12 +159,26 @@ describe('MidiService', () => {
       expect(svc.getConnectedDestinations()).toEqual([]);
     });
 
-    it('desconectar envia All Notes Off e fecha as portas', async () => {
+    it('desconectar envia a tríade de emergência (Sustain Off + All Sound Off + All Notes Off) e fecha as portas', async () => {
       await service.connectOutput(usbBoth);
       n.sent.length = 0;
       await service.disconnectOutput('9');
-      expect(n.sent).toHaveLength(16);
-      expect(n.sent[0].data).toEqual([0xb0, 123, 0]);
+
+      // NOVO COMPORTAMENTO: 16 canais × 3 mensagens de emergência = 48
+      expect(n.sent).toHaveLength(48);
+
+      // Ordem por canal: 64 (Sustain Off), 120 (All Sound Off), 123 (All Notes Off)
+      expect(n.sent[0].data).toEqual([0xb0, 64, 0]);
+      expect(n.sent[1].data).toEqual([0xb0, 120, 0]);
+      expect(n.sent[2].data).toEqual([0xb0, 123, 0]);
+
+      // Valida que todos os 16 canais receberam a tríade
+      for (let ch = 0; ch < 16; ch++) {
+        expect(n.sent[ch * 3].data).toEqual([0xb0 + ch, 64, 0]);
+        expect(n.sent[ch * 3 + 1].data).toEqual([0xb0 + ch, 120, 0]);
+        expect(n.sent[ch * 3 + 2].data).toEqual([0xb0 + ch, 123, 0]);
+      }
+
       expect(n.calls).toContain('disconnectOutput:9');
       expect(n.calls).toContain('disconnectInput:9');
       expect(service.getConnectedDestinations()).toEqual([]);
