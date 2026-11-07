@@ -2,7 +2,7 @@
 
 **Hub MIDI e sintetizador SoundFont para Android e Web.**
 
-O NexusMIDI Pro transforma o celular ou tablet em controlador MIDI, roteador (patchbay), sintetizador SoundFont, gravador e ferramenta de performance — tudo em uma interface com o tema "Midnight Studio". Funciona offline.
+O NexusMIDI Pro transforma o celular ou tablet em controlador MIDI, roteador (patchbay), sintetizador SoundFont, gravador e ferramenta de performance — tudo em uma interface com o tema "Midnight Studio" (Dark/Light). Funciona offline.
 
 [![Build](https://github.com/SEU-USUARIO/SEU-REPOSITORIO/actions/workflows/build.yml/badge.svg)](https://github.com/SEU-USUARIO/SEU-REPOSITORIO/actions/workflows/build.yml)
 
@@ -11,9 +11,11 @@ O NexusMIDI Pro transforma o celular ou tablet em controlador MIDI, roteador (pa
 ## ✨ Funcionalidades
 
 **Tocar**
-- **🎹 Teclado virtual** multi-touch com *glissando*, 9 paletas de cores, zoom e rolagem livre.
-- **🥁 Pads de bateria**: 16 pads General MIDI em 2 bancos.
+- **🎹 Teclado virtual** multi-touch com *glissando*, zoom, rolagem livre e **split point** visual (Fase 3).
+- **🥁 Pads de bateria**: 16 pads General MIDI em 4 bancos (64 pads no total).
+- **🎶 Chord Pads**: cada pad pode tocar uma nota única, um acorde pré-definido (maior, menor, 7ª, etc.) ou intervalos customizados.
 - **📈 VU meters** que reagem à velocity real (tocada ou recebida).
+- **☀️ Wake Lock**: mantém a tela acesa durante a performance.
 
 **Sintetizador SoundFont**
 - Importe arquivos `.sf2`; o app mantém uma **biblioteca** com vários SoundFonts e restaura o último usado ao abrir.
@@ -21,7 +23,7 @@ O NexusMIDI Pro transforma o celular ou tablet em controlador MIDI, roteador (pa
 - Efeitos: delay, EQ de 3 bandas, compressor, reverb/chorus do SoundFont, envelope, filtro, vibrato, afinação e polifonia ajustável (com *voice stealing*).
 
 **Conectar e rotear**
-- **🔗 USB (OTG) e Bluetooth LE MIDI**, com detecção de plug/unplug.
+- **🔗 USB (OTG) e Bluetooth LE MIDI**, com detecção de plug/unplug e reconexão automática de BLE.
 - **📡 "Ficar visível"**: o aparelho aparece como instrumento BLE MIDI para DAWs e outros dispositivos.
 - **🔀 Roteador matriz**: várias entradas → várias saídas, com filtro de canal, transposição e ativar/desativar por rota. As rotas são salvas.
 - **🔍 Monitor MIDI** de mensagens enviadas (TX) e recebidas (RX), com histórico mantido entre as abas.
@@ -36,7 +38,7 @@ O NexusMIDI Pro transforma o celular ou tablet em controlador MIDI, roteador (pa
 - **MIDI Learn**: associe knobs/faders físicos aos parâmetros do app.
 - **Presets de controles CC**, **MIDI Panic** e roda de Pitch Bend.
 
-**Geral**: interface em **Português (Brasil)** e **English**.
+**Geral**: interface em **Português (Brasil)** e **English**, temas Dark/Light/System.
 
 ---
 
@@ -54,68 +56,73 @@ O NexusMIDI Pro transforma o celular ou tablet em controlador MIDI, roteador (pa
 ## 🚀 Começando
 
 ### Pré-requisitos
-- [Node.js](https://nodejs.org/) **20.19 ou superior** (recomendado 22)
+- [Node.js](https://nodejs.org/) **22.0 ou superior** (exigido pelo Capacitor CLI)
 - Para o app Android: [Android Studio](https://developer.android.com/studio) (ou apenas JDK 21 + Android SDK)
 
 ### Rodar na web (desenvolvimento)
 ```bash
 git clone https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git
 cd SEU-REPOSITORIO
-npm install
+npm ci
 npm run dev          # http://localhost:3000
 ```
-> USB/BLE nativos só existem no app Android. No navegador você tem teclado, sintetizador, gravador e ferramentas.
 
-### Gerar o app Android
+USB/BLE nativos só existem no app Android. No navegador você tem teclado, sintetizador, gravador e ferramentas.
+
+Gerar o app Android
+
 ```bash
-npm install
+npm ci
 npm run cap:sync     # build do bundle + npx cap sync android
 npx cap open android # abre no Android Studio e rode no aparelho
 ```
-Ou, direto pela linha de comando (gera `android/app/build/outputs/apk/debug/app-debug.apk`):
+
+Ou, direto pela linha de comando (gera android/app/build/outputs/apk/debug/app-debug.apk):
+
 ```bash
 npm run android:debug
 ```
 
-### Scripts úteis
-| Comando | O que faz |
-| --- | --- |
-| `npm run dev` | Servidor de desenvolvimento |
-| `npm run build` | Build web/PWA |
-| `npm run build:android` | Build do bundle embutido no APK (sem Service Worker) |
-| `npm run typecheck` | Verificação de tipos (`tsc --noEmit`) |
-| `npm run lint` | Lint (Oxlint) |
-| `npm test` | Testes (Vitest) |
-| `npm run check` | typecheck + lint + testes |
-| `npm run format` | Formata o código (Prettier) |
+Scripts úteis
+
+Comando O que faz
+npm run dev Servidor de desenvolvimento
+npm run build Build web/PWA
+npm run build:android Build do bundle embutido no APK (sem Service Worker)
+npm run typecheck Verificação de tipos (tsc --noEmit)
+npm run lint Lint (Oxlint)
+npm test Testes (Vitest)
+npm run check typecheck + lint + testes
+npm run format Formata o código (Prettier)
 
 ---
 
-## 🚢 Publicar uma versão (CI/CD)
+🚢 Publicar uma versão (CI/CD)
 
-O workflow `.github/workflows/build.yml` roda **typecheck, lint, testes e build** em todo PR/push e gera o **APK debug** como artefato.
+O workflow .github/workflows/build.yml roda typecheck, lint, testes e build em todo PR/push e gera o APK debug como artefato.
 
-Para publicar um **Release assinado** no GitHub:
+Para publicar um Release assinado no GitHub:
 
 1. Crie um keystore (uma única vez) e guarde-o em lugar seguro:
    ```bash
    keytool -genkeypair -v -keystore nexusmidi.jks -alias nexusmidi -keyalg RSA -keysize 2048 -validity 10000
    base64 -w0 nexusmidi.jks   # copie a saída
    ```
-2. Em **Settings → Secrets and variables → Actions**, crie: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+2. Em Settings → Secrets and variables → Actions, crie: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
 3. Crie e envie uma tag:
    ```bash
-   git tag v1.0.0 && git push origin v1.0.0
+   git tag v1.1.0 && git push origin v1.1.0
    ```
-   O CI compila `assembleRelease` + `bundleRelease` e anexa o APK e o AAB ao Release. Sem os segredos, o Release leva apenas o APK de debug.
+   O CI compila assembleRelease + bundleRelease e anexa o APK e o AAB ao Release. Sem os segredos, o Release leva apenas o APK de debug.
 
 ---
 
-## 🗂️ Estrutura
+🗂️ Estrutura
 
 ```
 src/
-├── components/        Telas e componentes (teclado, roteador, sintetizador, ferramentas…)
+├── components/        Telas e componentes (teclado, pads, roteador, sintetizador, ferramentas…)
+├── constants/         Tabelas de acordes, GM, cores de canais
 ├── hooks/             useMidiDevices, useStore, useToast
 ├── i18n/              tr() + dicionário en (pt-BR é o texto-fonte)
 ├── lib/               Lógica pura e testada (arpejador, escalas, .mid, gravador, MIDI Learn…)
@@ -125,25 +132,27 @@ android/               Projeto Android (plugin NativeMidi + BleMidiServer em Jav
 ```
 
 Decisões de arquitetura:
-- **Lógica pura em `lib/`** (sem React, sem Web Audio, sem Capacitor), com injeção de dependências — por isso é testável sem hardware.
-- **Stores reativos** (`createStore` + `useSyncExternalStore`) com persistência segura em `localStorage`.
-- O **SpessaSynth é carregado sob demanda** (somente ao abrir o primeiro SoundFont), reduzindo o tempo de abertura.
+
+· Lógica pura em lib/ (sem React, sem Web Audio, sem Capacitor), com injeção de dependências — por isso é testável sem hardware.
+· Stores reativos (createStore + useSyncExternalStore) com persistência segura em localStorage.
+· O SpessaSynth é carregado sob demanda (somente ao abrir o primeiro SoundFont), reduzindo o tempo de abertura.
 
 ---
 
-## 🧪 Testes
+🧪 Testes
 
 ```bash
 npm test
 ```
-Cobrem matemática MIDI, curvas de velocity, escalas/acordes, arpejador, arquivo `.mid` (ida e volta), gravador/player, MIDI Learn, parser de bytes, roteamento, conexões USB/BLE, falhas de envio, hot-plug, biblioteca de SoundFonts e i18n (todo texto tem tradução).
+
+Cobrem matemática MIDI, curvas de velocity, escalas/acordes, arpejador, arquivo .mid (ida e volta), gravador/player, MIDI Learn, parser de bytes, roteamento, conexões USB/BLE, falhas de envio, hot-plug, biblioteca de SoundFonts e i18n (todo texto tem tradução).
 
 ---
 
-## 🤝 Contribuindo
+🤝 Contribuindo
 
-Veja o [CONTRIBUTING.md](CONTRIBUTING.md). Histórico de mudanças em [CHANGELOG.md](CHANGELOG.md).
+Veja o CONTRIBUTING.md. Histórico de mudanças em CHANGELOG.md.
 
-## 📄 Licença
+📄 Licença
 
-[MIT](LICENSE). Bibliotecas de terceiros em [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+MIT. Bibliotecas de terceiros em THIRD_PARTY_LICENSES.md.
