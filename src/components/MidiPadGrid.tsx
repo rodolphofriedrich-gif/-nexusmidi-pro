@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Settings2, X, Save } from 'lucide-react';
 import { tr } from '../i18n';
 import { CHORD_BADGE, resolveChordNotes, type ChordType } from '../constants/chords';
+import { useStore } from '../hooks/useStore';
+import { padsStore, type PadData } from '../services/stores';
 
 interface MidiPadGridProps {
   bank: number;
@@ -11,15 +13,6 @@ interface MidiPadGridProps {
   onNoteOff: (note: number) => void;
   onDisabledPress: () => void;
   isEditMode: boolean;
-}
-
-export interface PadData {
-  note: number;
-  label: string;
-  color: string;
-  velocity?: number;
-  chordType?: ChordType;
-  chordIntervals?: number[];
 }
 
 /**
@@ -42,48 +35,12 @@ const CHORD_TYPES: ReadonlyArray<{ id: ChordType; label: string }> = [
   { id: 'custom', label: 'Customizado' },
 ];
 
-const DEFAULT_BANKS: PadData[][] = [
-  [
-    { note: 36, label: 'Bumbo', color: 'bg-blue-500', velocity: 100 },
-    { note: 38, label: 'Caixa', color: 'bg-red-500', velocity: 100 },
-    { note: 42, label: 'Chimbal F.', color: 'bg-yellow-500', velocity: 100 },
-    { note: 46, label: 'Chimbal A.', color: 'bg-yellow-400', velocity: 100 },
-    { note: 41, label: 'Tom Grave', color: 'bg-green-500', velocity: 100 },
-    { note: 45, label: 'Tom Médio', color: 'bg-green-400', velocity: 100 },
-    { note: 48, label: 'Tom Agudo', color: 'bg-green-300', velocity: 100 },
-    { note: 50, label: 'Tom Alto', color: 'bg-teal-500', velocity: 100 },
-    { note: 49, label: 'Prato Ataque', color: 'bg-cyan-500', velocity: 100 },
-    { note: 51, label: 'Prato Cond.', color: 'bg-cyan-400', velocity: 100 },
-    { note: 39, label: 'Palmas', color: 'bg-orange-500', velocity: 100 },
-    { note: 56, label: 'Cabaça', color: 'bg-amber-500', velocity: 100 },
-    { note: 54, label: 'Pandeiro', color: 'bg-pink-500', velocity: 100 },
-    { note: 60, label: 'Bongo A.', color: 'bg-purple-500', velocity: 100 },
-    { note: 61, label: 'Bongo G.', color: 'bg-purple-400', velocity: 100 },
-    { note: 76, label: 'Bloco Mad.', color: 'bg-stone-500', velocity: 100 },
-  ],
-  [...Array(16)].map((_, i) => ({ note: 60 + i, label: `Nota ${60 + i}`, color: 'bg-slate-600', velocity: 100 })),
-  [...Array(16)].map((_, i) => ({ note: 72 + i, label: `Nota ${72 + i}`, color: 'bg-slate-500', velocity: 100 })),
-  [...Array(16)].map((_, i) => ({ note: 84 + i, label: `Nota ${84 + i}`, color: 'bg-slate-400', velocity: 100 })),
-];
-
 const COLORS = ['bg-blue-500', 'bg-red-500', 'bg-yellow-500', 'bg-green-500', 'bg-cyan-500', 'bg-pink-500', 'bg-purple-500', 'bg-orange-500'];
 
 export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, onDisabledPress, isEditMode }: MidiPadGridProps) {
-  const [banksData, setBanksData] = useState<PadData[][]>(() => {
-    try {
-      const saved = localStorage.getItem('nexus_pads_data_v2');
-      if (saved) return JSON.parse(saved);
-      // Migração: se existir a versão antiga (8 pads), expande para 16
-      const oldSaved = localStorage.getItem('nexus_pads_data');
-      if (oldSaved) {
-        const old = JSON.parse(oldSaved);
-        return old.map((b: any[]) => [...b, ...Array(Math.max(0, 16 - b.length)).fill(null).map((_, i) => ({ note: 60 + b.length + i, label: `Nota ${60 + b.length + i}`, color: 'bg-slate-600', velocity: 100 }))]);
-      }
-      return DEFAULT_BANKS;
-    } catch {
-      return DEFAULT_BANKS;
-    }
-  });
+  const { banks } = useStore(padsStore);
+  const banksData = banks;
+
   const [pressedPads, setPressedPads] = useState<Set<number>>(() => new Set());
   const [editPadIndex, setEditPadIndex] = useState<number | null>(null);
   const [editChordType, setEditChordType] = useState<ChordType>('single');
@@ -98,7 +55,6 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
   const onNoteOffRef = useRef(onNoteOff);
 
   useEffect(() => { onNoteOffRef.current = onNoteOff; }, [onNoteOff]);
-  useEffect(() => { localStorage.setItem('nexus_pads_data_v2', JSON.stringify(banksData)); }, [banksData]);
 
   const incNote = (note: number): boolean => {
     const count = noteRefCountRef.current.get(note) ?? 0;
@@ -214,8 +170,12 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
       chordType,
       chordIntervals,
     };
-    const newBanks = banksData.map((b, bi) => (bi === bank ? b.map((p, pi) => (pi === editPadIndex ? newPad : p)) : b));
-    setBanksData(newBanks);
+    
+    // Atualiza a store global em vez de um estado local
+    padsStore.set((prev) => ({
+      banks: prev.banks.map((b, bi) => (bi === bank ? b.map((p, pi) => (pi === editPadIndex ? newPad : p)) : b))
+    }));
+    
     setEditPadIndex(null);
   };
 
