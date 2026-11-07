@@ -28,7 +28,11 @@ function collectKeys(): Set<string> {
   grab('lib/scales.ts', /name: '([^']+)'/g);
   grab('constants/palettes.ts', /name: '([^']+)'/g);
   grab('services/learnService.ts', /label: '([^']+)'/g);
+  
+  // CORREÇÃO AQUI: As labels dos pads agora vivem no stores.ts
+  grab('services/stores.ts', /label: '([^']+)'/g);
   grab('components/MidiPadGrid.tsx', /label: '([^']+)'/g);
+  
   grab('components/tools/PerformancePanel.tsx', /(?:linear|soft|hard|fixed): '([^']+)'/g);
   grab('constants/gm.ts', /return '([^']+)'/g);
   const gm = readFileSync(join(SRC, 'constants/gm.ts'), 'utf8').match(/PRESET_CATEGORIES = \[([^\]]*)\]/);
