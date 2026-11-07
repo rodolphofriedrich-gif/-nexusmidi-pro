@@ -1,4 +1,3 @@
-
 import { dedupeDestinations } from '../lib/destinations';
 import { getNoteName, toHex, clampInt, describeMessage, channelStatus, channelMessageLength } from '../lib/midiMath';
 import { parseMidiBytes } from '../lib/midiParser';
@@ -17,7 +16,6 @@ const MAX_SEND_FAILURES = 3;
 const LOG_LIMIT = 300;
 const CLOCK_OR_SENSING = new Set([0xf8, 0xfe]);
 
-// CORREÇÃO AQUI: Adicionado o export
 export type NativeMidiPort = Pick<
   NativeMidiPlugin,
   | 'initialize'
@@ -35,7 +33,6 @@ export type NativeMidiPort = Pick<
   | 'addListener'
 >;
 
-// CORREÇÃO AQUI: Mantido o export
 export interface SynthPort {
   getIsReady(): boolean;
   noteOn(note: number, velocity: number, channel?: number): void;
@@ -48,7 +45,6 @@ export interface SynthPort {
   allNotesOff(): void;
 }
 
-// CORREÇÃO AQUI: Mantido o export
 export interface MidiServiceDeps {
   native: NativeMidiPort;
   synth: SynthPort;
@@ -72,7 +68,11 @@ export class MidiService {
   private readonly connectedInputs = new Set<string>();
   private readonly bleAddressToId = new Map<string, string>();
   private readonly sendFailures = new Map<string, number>();
-  private readonly reconnectAttempts = new Map<string, number>(); // NOVO
+  private readonly reconnectAttempts = new Map<string, number>();
+  
+  // NOVO: Fila de transmissão FIFO por destino para evitar troca de ordem das mensagens MIDI
+  private readonly sendQueues = new Map<string, Promise<void>>();
+
   private bleServerActive = false;
 
   private messageListeners = new Set<(message: MidiMessage) => void>();
@@ -119,7 +119,6 @@ export class MidiService {
     this.onDisconnectCallback = onDisconnect;
   }
 
-  /** Limpa os callbacks para evitar vazamento de memória quando a UI desmonta. */
   public clearCallbacks(): void {
     this.onRefreshCallback = undefined;
     this.onDisconnectCallback = undefined;
@@ -215,6 +214,7 @@ export class MidiService {
     this.connectedInputs.delete(dest.id);
     this.sendFailures.delete(dest.id);
     this.reconnectAttempts.delete(dest.id);
+    this.sendQueues.delete(dest.bleAddress || dest.id); // Limpa a fila ao perder o dispositivo
     this.onDisconnectCallback?.(dest, reason);
     this.onRefreshCallback?.(this.destinations);
 
@@ -296,7 +296,7 @@ export class MidiService {
   public async disconnectOutput(id: string): Promise<void> {
     const dest = this.connectedOutputs.get(id);
     if (!dest) return;
-    this.reconnectAttempts.delete(id); // Cancela retries se for manual
+    this.reconnectAttempts.delete(id);
     await this.allNotesOffForDevice(dest);
     if (id !== VIRTUAL_ID) {
       const nativeId = dest.bleAddress || dest.id;
@@ -310,6 +310,7 @@ export class MidiService {
     this.connectedInputs.delete(id);
     this.connectedOutputs.delete(id);
     this.sendFailures.delete(id);
+    this.sendQueues.delete(dest.bleAddress || dest.id);
     this.onDisconnectCallback?.(dest, 'lost');
   }
 
@@ -478,15 +479,25 @@ export class MidiService {
     this.synth.allNotesOff();
     const targets = [...this.connectedOutputs.values()].filter((d) => d.id !== VIRTUAL_ID);
     if (this.bleServerActive) targets.push(this.bleServerDestination());
-    const jobs: Array<Promise<void>> = [];
+    
+    // Silencia o sintetizador interno no app
     for (const channel of channels) {
-      for (const [controller, value] of [[64, 0], [120, 0], [123, 0]] as const) {
-        const status = channelStatus(0xb0, channel);
-        this.synth.controlChange(controller, value, channel);
-        for (const dest of targets) jobs.push(this.sendToDevice(dest, [status, controller, value]));
+      for (const [c, v] of [[64, 0], [120, 0], [123, 0]] as const) {
+        this.synth.controlChange(c, v, channel);
       }
     }
-    await Promise.all(jobs);
+
+    // Envia a tríade de emergência para todos os dispositivos externos
+    await Promise.all(targets.map((dest) => this.sendPanicToDevice(dest, channels)));
+  }
+
+  private async sendPanicToDevice(dest: MidiDestination, channels: readonly number[]): Promise<void> {
+    for (const channel of channels) {
+      const status = channelStatus(0xb0, channel);
+      await this.sendToDevice(dest, [status, 64, 0]);  // Sustain Off
+      await this.sendToDevice(dest, [status, 120, 0]); // All Sound Off
+      await this.sendToDevice(dest, [status, 123, 0]); // All Notes Off
+    }
   }
 
   public async broadcastRealtime(status: number): Promise<void> {
@@ -562,27 +573,45 @@ export class MidiService {
     return command === 0xc0 || command === 0xd0 ? [status, data1] : [status, data1, data2];
   }
 
+  // NOVO: Fila FIFO por dispositivo para garantir a ordem exata das mensagens MIDI
   private async sendToDevice(destination: MidiDestination, bytes: number[]): Promise<void> {
     if (destination.id === VIRTUAL_ID) return;
     const target = destination.id === BLE_SERVER_ID ? BLE_SERVER_ID : destination.bleAddress || destination.id;
-    try {
-      await this.native.sendTo({ id: target, data: bytes });
-      this.sendFailures.delete(destination.id);
-    } catch (error) {
-      const failures = (this.sendFailures.get(destination.id) ?? 0) + 1;
-      this.sendFailures.set(destination.id, failures);
-      if (failures >= MAX_SEND_FAILURES && destination.id !== BLE_SERVER_ID) {
-        console.warn(`Destino ${destination.displayName} não responde:`, error);
-        this.dropDevice(destination, 'failed');
+
+    // Pega a promessa anterior na fila (ou uma já resolvida)
+    const previous = this.sendQueues.get(target) ?? Promise.resolve();
+
+    // Cria a nova tarefa encadeada
+    const current = previous.then(async () => {
+      try {
+        await this.native.sendTo({ id: target, data: bytes });
+        this.sendFailures.delete(destination.id);
+      } catch (error) {
+        const failures = (this.sendFailures.get(destination.id) ?? 0) + 1;
+        this.sendFailures.set(destination.id, failures);
+        if (failures >= MAX_SEND_FAILURES && destination.id !== BLE_SERVER_ID) {
+          console.warn(`Destino ${destination.displayName} não responde:`, error);
+          this.dropDevice(destination, 'failed');
+        }
       }
-    }
+    });
+
+    // Salva a nova promessa no mapa
+    this.sendQueues.set(target, current);
+
+    // Limpa o mapa se esta foi a última mensagem da fila
+    current.finally(() => {
+      if (this.sendQueues.get(target) === current) {
+        this.sendQueues.delete(target);
+      }
+    });
+
+    return current;
   }
 
   public async allNotesOffForDevice(destination: MidiDestination): Promise<void> {
     if (destination.id === VIRTUAL_ID) return;
-    await Promise.all(
-      Array.from({ length: 16 }, (_, i) => this.sendToDevice(destination, [0xb0 + i, 123, 0])),
-    );
+    await this.sendPanicToDevice(destination, Array.from({ length: 16 }, (_, i) => i + 1));
   }
 
   private normalizeSource(sourceId?: string): string | undefined {
@@ -632,4 +661,4 @@ function safe(fn: () => void, message = 'Erro em listener:'): void {
   } catch (error) {
     console.error(message, error);
   }
-          }
+}
