@@ -16,8 +16,7 @@ const MAX_SEND_FAILURES = 3;
 const LOG_LIMIT = 300;
 const CLOCK_OR_SENSING = new Set([0xf8, 0xfe]);
 
-/** Parte do plugin nativo usada aqui — permite trocar por um falso nos testes. */
-export type NativeMidiPort = Pick<
+type NativeMidiPort = Pick<
   NativeMidiPlugin,
   | 'initialize'
   | 'getDevices'
@@ -69,6 +68,7 @@ export class MidiService {
   private readonly connectedInputs = new Set<string>();
   private readonly bleAddressToId = new Map<string, string>();
   private readonly sendFailures = new Map<string, number>();
+  private readonly reconnectAttempts = new Map<string, number>(); // NOVO
   private bleServerActive = false;
 
   private messageListeners = new Set<(message: MidiMessage) => void>();
@@ -80,7 +80,7 @@ export class MidiService {
   private learn: MidiLearn | null = null;
 
   private onRefreshCallback?: (destinations?: MidiDestination[]) => void;
-  private onDisconnectCallback?: (destination: MidiDestination) => void;
+  private onDisconnectCallback?: (destination: MidiDestination, reason?: 'lost' | 'reconnecting' | 'failed') => void;
   private listenersReady: Promise<void>;
 
   constructor(deps: MidiServiceDeps) {
@@ -91,7 +91,6 @@ export class MidiService {
     this.listenersReady = this.installNativeListeners();
   }
 
-  // ------------------------------------------------------------------ nativo
   private async installNativeListeners(): Promise<void> {
     try {
       await this.native.addListener('midiMessage', (event) => {
@@ -110,10 +109,16 @@ export class MidiService {
 
   public setCallbacks(
     onRefresh: (destinations?: MidiDestination[]) => void,
-    onDisconnect: (destination: MidiDestination) => void,
+    onDisconnect: (destination: MidiDestination, reason?: 'lost' | 'reconnecting' | 'failed') => void,
   ): void {
     this.onRefreshCallback = onRefresh;
     this.onDisconnectCallback = onDisconnect;
+  }
+
+  /** Limpa os callbacks para evitar vazamento de memória quando a UI desmonta. */
+  public clearCallbacks(): void {
+    this.onRefreshCallback = undefined;
+    this.onDisconnectCallback = undefined;
   }
 
   public async initWebMidi(): Promise<void> {
@@ -121,7 +126,6 @@ export class MidiService {
     await this.native.initialize();
   }
 
-  // --------------------------------------------------------------- dispositivos
   public async getAvailableDestinations(): Promise<MidiDestination[]> {
     return this.refreshDevices();
   }
@@ -193,30 +197,57 @@ export class MidiService {
     return [...this.destinations];
   }
 
-  /** Hot-plug: atualiza a lista e desconecta o que sumiu (cabo USB removido, por exemplo). */
   private async onDevicesChanged(): Promise<void> {
     const list = await this.refreshDevices();
     const present = new Set(list.map((d) => d.id));
     for (const dest of [...this.connectedOutputs.values()]) {
       if (dest.id === VIRTUAL_ID || dest.type === 'ble') continue;
-      if (!present.has(dest.id)) this.dropDevice(dest);
+      if (!present.has(dest.id)) this.dropDevice(dest, 'lost');
     }
   }
 
-  /** Remove o dispositivo do estado local sem tentar falar com ele (ele já não existe). */
-  private dropDevice(dest: MidiDestination): void {
+  private dropDevice(dest: MidiDestination, reason: 'lost' | 'failed' = 'lost'): void {
     if (!this.connectedOutputs.delete(dest.id)) return;
     this.connectedInputs.delete(dest.id);
     this.sendFailures.delete(dest.id);
-    this.onDisconnectCallback?.(dest);
+    this.reconnectAttempts.delete(dest.id);
+    this.onDisconnectCallback?.(dest, reason);
     this.onRefreshCallback?.(this.destinations);
+
+    if (reason === 'failed' && dest.type === 'ble') {
+      void this.attemptBleReconnect(dest);
+    }
   }
 
-  // ------------------------------------------------------------------ conexões
-  /**
-   * Conecta o dispositivo nas duas direções que ele suportar: teclados USB só têm porta de entrada
-   * (enviam para o app), módulos de som só têm porta de saída (recebem do app), e BLE MIDI tem ambas.
-   */
+  private async attemptBleReconnect(dest: MidiDestination): Promise<void> {
+    if (!dest.bleAddress) return;
+    const attempts = (this.reconnectAttempts.get(dest.id) ?? 0) + 1;
+    this.reconnectAttempts.set(dest.id, attempts);
+
+    if (attempts > 3) {
+      this.reconnectAttempts.delete(dest.id);
+      this.onDisconnectCallback?.(dest, 'failed');
+      return;
+    }
+
+    this.onDisconnectCallback?.(dest, 'reconnecting');
+
+    // Backoff exponencial: 2s, 4s, 8s
+    const delay = 2000 * Math.pow(2, attempts - 1);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+
+    // Se o usuário desconectou manualmente nesse meio tempo, aborta
+    if (!this.scannedBleDevices.some((d) => d.id === dest.id)) return;
+
+    try {
+      await this.connectOutput(dest);
+      this.reconnectAttempts.delete(dest.id);
+      this.onRefreshCallback?.(this.destinations);
+    } catch {
+      void this.attemptBleReconnect(dest);
+    }
+  }
+
   public async connectOutput(destination: MidiDestination): Promise<void> {
     if (this.connectedOutputs.has(destination.id)) return;
 
@@ -228,8 +259,8 @@ export class MidiService {
         this.connectedInputs.add(destination.id);
         canSend = true;
       } else {
-        const hasOutputPort = (destination.inputPortCount ?? 1) > 0; // app → dispositivo
-        const hasInputPort = (destination.outputPortCount ?? 0) > 0; // dispositivo → app
+        const hasOutputPort = (destination.inputPortCount ?? 1) > 0;
+        const hasInputPort = (destination.outputPortCount ?? 0) > 0;
         let firstError: unknown;
         let anyOk = false;
         if (hasOutputPort) {
@@ -261,6 +292,7 @@ export class MidiService {
   public async disconnectOutput(id: string): Promise<void> {
     const dest = this.connectedOutputs.get(id);
     if (!dest) return;
+    this.reconnectAttempts.delete(id); // Cancela retries se for manual
     await this.allNotesOffForDevice(dest);
     if (id !== VIRTUAL_ID) {
       const nativeId = dest.bleAddress || dest.id;
@@ -274,7 +306,7 @@ export class MidiService {
     this.connectedInputs.delete(id);
     this.connectedOutputs.delete(id);
     this.sendFailures.delete(id);
-    this.onDisconnectCallback?.(dest);
+    this.onDisconnectCallback?.(dest, 'lost');
   }
 
   public getConnectedDestinations(): MidiDestination[] {
@@ -293,8 +325,6 @@ export class MidiService {
     this.connectedInputs.delete(inputId);
   }
 
-  // -------------------------------------------------------------------- rotas
-  // Arrow functions: podem ser passadas direto ao useSyncExternalStore sem perder o `this`.
   public getRoutes = (): MidiRoute[] => this.routesStore.get().routes;
 
   public subscribeRoutes = (listener: () => void): (() => void) => this.routesStore.subscribe(listener);
@@ -321,13 +351,11 @@ export class MidiService {
     this.routesStore.set((s) => ({ routes: s.routes.filter((r) => r.id !== id) }));
   }
 
-  /** Ao conectar um dispositivo de saída, cria "Teclado Virtual → dispositivo" se ainda não houver rota para ele. */
   private ensureDefaultRoute(dest: MidiDestination): void {
     if (this.getRoutes().some((r) => r.destinationId === dest.id)) return;
     this.addRoute({ sourceId: VIRTUAL_ID, destinationId: dest.id });
   }
 
-  // ---------------------------------------------------------------- BLE server
   public getBleServerActive(): boolean {
     return this.bleServerActive;
   }
@@ -351,7 +379,6 @@ export class MidiService {
     this.bleServerActive = false;
   }
 
-  // ------------------------------------------------------------------ listeners
   public addActivityListener(listener: (velocity: number) => void): void {
     this.activityListeners.add(listener);
   }
@@ -364,7 +391,6 @@ export class MidiService {
   public removeMessageListener(listener: (message: MidiMessage) => void): void {
     this.messageListeners.delete(listener);
   }
-  /** Observa todas as mensagens de canal (RX e TX) — usado pelo gravador. */
   public addTap(tap: MidiTap): () => void {
     this.taps.add(tap);
     return () => this.taps.delete(tap);
@@ -373,7 +399,6 @@ export class MidiService {
     this.learn = learn;
   }
 
-  // -------------------------------------------------------------------- monitor
   public getLog = (): MidiLogEntry[] => this.logEntries;
   public subscribeLog = (listener: () => void): (() => void) => {
     this.logListeners.add(listener);
@@ -405,13 +430,7 @@ export class MidiService {
     this.logListeners.forEach((l) => l());
   }
 
-  // ------------------------------------------------------------------- envio
-  public async sendKeyboardNote(
-    channel: number,
-    note: number,
-    velocity: number,
-    isNoteOn: boolean,
-  ): Promise<{ hex: string }> {
+  public async sendKeyboardNote(channel: number, note: number, velocity: number, isNoteOn: boolean): Promise<{ hex: string }> {
     const safeNote = clampInt(note, 0, 127);
     const safeVelocity = clampInt(velocity, 0, 127);
     const on = isNoteOn && safeVelocity > 0;
@@ -451,7 +470,6 @@ export class MidiService {
     return { hex: toHex([status, p]) };
   }
 
-  /** MIDI Panic: silencia o sintetizador local e todos os destinos conectados nos canais pedidos. */
   public async sendPanic(channels: readonly number[] = Array.from({ length: 16 }, (_, i) => i + 1)): Promise<void> {
     this.synth.allNotesOff();
     const targets = [...this.connectedOutputs.values()].filter((d) => d.id !== VIRTUAL_ID);
@@ -467,7 +485,6 @@ export class MidiService {
     await Promise.all(jobs);
   }
 
-  /** Envia mensagem de tempo real (Clock/Start/Stop) a todos os destinos conectados. */
   public async broadcastRealtime(status: number): Promise<void> {
     if (status < 0xf8) return;
     const targets = [...this.connectedOutputs.values()].filter((d) => d.id !== VIRTUAL_ID);
@@ -479,7 +496,6 @@ export class MidiService {
     return { id: BLE_SERVER_ID, name: 'BLE MIDI (visível)', displayName: 'BLE MIDI (visível)', type: 'ble' };
   }
 
-  // ------------------------------------------------------------ roteamento
   public routeMessage(status: number, data1: number, data2: number, sourceId?: string): void {
     const command = status & 0xf0;
     const inputChannel = (status & 0x0f) + 1;
@@ -489,7 +505,6 @@ export class MidiService {
     if (command === 0x90 && data2 > 0) this.activityListeners.forEach((l) => safe(() => l(data2)));
     this.taps.forEach((tap) => safe(() => tap({ status, data1, data2, sourceId })));
 
-    // Sintetizador SoundFont local
     if (this.synth.getIsReady()) {
       switch (command) {
         case 0x90:
@@ -519,12 +534,10 @@ export class MidiService {
       }
     }
 
-    // BLE visível: o que o app toca também chega ao instrumento/DAW que se conectou nele.
     if (fromApp && this.bleServerActive) {
       void this.sendToDevice(this.bleServerDestination(), this.encode(command, inputChannel, data1, data2));
     }
 
-    // Roteamento externo (USB/BLE)
     for (const route of this.getRoutes()) {
       if (!route.enabled) continue;
       if (route.sourceId && route.sourceId !== sourceId) continue;
@@ -554,10 +567,9 @@ export class MidiService {
     } catch (error) {
       const failures = (this.sendFailures.get(destination.id) ?? 0) + 1;
       this.sendFailures.set(destination.id, failures);
-      // Falhas seguidas = o dispositivo foi desligado/saiu do alcance: avisa a interface.
       if (failures >= MAX_SEND_FAILURES && destination.id !== BLE_SERVER_ID) {
         console.warn(`Destino ${destination.displayName} não responde:`, error);
-        this.dropDevice(destination);
+        this.dropDevice(destination, 'failed');
       }
     }
   }
@@ -569,8 +581,6 @@ export class MidiService {
     );
   }
 
-  // ------------------------------------------------------------------ entrada
-  /** Normaliza o ID de origem (o plugin informa o endereço BLE; as rotas usam `ble-<endereço>`). */
   private normalizeSource(sourceId?: string): string | undefined {
     if (!sourceId) return sourceId;
     return this.bleAddressToId.get(sourceId) ?? sourceId;
@@ -581,7 +591,7 @@ export class MidiService {
     const sourceId = this.normalizeSource(rawSourceId);
 
     for (const parsed of parseMidiBytes(bytes)) {
-      if (parsed.kind === 'sysex') continue; // ainda não repassado
+      if (parsed.kind === 'sysex') continue;
 
       if (parsed.kind === 'realtime') {
         this.forwardRealtime(parsed.status, sourceId);
@@ -592,7 +602,6 @@ export class MidiService {
       const message: MidiMessage = { status, data1, data2, timestamp: this.now(), sourceId };
       this.messageListeners.forEach((l) => safe(() => l(message), 'Erro em listener MIDI:'));
 
-      // MIDI Learn: um CC mapeado ajusta o app e não é repassado adiante.
       if (this.learn?.handle(status, data1, data2)) {
         this.pushLog(status, data1, data2, sourceId, 'RX');
         continue;
@@ -601,10 +610,9 @@ export class MidiService {
     }
   }
 
-  /** Clock/Start/Stop vindos de um dispositivo são repassados às rotas, sem poluir o monitor. */
   private forwardRealtime(status: number, sourceId?: string): void {
     if (!CLOCK_OR_SENSING.has(status)) this.pushLog(status, 0, 0, sourceId, 'RX');
-    if (status === 0xfe) return; // Active Sensing nunca é repassado
+    if (status === 0xfe) return;
     for (const route of this.getRoutes()) {
       if (!route.enabled) continue;
       if (route.sourceId && route.sourceId !== sourceId) continue;
