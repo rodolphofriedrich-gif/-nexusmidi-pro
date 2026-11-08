@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import {
   Activity, AudioWaveform, GitBranch, LogOut, Music2, Menu, X, Usb, Bluetooth, type LucideIcon,
-  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, Power, LayoutGrid, SlidersHorizontal, Lock, Unlock, ShieldAlert, Settings
+  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, LayoutGrid, SlidersHorizontal, Lock, Unlock, ShieldAlert, Settings
 } from 'lucide-react';
 import { ConnectionMenu } from './components/ConnectionMenu';
 import { ExitDialog } from './components/ExitDialog';
@@ -86,7 +86,7 @@ export default function App() {
   const [showExit, setShowExit] = useState(false);
   const [vuLevel, setVuLevel] = useState(0);
   const [activeNotes, setActiveNotes] = useState(0);
-  const [keyboardEnabled, setKeyboardEnabled] = useState(true);
+  // REMOVIDO: const [keyboardEnabled, setKeyboardEnabled] = useState(true);
   const [isPadEditMode, setIsPadEditMode] = useState(false);
   const [isPadChannelOpen, setIsPadChannelOpen] = useState(false);
 
@@ -178,9 +178,10 @@ export default function App() {
   const handleNoteOn = useCallback((note: number, channel: number, velocity?: number) => performanceEngine.noteOn(channel, note, velocity ?? prefsStore.get().velocity), []);
   const handleNoteOff = useCallback((note: number, channel: number) => performanceEngine.noteOff(channel, note), []);
 
+  // SIMPLIFICADO: Apenas avisa que não há conexão
   const handleDisabledPress = useCallback(() => {
-    showMessage(keyboardEnabled ? tr('Conecte um destino MIDI ou carregue um SoundFont.') : tr('O teclado virtual está desativado.'), 'warn', 2500);
-  }, [keyboardEnabled, showMessage]);
+    showMessage(tr('Conecte um destino MIDI ou carregue um SoundFont.'), 'warn', 2500);
+  }, [showMessage]);
 
   const handleToggleSustain = useCallback(async () => {
     const next = !prefs.sustain;
@@ -314,7 +315,7 @@ export default function App() {
                       <button type="button" disabled={startOctave >= 6} onClick={() => setStartOctave(v => Math.min(6, v + 1))} className={`${btnClass} w-10 text-lg`}>+</button>
                     </div>
                     <button type="button" onClick={handleToggleSustain} className={`${btnClass} ${prefs.sustain ? btnActiveClass : ''} hidden sm:flex`}><Pause size={16} /> SUSTAIN</button>
-                    <button type="button" onClick={() => { setKeyboardEnabled(!keyboardEnabled); showMessage(!keyboardEnabled ? tr('Teclado Virtual Ligado') : tr('Teclado Virtual Desligado'), 'info', 1500); }} className={`${btnClass} ${keyboardEnabled ? btnActiveClass : ''} hidden md:flex`}><Power size={16} /><span className="hidden lg:inline">{keyboardEnabled ? 'ON' : 'OFF'}</span></button>
+                    {/* REMOVIDO: Botão de Power (Ligar/Desligar teclado) */}
                     <div className="h-6 w-px bg-[var(--border-color)] shrink-0 hidden sm:block mx-1" />
                     <button type="button" onClick={() => keyboardRef.current?.openChannelPopup()} className={`${btnClass}`}>
                       <span className="text-xs font-bold uppercase">CH</span>
@@ -487,7 +488,7 @@ export default function App() {
                     onNoteOff={(note) => handleNoteOff(note, prefs.channel)}
                     onDisabledPress={handleDisabledPress}
                     onActiveNotesChange={setActiveNotes}
-                    isActive={keyboardEnabled}
+                    isActive={true}
                     isSustainActive={prefs.sustain}
                     onToggleSustain={handleToggleSustain}
                     selectedVelocity={prefs.velocity}
@@ -508,7 +509,7 @@ export default function App() {
                 <div className="flex min-h-0 flex-1 flex-col">
                   <MidiPadGrid 
                     bank={padBank} 
-                    isActive={keyboardEnabled} 
+                    isActive={true} 
                     isConnected={canPlay} 
                     onNoteOn={(note, velocity) => handleNoteOn(note, prefs.padsChannel, velocity)} 
                     onNoteOff={(note) => handleNoteOff(note, prefs.padsChannel)} 
