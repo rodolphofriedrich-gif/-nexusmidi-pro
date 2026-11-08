@@ -28,11 +28,10 @@ import { prefsStore } from './services/stores';
 import { synthService } from './services/synthService';
 import { acquireWakeLock, releaseWakeLock } from './services/wakeLockService';
 
-type AppTab = 'keyboard' | 'pads' | 'midi' | 'studio' | 'settings';
+type AppTab = 'play' | 'midi' | 'studio' | 'settings';
 
 const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string; color: string }> = [
-  { id: 'keyboard', Icon: Music2, label: 'Teclado', color: 'text-[var(--nexus-primary)]' },
-  { id: 'pads', Icon: LayoutGrid, label: 'PADS', color: 'text-[var(--nexus-primary)]' },
+  { id: 'play', Icon: Play, label: 'Tocar', color: 'text-[var(--nexus-primary)]' },
   { id: 'midi', Icon: Activity, label: 'MIDI', color: 'text-[var(--nexus-primary)]' },
   { id: 'studio', Icon: AudioWaveform, label: 'Estúdio', color: 'text-[var(--nexus-primary)]' },
   { id: 'settings', Icon: Settings, label: 'Configurações', color: 'text-[var(--nexus-primary)]' },
@@ -80,7 +79,8 @@ export default function App() {
   const notify = useCallback((text: string, type: ToastType = 'info', ms = 3500) => showMessage(text, type, ms), [showMessage]);
   const devices = useMidiDevices(notify);
 
-  const [activeTab, setActiveTab] = useState<AppTab>('keyboard');
+  const [activeTab, setActiveTab] = useState<AppTab>('play');
+  const [playTab, setPlayTab] = useState<'keyboard' | 'pads'>('keyboard');
   const [openMenu, setOpenMenu] = useState<'usb' | 'ble' | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showExit, setShowExit] = useState(false);
@@ -95,7 +95,7 @@ export default function App() {
   const keyboardRef = useRef<MidiKeyboardHandle>(null);
 
   const [studioTab, setStudioTab] = useState<'synth' | 'mixer' | 'tools'>('synth');
-  const [midiTab, setMidiTab] = useState<'router' | 'monitor'>('router'); // NOVO
+  const [midiTab, setMidiTab] = useState<'router' | 'monitor'>('router');
   
   const [isRouterRefreshing, setIsRouterRefreshing] = useState(false);
   const [monitorFilter, setMonitorFilter] = useState<'all' | 'RX' | 'TX'>('all');
@@ -292,61 +292,75 @@ export default function App() {
               <Menu size={22} />
             </button>
 
-            {activeTab === 'keyboard' && (
+            {activeTab === 'play' && (
               <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nexus-primary)] mr-2 px-1 shrink-0 hidden sm:block">
-                  {tr('Teclado')}
-                </h2>
-
-                <div className="flex shrink-0 items-center gap-1">
-                  <button type="button" disabled={startOctave <= 1} onClick={() => setStartOctave(v => Math.max(1, v - 1))} className={`${btnClass} w-10 text-lg`}>−</button>
-                  <div className="flex h-10 min-w-[44px] items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-2 font-mono text-sm font-bold text-[var(--nexus-primary)]">C{startOctave}</div>
-                  <button type="button" disabled={startOctave >= 6} onClick={() => setStartOctave(v => Math.min(6, v + 1))} className={`${btnClass} w-10 text-lg`}>+</button>
-                </div>
-                <button type="button" onClick={handleToggleSustain} className={`${btnClass} ${prefs.sustain ? btnActiveClass : ''} hidden sm:flex`}><Pause size={16} /> SUSTAIN</button>
-
-                <button type="button" onClick={() => { setKeyboardEnabled(!keyboardEnabled); showMessage(!keyboardEnabled ? tr('Teclado Virtual Ligado') : tr('Teclado Virtual Desligado'), 'info', 1500); }} className={`${btnClass} ${keyboardEnabled ? btnActiveClass : ''} hidden md:flex`}><Power size={16} /><span className="hidden lg:inline">{keyboardEnabled ? 'ON' : 'OFF'}</span></button>
-
-                <div className="h-6 w-px bg-[var(--border-color)] shrink-0 hidden sm:block mx-1" />
-
-                <button type="button" onClick={() => keyboardRef.current?.openChannelPopup()} className={`${btnClass}`}>
-                  <span className="text-xs font-bold uppercase">CH</span>
-                  <span className="min-w-[16px] text-center font-mono text-sm font-bold text-[var(--nexus-primary)]">{String(prefs.channel).padStart(2, '0')}</span>
-                  <ChevronDown size={14} />
-                </button>
-                <button type="button" onClick={() => keyboardRef.current?.openSettingsPopup()} className={`${btnClass} w-10`}>
-                  <SlidersHorizontal size={16} />
-                </button>
-              </div>
-            )}
-
-            {activeTab === 'pads' && (
-              <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nexus-primary)] mr-2 px-1 shrink-0 hidden sm:block">
-                  {tr('PADS')}
-                </h2>
-                <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
-                  {[0, 1, 2, 3].map((b) => (
-                    <button key={b} type="button" onClick={() => setPadBank(b)} className={`h-9 whitespace-nowrap rounded-md px-4 text-xs font-bold transition-all ${padBank === b ? 'bg-indigo-600 text-white shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]'}`}>{tr('BANCO {n}', { n: b + 1 })}</button>
-                  ))}
-                </div>
                 
-                <div className="flex items-center gap-2 ml-2">
-                  <button type="button" onClick={() => setIsPadChannelOpen(true)} className={`${btnClass}`}>
-                    <span className="text-xs font-bold uppercase">CH</span>
-                    <span className="min-w-[16px] text-center font-mono text-sm font-bold text-[var(--nexus-primary)]">{String(prefs.padsChannel).padStart(2, '0')}</span>
-                    <ChevronDown size={14} />
+                {/* SUB-ABAS: TECLADO / PADS */}
+                <div className="flex items-center gap-1 shrink-0 bg-[var(--bg-app)] p-0.5 rounded-lg border border-[var(--border-color)] mr-2">
+                  <button type="button" onClick={() => setPlayTab('keyboard')} className={`flex items-center gap-1.5 px-3 h-9 rounded-md text-xs font-bold transition-all ${playTab === 'keyboard' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
+                    <Music2 size={14} /> <span className="hidden sm:inline">{tr('Teclado')}</span>
                   </button>
-                  
-                  <button 
-                    type="button" 
-                    onClick={() => setIsPadEditMode(!isPadEditMode)} 
-                    className={`${btnClass} ${isPadEditMode ? btnActiveClass : ''} w-10`}
-                    title={tr('Modo de Edição dos Pads')}
-                  >
-                    {isPadEditMode ? <Unlock size={16} /> : <Lock size={16} />}
+                  <button type="button" onClick={() => setPlayTab('pads')} className={`flex items-center gap-1.5 px-3 h-9 rounded-md text-xs font-bold transition-all ${playTab === 'pads' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
+                    <LayoutGrid size={14} /> <span className="hidden sm:inline">{tr('PADS')}</span>
                   </button>
                 </div>
+
+                {/* CONTROLES DO TECLADO */}
+                {playTab === 'keyboard' && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button type="button" disabled={startOctave <= 1} onClick={() => setStartOctave(v => Math.max(1, v - 1))} className={`${btnClass} w-10 text-lg`}>−</button>
+                      <div className="flex h-10 min-w-[44px] items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-2 font-mono text-sm font-bold text-[var(--nexus-primary)]">C{startOctave}</div>
+                      <button type="button" disabled={startOctave >= 6} onClick={() => setStartOctave(v => Math.min(6, v + 1))} className={`${btnClass} w-10 text-lg`}>+</button>
+                    </div>
+                    <button type="button" onClick={handleToggleSustain} className={`${btnClass} ${prefs.sustain ? btnActiveClass : ''} hidden sm:flex`}><Pause size={16} /> SUSTAIN</button>
+                    <button type="button" onClick={() => { setKeyboardEnabled(!keyboardEnabled); showMessage(!keyboardEnabled ? tr('Teclado Virtual Ligado') : tr('Teclado Virtual Desligado'), 'info', 1500); }} className={`${btnClass} ${keyboardEnabled ? btnActiveClass : ''} hidden md:flex`}><Power size={16} /><span className="hidden lg:inline">{keyboardEnabled ? 'ON' : 'OFF'}</span></button>
+                    <div className="h-6 w-px bg-[var(--border-color)] shrink-0 hidden sm:block mx-1" />
+                    <button type="button" onClick={() => keyboardRef.current?.openChannelPopup()} className={`${btnClass}`}>
+                      <span className="text-xs font-bold uppercase">CH</span>
+                      <span className="min-w-[16px] text-center font-mono text-sm font-bold text-[var(--nexus-primary)]">{String(prefs.channel).padStart(2, '0')}</span>
+                      <ChevronDown size={14} />
+                    </button>
+                    <button type="button" onClick={() => keyboardRef.current?.openSettingsPopup()} className={`${btnClass} w-10`}>
+                      <SlidersHorizontal size={16} />
+                    </button>
+                  </div>
+                )}
+
+                {/* CONTROLES DOS PADS */}
+                {playTab === 'pads' && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] hidden sm:block">
+                        {tr('Bancos')}:
+                      </span>
+                      <div className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-0.5">
+                        {[0, 1, 2, 3].map((b) => (
+                          <button
+                            key={b}
+                            type="button"
+                            onClick={() => setPadBank(b)}
+                            className={`h-9 w-9 flex items-center justify-center rounded-md text-xs font-bold transition-all ${
+                              padBank === b
+                                ? 'bg-indigo-600 text-white shadow-sm'
+                                : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]'
+                            }`}
+                          >
+                            {b + 1}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => setIsPadChannelOpen(true)} className={`${btnClass}`}>
+                      <span className="text-xs font-bold uppercase">CH</span>
+                      <span className="min-w-[16px] text-center font-mono text-sm font-bold text-[var(--nexus-primary)]">{String(prefs.padsChannel).padStart(2, '0')}</span>
+                      <ChevronDown size={14} />
+                    </button>
+                    <button type="button" onClick={() => setIsPadEditMode(!isPadEditMode)} className={`${btnClass} ${isPadEditMode ? btnActiveClass : ''} w-10`} title={tr('Modo de Edição dos Pads')}>
+                      {isPadEditMode ? <Unlock size={16} /> : <Lock size={16} />}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -379,7 +393,6 @@ export default function App() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            {/* Botões específicos do Roteador */}
             {activeTab === 'midi' && midiTab === 'router' && (
               <>
                 <button type="button" aria-label={tr('Atualizar lista')} onClick={() => void handleRefreshRouter()} disabled={isRouterRefreshing} className={`${btnClass} w-10`}>
@@ -391,7 +404,6 @@ export default function App() {
               </>
             )}
 
-            {/* Botões específicos do Monitor */}
             {activeTab === 'midi' && midiTab === 'monitor' && (
               <>
                 <div className="relative">
@@ -460,7 +472,7 @@ export default function App() {
         )}
 
         <main className="nexus-main flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[var(--bg-app)]">
-          {activeTab === 'keyboard' && (
+          {activeTab === 'play' && playTab === 'keyboard' && (
             <div className="nexus-keyboard-page flex min-h-0 w-full flex-1 flex-col gap-1 overflow-hidden p-1 pb-[env(safe-area-inset-bottom)] sm:p-1.5">
               <div className="flex min-h-0 flex-1 flex-row gap-1">
                 <div className="py-1"><VuMeter level={vuLevel} /></div>
@@ -489,7 +501,7 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === 'pads' && (
+          {activeTab === 'play' && playTab === 'pads' && (
             <div className="nexus-pads-page flex min-h-0 w-full flex-1 flex-col gap-1 overflow-hidden p-1 pb-[env(safe-area-inset-bottom)] sm:p-1.5">
               <div className="flex min-h-0 flex-1 flex-row gap-1">
                 <div className="py-1"><VuMeter level={vuLevel} /></div>
