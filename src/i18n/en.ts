@@ -38,7 +38,7 @@ export const en: Record<string, string> = {
   "Azul": "Blue",
   "BIBLIOTECA": "LIBRARY",
   "BPM (60–240)": "BPM (60–240)",
-  "BANCO {n}": "BANK {n}",
+  "BANCOS {n}": "BANKS {n}",
   "Baixo": "Bass",
   "Baterias": "Drums",
   "Bloco Mad.": "Woodblock",
