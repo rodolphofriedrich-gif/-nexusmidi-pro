@@ -13,7 +13,7 @@ import { MidiMonitorScreen } from './components/MidiMonitorScreen';
 import { MidiPadGrid } from './components/MidiPadGrid';
 import { MidiRouterScreen } from './components/MidiRouterScreen';
 import { MidiStatusBar } from './components/MidiStatusBar';
-import { SettingsScreen } from './components/SettingsScreen'; // NOVO
+import { SettingsScreen } from './components/SettingsScreen';
 import { StatusToast } from './components/StatusToast';
 import { StudioScreen } from './components/StudioScreen';
 import { VuMeter } from './components/VuMeter';
@@ -28,15 +28,14 @@ import { prefsStore } from './services/stores';
 import { synthService } from './services/synthService';
 import { acquireWakeLock, releaseWakeLock } from './services/wakeLockService';
 
-type AppTab = 'keyboard' | 'pads' | 'router' | 'studio' | 'monitor' | 'settings';
+type AppTab = 'keyboard' | 'pads' | 'midi' | 'studio' | 'settings';
 
 const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string; color: string }> = [
   { id: 'keyboard', Icon: Music2, label: 'Teclado', color: 'text-[var(--nexus-primary)]' },
   { id: 'pads', Icon: LayoutGrid, label: 'PADS', color: 'text-[var(--nexus-primary)]' },
-  { id: 'router', Icon: GitBranch, label: 'Roteador', color: 'text-[var(--nexus-primary)]' },
+  { id: 'midi', Icon: Activity, label: 'MIDI', color: 'text-[var(--nexus-primary)]' },
   { id: 'studio', Icon: AudioWaveform, label: 'Estúdio', color: 'text-[var(--nexus-primary)]' },
-  { id: 'monitor', Icon: Activity, label: 'Monitor', color: 'text-[var(--nexus-primary)]' },
-  { id: 'settings', Icon: Settings, label: 'Configurações', color: 'text-[var(--nexus-primary)]' }, // NOVO
+  { id: 'settings', Icon: Settings, label: 'Configurações', color: 'text-[var(--nexus-primary)]' },
 ];
 
 function ChannelSelectPopup({ title, value, onSelect, onClose }: { title: string; value: number; onSelect: (ch: number) => void; onClose: () => void }) {
@@ -96,6 +95,8 @@ export default function App() {
   const keyboardRef = useRef<MidiKeyboardHandle>(null);
 
   const [studioTab, setStudioTab] = useState<'synth' | 'mixer' | 'tools'>('synth');
+  const [midiTab, setMidiTab] = useState<'router' | 'monitor'>('router'); // NOVO
+  
   const [isRouterRefreshing, setIsRouterRefreshing] = useState(false);
   const [monitorFilter, setMonitorFilter] = useState<'all' | 'RX' | 'TX'>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -349,18 +350,12 @@ export default function App() {
               </div>
             )}
 
-            {activeTab === 'router' && (
-              <div className="flex items-center gap-3 lg:flex-1 lg:justify-center">
-                <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-[var(--nexus-primary)] shrink-0 hidden sm:flex">
-                  <GitBranch size={18} /> {tr('Roteador MIDI Matriz')}
-                </h2>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button type="button" aria-label={tr('Atualizar lista')} onClick={() => void handleRefreshRouter()} disabled={isRouterRefreshing} className={`${btnClass} w-10`}>
-                    <RefreshCw size={16} className={isRouterRefreshing ? 'animate-spin' : ''} />
-                  </button>
-                  <button type="button" onClick={addNewRoute} className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 h-10 text-xs font-bold text-white shadow-lg shadow-black/20 transition hover:bg-indigo-500">
-                    <Plus size={18} /> <span className="hidden sm:inline">{tr('Nova Rota')}</span>
-                  </button>
+            {activeTab === 'midi' && (
+              <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nexus-primary)] mr-2 px-1 shrink-0 hidden sm:block">{tr('MIDI')}</h2>
+                <div className="flex items-center gap-1 shrink-0 bg-[var(--bg-app)] p-0.5 rounded-lg border border-[var(--border-color)]">
+                  <button type="button" onClick={() => setMidiTab('router')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${midiTab === 'router' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><GitBranch size={16} /> <span className="hidden sm:inline">{tr('Roteador')}</span></button>
+                  <button type="button" onClick={() => setMidiTab('monitor')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${midiTab === 'monitor' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><Activity size={16} /> <span className="hidden sm:inline">{tr('Monitor')}</span></button>
                 </div>
               </div>
             )}
@@ -376,42 +371,6 @@ export default function App() {
               </div>
             )}
 
-            {activeTab === 'monitor' && (
-              <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--nexus-primary)] shrink-0 hidden sm:block">{tr('MIDI Monitor')}</h2>
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        const r = e.currentTarget.getBoundingClientRect();
-                        setFilterPos({ top: r.bottom + 4, left: Math.max(8, Math.min(r.left, window.innerWidth - 184)) });
-                        setIsFilterOpen(!isFilterOpen);
-                      }}
-                      className={`${btnClass} h-10`}
-                    >
-                      {monitorFilter === 'all' ? tr('Todos') : monitorFilter === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')} <ChevronDown size={14} />
-                    </button>
-                    {isFilterOpen && (
-                      <div style={{ top: filterPos.top, left: filterPos.left }} className="fixed z-[999] w-44 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl">
-                        {(['all', 'RX', 'TX'] as const).map((f) => (
-                          <button type="button" key={f} onClick={() => { setMonitorFilter(f); setIsFilterOpen(false); }} className={`w-full px-3 py-3 text-left text-xs hover:bg-[var(--bg-elevated)] ${monitorFilter === f ? 'font-bold text-[var(--nexus-primary)] bg-indigo-500/10' : 'text-[var(--text-main)]'}`}>
-                            {f === 'all' ? tr('Todos') : f === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <button type="button" onClick={() => setMonitorPaused(!monitorPaused)} className={`flex h-10 w-10 items-center justify-center rounded-lg border transition ${monitorPaused ? 'border-amber-600/60 bg-amber-900/30 text-amber-500' : 'border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
-                    {monitorPaused ? <Play size={16} /> : <Pause size={16} />}
-                  </button>
-                  <button type="button" onClick={() => { midiManager.clearLog(); setMonitorPaused(false); }} className={`${btnClass} w-10 hover:bg-red-950/50 hover:text-red-500`}>
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
-
             {activeTab === 'settings' && (
               <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nexus-primary)] mr-2 px-1 shrink-0 hidden sm:block">{tr('Configurações')}</h2>
@@ -420,6 +379,52 @@ export default function App() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            {/* Botões específicos do Roteador */}
+            {activeTab === 'midi' && midiTab === 'router' && (
+              <>
+                <button type="button" aria-label={tr('Atualizar lista')} onClick={() => void handleRefreshRouter()} disabled={isRouterRefreshing} className={`${btnClass} w-10`}>
+                  <RefreshCw size={16} className={isRouterRefreshing ? 'animate-spin' : ''} />
+                </button>
+                <button type="button" onClick={addNewRoute} className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 h-10 text-xs font-bold text-white shadow-lg shadow-black/20 transition hover:bg-indigo-500">
+                  <Plus size={18} /> <span className="hidden sm:inline">{tr('Nova Rota')}</span>
+                </button>
+              </>
+            )}
+
+            {/* Botões específicos do Monitor */}
+            {activeTab === 'midi' && midiTab === 'monitor' && (
+              <>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      setFilterPos({ top: r.bottom + 4, left: Math.max(8, Math.min(r.left, window.innerWidth - 184)) });
+                      setIsFilterOpen(!isFilterOpen);
+                    }}
+                    className={`${btnClass} h-10`}
+                  >
+                    {monitorFilter === 'all' ? tr('Todos') : monitorFilter === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')} <ChevronDown size={14} />
+                  </button>
+                  {isFilterOpen && (
+                    <div style={{ top: filterPos.top, left: filterPos.left }} className="fixed z-[999] w-44 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl">
+                      {(['all', 'RX', 'TX'] as const).map((f) => (
+                        <button type="button" key={f} onClick={() => { setMonitorFilter(f); setIsFilterOpen(false); }} className={`w-full px-3 py-3 text-left text-xs hover:bg-[var(--bg-elevated)] ${monitorFilter === f ? 'font-bold text-[var(--nexus-primary)] bg-indigo-500/10' : 'text-[var(--text-main)]'}`}>
+                          {f === 'all' ? tr('Todos') : f === 'RX' ? tr('Recebidos (RX)') : tr('Enviados (TX)')}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button type="button" onClick={() => setMonitorPaused(!monitorPaused)} className={`flex h-10 w-10 items-center justify-center rounded-lg border transition ${monitorPaused ? 'border-amber-600/60 bg-amber-900/30 text-amber-500' : 'border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
+                  {monitorPaused ? <Play size={16} /> : <Pause size={16} />}
+                </button>
+                <button type="button" onClick={() => { midiManager.clearLog(); setMonitorPaused(false); }} className={`${btnClass} w-10 hover:bg-red-950/50 hover:text-red-500`}>
+                  <Trash2 size={16} />
+                </button>
+              </>
+            )}
+
             <button
               type="button"
               onClick={handlePanic}
@@ -503,21 +508,19 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === 'router' && (
+          {activeTab === 'midi' && (
             <div className="nexus-screen-container flex min-h-0 flex-1 flex-col overflow-hidden">
-              <MidiRouterScreen destinations={devices.destinations} connectedDestinations={devices.connected} onRefresh={devices.refresh} isRefreshing={isRouterRefreshing} />
+              {midiTab === 'router' ? (
+                <MidiRouterScreen destinations={devices.destinations} connectedDestinations={devices.connected} onRefresh={devices.refresh} isRefreshing={isRouterRefreshing} />
+              ) : (
+                <MidiMonitorScreen filter={monitorFilter} paused={monitorPaused} />
+              )}
             </div>
           )}
 
           {activeTab === 'studio' && (
             <div className="nexus-screen-container flex min-h-0 flex-1 flex-col overflow-hidden">
               <StudioScreen activeTab={studioTab} channel={prefs.channel} isConnected={canPlay} onStatus={(message, type = 'info') => showMessage(message, type, 3000)} />
-            </div>
-          )}
-
-          {activeTab === 'monitor' && (
-            <div className="nexus-screen-container flex min-h-0 flex-1 flex-col overflow-hidden">
-              <MidiMonitorScreen filter={monitorFilter} paused={monitorPaused} />
             </div>
           )}
 
