@@ -198,6 +198,7 @@ export const en: Record<string, string> = {
   "Mixolídia": "Mixolydian",
   "Modo BLE MIDI visível ativado.": "Visible BLE MIDI mode enabled.",
   "Modo de Edição dos Pads": "Pad Edit Mode",
+  "Monitor": "Monitor",
   "Máx.": "Max",
   "Máximo": "Maximum",
   "Médio": "Medium",
