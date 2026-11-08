@@ -174,7 +174,6 @@ export const en: Record<string, string> = {
   "Limpar": "Clear",
   "Linear": "Linear",
   "MIDI": "MIDI",
-  "MIDI Monitor": "MIDI Monitor",
   "MIDI Panic": "MIDI Panic",
   "MIDI Panic enviado": "MIDI Panic sent",
   "MIDI Panic enviado ao canal {channel}.": "MIDI Panic sent to channel {channel}.",
