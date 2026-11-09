@@ -1,8 +1,12 @@
-import { clampInt } from '../lib/midiMath';import { createMemoryStorage, createStore } from '../lib/storeCore';import type { ArpConfig } from '../lib/arpeggiator';import { DEFAULT_ARP_CONFIG } from '../lib/arpeggiator';import type { CcMapping } from '../lib/midiLearn';
+import { clampInt } from '../lib/midiMath';
+import { createMemoryStorage, createStore } from '../lib/storeCore';
+import type { ArpConfig } from '../lib/arpeggiator';
+import { DEFAULT_ARP_CONFIG } from '../lib/arpeggiator';
+import type { CcMapping } from '../lib/midiLearn';
 import type { ChordId, ScaleId } from '../lib/scales';
 import type { VelocityCurve } from '../lib/velocity';
 import { CHANNEL_SETTING_KEYS, DEFAULT_CHANNEL_SETTINGS, DEFAULT_SYNTH_SETTINGS, type ChannelSettings, type SynthSettings } from './synthTypes';
-import type { ChordType } from '../constants/chords'; // NOVO IMPORT
+import type { ChordType } from '../constants/chords';
 
 export type Language = 'pt-BR' | 'en';
 const CURVES: VelocityCurve[] = ['linear', 'soft', 'hard', 'fixed'];
@@ -17,7 +21,7 @@ export interface Prefs {
   language: Language;
   theme: 'dark' | 'light' | 'system';
   sustain: boolean;
-  wakeLock: boolean; // NOVO
+  wakeLock: boolean;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -29,7 +33,7 @@ export const DEFAULT_PREFS: Prefs = {
   language: 'pt-BR',
   theme: 'dark',
   sustain: false,
-  wakeLock: true, // NOVO
+  wakeLock: true,
 };
 
 export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
@@ -49,8 +53,10 @@ export const prefsStore = createStore<Prefs>('nexusmidi.prefs', DEFAULT_PREFS, {
     padsChannel: clampInt(p.padsChannel, 1, 16),
     language: p.language === 'en' ? 'en' : 'pt-BR',
     theme: ['dark', 'light', 'system'].includes(p.theme) ? p.theme : 'dark',
-    sustain: Boolean(p.sustain),
-    wakeLock: typeof p.wakeLock === 'boolean' ? p.wakeLock : true, // NOVO
+    // NÃO RESTAURAR sustain: o sintetizador não sabe que o pedal está "ligado",
+    // então na reabertura sempre começa desligado. O CC 64 real é enviado quando o usuário alterna.
+    sustain: false,
+    wakeLock: typeof p.wakeLock === 'boolean' ? p.wakeLock : true,
   }),
 });
 
@@ -222,9 +228,23 @@ export interface PadsState {
   banks: PadData[][];
 }
 
+function cleanPad(raw: unknown, fallback: PadData): PadData {
+  if (!raw || typeof raw !== 'object') return fallback;
+  const p = raw as Partial<PadData>;
+  const note = Number(p.note);
+  const velocity = Number(p.velocity);
+  return {
+    note: Number.isFinite(note) ? clampInt(note, 0, 127) : fallback.note,
+    label: typeof p.label === 'string' && p.label.length > 0 ? p.label : fallback.label,
+    color: typeof p.color === 'string' && p.color.length > 0 ? p.color : fallback.color,
+    velocity: Number.isFinite(velocity) ? clampInt(velocity, 1, 127) : 100,
+    chordType: p.chordType,
+    chordIntervals: Array.isArray(p.chordIntervals) ? p.chordIntervals : undefined,
+  };
+}
+
 export const padsStore = createStore<PadsState>('nexusmidi.pads', { banks: DEFAULT_BANKS }, {
   legacy: (storage) => {
-    // Migra a versão antiga do localStorage para a store central
     const saved = storage.getItem('nexus_pads_data_v2');
     if (saved) {
       try {
@@ -235,7 +255,22 @@ export const padsStore = createStore<PadsState>('nexusmidi.pads', { banks: DEFAU
     return { banks: DEFAULT_BANKS };
   },
   sanitize: (state) => {
-    if (!Array.isArray(state.banks) || state.banks.length === 0) return { banks: DEFAULT_BANKS };
-    return { banks: state.banks };
-  }
+    // Sanitização PROFUNDA: valida 4 bancos × 16 pads.
+    // Se qualquer nível estiver corrompido, cai no fallback (default).
+    if (!Array.isArray(state.banks) || state.banks.length !== 4) return { banks: DEFAULT_BANKS };
+    const banks: PadData[][] = [];
+    for (let b = 0; b < 4; b++) {
+      const rawBank = state.banks[b];
+      if (!Array.isArray(rawBank) || rawBank.length !== 16) {
+        banks.push(DEFAULT_BANKS[b]);
+        continue;
+      }
+      const bank: PadData[] = [];
+      for (let i = 0; i < 16; i++) {
+        bank.push(cleanPad(rawBank[i], DEFAULT_BANKS[b][i]));
+      }
+      banks.push(bank);
+    }
+    return { banks };
+  },
 });
