@@ -13,6 +13,8 @@ export type { MidiMessage };
 export const VIRTUAL_ID = 'virtual-main';
 export const BLE_SERVER_ID = 'ble-server';
 const MAX_SEND_FAILURES = 3;
+const MAX_QUEUE_DEPTH = 200;
+const DROP_THRESHOLD = 400;
 const LOG_LIMIT = 300;
 const CLOCK_OR_SENSING = new Set([0xf8, 0xfe]);
 
@@ -60,6 +62,8 @@ export class MidiService {
   private readonly native: NativeMidiPort;
   private readonly synth: SynthPort;
   private readonly now: () => number;
+  private readonly sendQueues = new Map<string, Promise<void>>();
+  private readonly queueDepths = new Map<string, number>();
   private readonly routesStore: Store<{ routes: MidiRoute[] }>;
 
   private destinations: MidiDestination[] = [];
@@ -209,12 +213,13 @@ export class MidiService {
     }
   }
 
-  private dropDevice(dest: MidiDestination, reason: 'lost' | 'failed' = 'lost'): void {
+   private dropDevice(dest: MidiDestination, reason: 'lost' | 'failed' = 'lost'): void {
     if (!this.connectedOutputs.delete(dest.id)) return;
     this.connectedInputs.delete(dest.id);
     this.sendFailures.delete(dest.id);
     this.reconnectAttempts.delete(dest.id);
-    this.sendQueues.delete(dest.bleAddress || dest.id); // Limpa a fila ao perder o dispositivo
+    this.sendQueues.delete(dest.bleAddress || dest.id);
+    this.queueDepths.delete(dest.bleAddress || dest.id); // NOVO
     this.onDisconnectCallback?.(dest, reason);
     this.onRefreshCallback?.(this.destinations);
 
