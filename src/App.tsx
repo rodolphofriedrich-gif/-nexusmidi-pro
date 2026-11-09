@@ -31,7 +31,8 @@ import { acquireWakeLock, releaseWakeLock } from './services/wakeLockService';
 type AppTab = 'play' | 'midi' | 'studio' | 'settings';
 
 const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string; color: string }> = [
-  { id: 'play', Icon: Play, label: 'Tocar', color: 'text-[var(--nexus-primary)]' },
+  // Ícone trocado de Play para Music2
+  { id: 'play', Icon: Music2, label: 'Tocar', color: 'text-[var(--nexus-primary)]' }, 
   { id: 'midi', Icon: Activity, label: 'MIDI', color: 'text-[var(--nexus-primary)]' },
   { id: 'studio', Icon: AudioWaveform, label: 'Estúdio', color: 'text-[var(--nexus-primary)]' },
   { id: 'settings', Icon: Settings, label: 'Configurações', color: 'text-[var(--nexus-primary)]' },
@@ -86,7 +87,6 @@ export default function App() {
   const [showExit, setShowExit] = useState(false);
   const [vuLevel, setVuLevel] = useState(0);
   const [activeNotes, setActiveNotes] = useState(0);
-  // REMOVIDO: const [keyboardEnabled, setKeyboardEnabled] = useState(true);
   const [isPadEditMode, setIsPadEditMode] = useState(false);
   const [isPadChannelOpen, setIsPadChannelOpen] = useState(false);
 
@@ -103,19 +103,26 @@ export default function App() {
   const [filterPos, setFilterPos] = useState({ top: 60, left: 8 });
   const [monitorPaused, setMonitorPaused] = useState(false);
 
+  // Ref para controlar o estado do BackButton sem vazar memória
+  const uiStateRef = useRef({ isSidebarOpen, openMenu, isPadChannelOpen, showExit });
+  useEffect(() => {
+    uiStateRef.current = { isSidebarOpen, openMenu, isPadChannelOpen, showExit };
+  }, [isSidebarOpen, openMenu, isPadChannelOpen, showExit]);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     let backListener: any;
     const handleBack = () => {
-      if (isSidebarOpen) { setIsSidebarOpen(false); return; }
-      if (openMenu) { setOpenMenu(null); return; }
-      if (isPadChannelOpen) { setIsPadChannelOpen(false); return; }
-      if (showExit) { setShowExit(false); return; }
+      const state = uiStateRef.current;
+      if (state.isSidebarOpen) { setIsSidebarOpen(false); return; }
+      if (state.openMenu) { setOpenMenu(null); return; }
+      if (state.isPadChannelOpen) { setIsPadChannelOpen(false); return; }
+      if (state.showExit) { setShowExit(false); return; }
       setShowExit(true);
     };
     CapApp.addListener('backButton', handleBack).then(l => { backListener = l; });
     return () => { if (backListener) backListener.remove(); };
-  }, [isSidebarOpen, openMenu, isPadChannelOpen, showExit]);
+  }, []); // Roda apenas uma vez
 
   useEffect(() => {
     document.documentElement.lang = prefs.language;
@@ -178,7 +185,6 @@ export default function App() {
   const handleNoteOn = useCallback((note: number, channel: number, velocity?: number) => performanceEngine.noteOn(channel, note, velocity ?? prefsStore.get().velocity), []);
   const handleNoteOff = useCallback((note: number, channel: number) => performanceEngine.noteOff(channel, note), []);
 
-  // SIMPLIFICADO: Apenas avisa que não há conexão
   const handleDisabledPress = useCallback(() => {
     showMessage(tr('Conecte um destino MIDI ou carregue um SoundFont.'), 'warn', 2500);
   }, [showMessage]);
@@ -296,7 +302,6 @@ export default function App() {
             {activeTab === 'play' && (
               <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
                 
-                {/* SUB-ABAS: TECLADO / PADS */}
                 <div className="flex items-center gap-1 shrink-0 bg-[var(--bg-app)] p-0.5 rounded-lg border border-[var(--border-color)] mr-2">
                   <button type="button" onClick={() => setPlayTab('keyboard')} className={`flex items-center gap-1.5 px-3 h-9 rounded-md text-xs font-bold transition-all ${playTab === 'keyboard' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
                     <Music2 size={14} /> <span className="hidden sm:inline">{tr('Teclado')}</span>
@@ -306,7 +311,6 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* CONTROLES DO TECLADO */}
                 {playTab === 'keyboard' && (
                   <div className="flex items-center gap-2">
                     <div className="flex shrink-0 items-center gap-1">
@@ -315,7 +319,6 @@ export default function App() {
                       <button type="button" disabled={startOctave >= 6} onClick={() => setStartOctave(v => Math.min(6, v + 1))} className={`${btnClass} w-10 text-lg`}>+</button>
                     </div>
                     <button type="button" onClick={handleToggleSustain} className={`${btnClass} ${prefs.sustain ? btnActiveClass : ''} hidden sm:flex`}><Pause size={16} /> SUSTAIN</button>
-                    {/* REMOVIDO: Botão de Power (Ligar/Desligar teclado) */}
                     <div className="h-6 w-px bg-[var(--border-color)] shrink-0 hidden sm:block mx-1" />
                     <button type="button" onClick={() => keyboardRef.current?.openChannelPopup()} className={`${btnClass}`}>
                       <span className="text-xs font-bold uppercase">CH</span>
@@ -328,7 +331,6 @@ export default function App() {
                   </div>
                 )}
 
-                {/* CONTROLES DOS PADS */}
                 {playTab === 'pads' && (
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2">
@@ -484,8 +486,8 @@ export default function App() {
                     isConnected={canPlay}
                     selectedChannel={prefs.channel}
                     onSelectChannel={(channel) => { prefsStore.set({ channel }); showMessage(tr('Canal: {n}', { n: channel }), 'info', 1500); }}
-                    onNoteOn={(note) => handleNoteOn(note, prefs.channel)}
-                    onNoteOff={(note) => handleNoteOff(note, prefs.channel)}
+                    onNoteOn={(note) => handleNoteOn(note, prefs.channel)} // Corrigido no MidiKeyboard, mas mantido seguro aqui
+                    onNoteOff={(note) => handleNoteOff(note, prefs.channel)} 
                     onDisabledPress={handleDisabledPress}
                     onActiveNotesChange={setActiveNotes}
                     isActive={true}
