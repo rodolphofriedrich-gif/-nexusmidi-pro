@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Music, Timer } from 'lucide-react';
+import { Sparkles, Music, Timer, Disc } from 'lucide-react';
 import type { ToastType } from '../hooks/useToast';
 import { tr } from '../i18n';
 import { ArpPanel } from './tools/ArpPanel';
@@ -10,7 +10,7 @@ import { PerformancePanel } from './tools/PerformancePanel';
 import { RecorderPanel } from './tools/RecorderPanel';
 
 export function ToolsScreen({ onStatus }: { onStatus: (message: string, type?: ToastType) => void }) {
-  const [activeTool, setActiveTool] = useState<'performance' | 'arp' | 'metronome'>('performance');
+  const [activeTool, setActiveTool] = useState<'performance' | 'arp' | 'recorder' | 'metronome'>('performance');
 
   const btnClass = (active: boolean) =>
     `flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
@@ -29,6 +29,9 @@ export function ToolsScreen({ onStatus }: { onStatus: (message: string, type?: T
         </button>
         <button onClick={() => setActiveTool('arp')} className={btnClass(activeTool === 'arp')}>
           <Music size={14} className={iconClass(activeTool === 'arp')} /> {tr('ARRANJADOR')}
+        </button>
+        <button onClick={() => setActiveTool('recorder')} className={btnClass(activeTool === 'recorder')}>
+          <Disc size={14} className={iconClass(activeTool === 'recorder')} /> {tr('GRAVADOR')}
         </button>
         <button onClick={() => setActiveTool('metronome')} className={btnClass(activeTool === 'metronome')}>
           <Timer size={14} className={iconClass(activeTool === 'metronome')} /> {tr('Metrônomo e MIDI Clock')}
@@ -51,14 +54,15 @@ export function ToolsScreen({ onStatus }: { onStatus: (message: string, type?: T
           )}
 
           {activeTool === 'arp' && (
-            <>
-              <div className="flex flex-col gap-3">
-                <ArpPanel />
-              </div>
-              <div className="flex flex-col gap-3">
-                <RecorderPanel onStatus={onStatus} />
-              </div>
-            </>
+            <div className="flex flex-col gap-3 lg:col-span-2">
+              <ArpPanel />
+            </div>
+          )}
+
+          {activeTool === 'recorder' && (
+            <div className="flex flex-col gap-3 lg:col-span-2">
+              <RecorderPanel onStatus={onStatus} />
+            </div>
           )}
 
           {activeTool === 'metronome' && (
