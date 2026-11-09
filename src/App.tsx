@@ -1,10 +1,13 @@
-import { applyTheme, subscribeSystemTheme } from './lib/applyTheme';
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useRef } from 'react';
-import { Capacitor } from '@capacitor/core';
-import { App as CapApp } from '@capacitor/app';
-import { ChannelSelectPopup } from './app/components/ChannelSelectPopup';
+import { useCallback, useMemo, useState, useSyncExternalStore, useRef } from 'react';
 import { AppHeader } from './app/components/AppHeader';
 import { AppSidebar } from './app/components/AppSidebar';
+import { ChannelSelectPopup } from './app/components/ChannelSelectPopup';
+import {
+  useAndroidBackButton,
+  useLanguageAndTheme,
+  useVuMeter,
+  useWakeLock,
+} from './app/useAppEffects';
 import { useAppHandlers } from './app/useAppHandlers';
 import { ExitDialog } from './components/ExitDialog';
 import { MidiKeyboard, MidiKeyboardHandle } from './components/MidiKeyboard';
@@ -23,7 +26,6 @@ import { tr } from './i18n';
 import { midiManager } from './services/midiService';
 import { prefsStore } from './services/stores';
 import { synthService } from './services/synthService';
-import { acquireWakeLock, releaseWakeLock } from './services/wakeLockService';
 
 type AppTab = 'play' | 'midi' | 'studio' | 'settings';
 
@@ -39,7 +41,6 @@ export default function App() {
   const [openMenu, setOpenMenu] = useState<'usb' | 'ble' | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showExit, setShowExit] = useState(false);
-  const [vuLevel, setVuLevel] = useState(0);
   const [activeNotes, setActiveNotes] = useState(0);
   const [isPadEditMode, setIsPadEditMode] = useState(false);
   const [isPadChannelOpen, setIsPadChannelOpen] = useState(false);
@@ -54,6 +55,21 @@ export default function App() {
   const [isRouterRefreshing, setIsRouterRefreshing] = useState(false);
   const [monitorFilter, setMonitorFilter] = useState<'all' | 'RX' | 'TX'>('all');
   const [monitorPaused, setMonitorPaused] = useState(false);
+
+  // Effects extraídos para hooks especializados (ver src/app/useAppEffects.ts).
+  useAndroidBackButton({
+    isSidebarOpen,
+    openMenu,
+    isPadChannelOpen,
+    showExit,
+    setIsSidebarOpen,
+    setOpenMenu,
+    setIsPadChannelOpen,
+    setShowExit,
+  });
+  useLanguageAndTheme(prefs.language, prefs.theme);
+  useWakeLock(prefs.wakeLock);
+  const vuLevel = useVuMeter();
 
   const {
     handleNoteOn,
@@ -76,71 +92,6 @@ export default function App() {
   const handleClearMonitor = useCallback(() => {
     midiManager.clearLog();
     setMonitorPaused(false);
-  }, []);
-
-  const uiStateRef = useRef({ isSidebarOpen, openMenu, isPadChannelOpen, showExit });
-  useEffect(() => {
-    uiStateRef.current = { isSidebarOpen, openMenu, isPadChannelOpen, showExit };
-  }, [isSidebarOpen, openMenu, isPadChannelOpen, showExit]);
-
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    let backListener: any;
-    const handleBack = () => {
-      const state = uiStateRef.current;
-      if (state.isSidebarOpen) { setIsSidebarOpen(false); return; }
-      if (state.openMenu) { setOpenMenu(null); return; }
-      if (state.isPadChannelOpen) { setIsPadChannelOpen(false); return; }
-      if (state.showExit) { setShowExit(false); return; }
-      setShowExit(true);
-    };
-    CapApp.addListener('backButton', handleBack).then(l => { backListener = l; });
-    return () => { if (backListener) backListener.remove(); };
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.lang = prefs.language;
-  }, [prefs.language]);
-
-  useEffect(() => {
-    applyTheme(prefs.theme);
-    if (prefs.theme !== 'system') return;
-    return subscribeSystemTheme(() => applyTheme('system'));
-  }, [prefs.theme]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const apply = () => {
-      if (cancelled) return;
-      if (prefs.wakeLock) void acquireWakeLock();
-      else void releaseWakeLock();
-    };
-    apply();
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && prefs.wakeLock) void acquireWakeLock();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      cancelled = true;
-      document.removeEventListener('visibilitychange', handleVisibility);
-      void releaseWakeLock();
-    };
-  }, [prefs.wakeLock]);
-
-  useEffect(() => {
-    let lastActivity = 0;
-    const onActivity = (velocity: number) => {
-      lastActivity = Date.now();
-      setVuLevel(velocity);
-    };
-    midiManager.addActivityListener(onActivity);
-    const interval = setInterval(() => {
-      if (Date.now() - lastActivity > 150) setVuLevel(0);
-    }, 200);
-    return () => {
-      midiManager.removeActivityListener(onActivity);
-      clearInterval(interval);
-    };
   }, []);
 
   const connectedIds = useMemo(() => new Set(devices.connected.map((d) => d.id)), [devices.connected]);
