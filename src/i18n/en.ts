@@ -159,6 +159,7 @@ export const en: Record<string, string> = {
   "Gravador MIDI": "MIDI Recorder",
   "Gravando": "Recording",
   "Gravar": "Record",
+  "GRAVADOR": "RECORDER",
   "Grave (-)": "Low (-)",
   "Guitarra": "Guitar",
   "Hora": "Time",
