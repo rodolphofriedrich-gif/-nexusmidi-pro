@@ -7,7 +7,6 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ### Adicionado
 - **Várias bibliotecas SoundFont ao mesmo tempo**: cada SF2 da aba Biblioteca tem um interruptor liga/desliga e uma prioridade (▲▼). Se dois SoundFonts tiverem o mesmo instrumento, vale o de maior prioridade.
 - **Baterias**: kits do banco 128 do SF2 aparecem no filtro "Baterias" e tocam em qualquer canal (sem transposição).
-- **Tela cheia nos pads**, com troca de banco (1–4) e botão de sair na própria tela. Funciona também no celular.
 - Cor por canal MIDI (como em uma DAW) nos canais e na lista de instrumentos.
 
 ### Alterado
@@ -16,10 +15,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - **Cada canal MIDI tem seus próprios ajustes** (volume, reverb, chorus, transposição, envelope, filtro, vibrato, afinação e pitch bend), sem interferir nos outros. Delay, EQ, compressor e polifonia continuam globais (o motor de áudio tem uma única cadeia de efeitos). As cenas também guardam os ajustes de cada canal.
 - **A lista de instrumentos vem do SoundFont importado** (nomes, bancos e programas lidos do arquivo), e não mais de uma lista fixa de 128 sons. Sem SF2 ligado, a lista fica vazia com instruções.
 - Seleção de instrumento guarda banco + programa por canal (`channelsStore.banks`).
-- **Novo tema "DAW"**: grafite neutro, ciano como única cor de destaque, M em amarelo e S em azul. A escala `slate` do Tailwind foi redefinida em `00-theme-tokens.css`.
 - Barras de rolagem mais grossas e em ciano (`02-scrollbars.css`).
 
 ### Corrigido
+- **Notas presas** ao trocar de canal MIDI entre Note On e Note Off (agora guarda o canal original por tecla).
+- **Notas presas** quando a mesma nota é tocada em dois canais simultaneamente.
+- **Sustain** não é mais restaurado do `localStorage` — a UI sempre começa desligada, evitando inconsistência com o sintetizador.
+- **`padsStore`** com sanitização profunda: dados corrompidos no `localStorage` não quebram mais o render.
+- **BLE desconectado** durante a performance: a UI mostra "Reconectando…" em vez de "Desconectado" repetidamente.
+- **Fila MIDI** não trava mais quando o dispositivo USB é removido no meio de um envio.
+- **Tema claro** com contraste adequado nos botões índigo (letras brancas).
 - O contador "128 sons" aparecia mesmo sem nenhuma biblioteca importada.
 - A lista de presets não rolava (altura do container não estava definida).
 - Carregar uma cena não reaplicava os instrumentos dos canais ao sintetizador.
@@ -51,6 +56,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - IndexedDB: transação do SoundFont não depende mais de `FileReader` dentro da transação.
 
 ### Adicionado
+- **Chord Pads**: cada pad pode tocar uma nota única, um acorde pré-definido (maior, menor, 7ª, sus…) ou intervalos customizados, com badge visual do tipo de acorde.
+- **Wake Lock**: mantém a tela acesa durante a performance (configurável em Configurações).
+- **Aba "Tocar"** unificada com sub-abas Teclado e Pads.
+- **Aba "MIDI"** unificada com sub-abas Roteador e Monitor.
+- **Aba "Configurações"** separada, com Aparência (tema), Idioma, Preferências Gerais e Sobre.
+- **Sub-aba "Gravador"** em Ferramentas, separada do Arranjo.
+- **Tema "Midnight Studio"**: Dark (azul-marinho quase preto, grafite azulado), Light (cinza claro, alumínio), System. Índigo para seleção, ciano para atividade MIDI.
+- **Reconexão BLE automática** com backoff exponencial (2s, 4s, 8s) e notificação "Reconectando…".
+- **Fila MIDI por destino** com limite de profundidade: em saturação, mensagens de baixa prioridade (clocks) são descartadas antes das notas.
+- **Cor por canal MIDI** (como em uma DAW) nos canais e na lista de instrumentos.
 - Biblioteca com vários SoundFonts. Rotas, configurações do sintetizador, canais, ferramentas e MIDI Learn são salvos.
 - Tela **Ferramentas**: curva de velocity, escalas, acordes, arpejador, metrônomo/tap tempo/MIDI Clock, gravador com exportação `.mid`, MIDI Learn e idioma.
 - Plug/unplug USB detectado (`devicesChanged`); roteamento de Clock/Start/Stop.
@@ -63,7 +78,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Build Android sem Service Worker (`vite build --mode android`).
 - Release com R8/shrinkResources; `allowBackup` desativado; depuração de WebView só em builds debug.
 - Nome padronizado para **NexusMIDI Pro**.
+- - Menu principal reduzido a 4 áreas: **Tocar, MIDI, Estúdio, Configurações**.
+- Sub-abas no cabeçalho (Tocar → Teclado/Pads; MIDI → Roteador/Monitor; Estúdio → Sintetizador/Mixer/Ferramentas).
+- Botão **Voltar** do Android usa `useRef` para ler o estado atualizado — sem vazar listeners.
+- Botões de tema e idioma movidos para Configurações (removidos do menu lateral).
+- CI usa `npm ci` em vez de `npm install` (build reproduzível a partir do lockfile).
 
 ### Removido
 - Componentes sem uso, workflow duplicado (`Yaml`), arquivos do AI Studio e dependências não utilizadas (`@google/genai`, `express`, `dotenv`, `motion`, `tsx`, `esbuild`, `autoprefixer`).
 - Arquivos gerados (`android/app/src/main/assets/public`) que estavam versionados.
+- - **Tela cheia nos pads** (removida para evitar bugs de interface).
+- **Tema "DAW" antigo** (grafite + ciano único) — substituído por "Midnight Studio".
+- Botão de ligar/desligar o teclado virtual (redundante com a detecção de conexão).
+- Seletor de paleta de cores do teclado.
