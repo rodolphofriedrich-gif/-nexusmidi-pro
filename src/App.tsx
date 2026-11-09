@@ -7,6 +7,7 @@ import {
   RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, LayoutGrid, SlidersHorizontal, Lock, Unlock, ShieldAlert
 } from 'lucide-react';
 import { AppSidebar } from './app/components/AppSidebar';
+import { useAppHandlers } from './app/useAppHandlers';
 import { ExitDialog } from './components/ExitDialog';
 import { MidiKeyboard, MidiKeyboardHandle } from './components/MidiKeyboard';
 import { MidiMonitorScreen } from './components/MidiMonitorScreen';
@@ -21,9 +22,7 @@ import { useMidiDevices } from './hooks/useMidiDevices';
 import { useStore } from './hooks/useStore';
 import { useToast, type ToastType } from './hooks/useToast';
 import { tr } from './i18n';
-import { midiManager, VIRTUAL_ID } from './services/midiService';
-import { NativeMidi } from './services/nativeMidi';
-import { performanceEngine } from './services/performanceService';
+import { midiManager } from './services/midiService';
 import { prefsStore } from './services/stores';
 import { synthService } from './services/synthService';
 import { acquireWakeLock, releaseWakeLock } from './services/wakeLockService';
@@ -94,6 +93,24 @@ export default function App() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterPos, setFilterPos] = useState({ top: 60, left: 8 });
   const [monitorPaused, setMonitorPaused] = useState(false);
+
+  const {
+    handleNoteOn,
+    handleNoteOff,
+    handleDisabledPress,
+    handleToggleSustain,
+    handlePanic,
+    handleConfirmExit,
+    handleRefreshRouter,
+    addNewRoute,
+  } = useAppHandlers({
+    prefs,
+    showMessage,
+    setShowExit,
+    setIsRouterRefreshing,
+    refreshDevices: devices.refresh,
+    firstConnectedDeviceId: devices.connected[0]?.id,
+  });
 
   const uiStateRef = useRef({ isSidebarOpen, openMenu, isPadChannelOpen, showExit });
   useEffect(() => {
@@ -167,74 +184,9 @@ export default function App() {
   const isBleConnected = devices.connected.some((d) => d.type === 'ble');
   const canPlay = devices.connected.length > 0 || devices.bleServerActive || synth.ready;
 
-  const handleNoteOn = useCallback((note: number, channel: number, velocity?: number, sourceId?: string) =>
-    performanceEngine.noteOn(channel, note, velocity ?? prefsStore.get().velocity, sourceId), []);
-  const handleNoteOff = useCallback((note: number, channel: number, sourceId?: string) =>
-    performanceEngine.noteOff(channel, note, sourceId), []);
-
-  const handleDisabledPress = useCallback(() => {
-    showMessage(tr('Conecte um destino MIDI ou carregue um SoundFont.'), 'warn', 2500);
-  }, [showMessage]);
-
-  const handleToggleSustain = useCallback(async () => {
-    const next = !prefs.sustain;
-    prefsStore.set({ sustain: next });
-    try {
-      // O Sustain na UI é global: enviamos CC64 para TODOS os 16 canais para
-      // garantir que nenhum canal fique com o pedal "preso" após troca de canal.
-      const jobs: Promise<unknown>[] = [];
-      for (let ch = 1; ch <= 16; ch++) {
-        jobs.push(midiManager.sendControlChange(ch, 64, next ? 127 : 0));
-      }
-      await Promise.all(jobs);
-      showMessage(next ? tr('Sustain Ligado') : tr('Sustain Desligado'), 'info', 1500);
-    } catch (error) {
-      showMessage(tr('Erro ao enviar Sustain: {message}', { message: error instanceof Error ? error.message : '' }), 'error', 2500);
-    }
-  }, [prefs.sustain, showMessage]);
-
-  const handlePanic = useCallback(async () => {
-    try {
-      const result = await midiManager.sendPanic();
-      if (result.failed.length > 0) {
-        showMessage(
-          tr('MIDI Panic enviado parcialmente. Dispositivos sem resposta: {names}', { names: result.failed.join(', ') }),
-          'warn',
-          3500,
-        );
-      } else {
-        showMessage(tr('MIDI Panic enviado'), 'info', 1500);
-      }
-    } catch {
-      showMessage(tr('Falha no MIDI Panic'), 'error', 2500);
-    }
-  }, [showMessage]);
-
-  const handleConfirmExit = async () => {
-    setShowExit(false);
-    try {
-      await NativeMidi.fecharApp();
-    } catch {
-      window.close();
-    }
-  };
-
   const toggleMenu = (menu: 'usb' | 'ble') => {
     setOpenMenu((current) => (current === menu ? null : menu));
     void devices.refresh();
-  };
-
-  const handleRefreshRouter = async () => {
-    setIsRouterRefreshing(true);
-    try {
-      await devices.refresh();
-    } finally {
-      setIsRouterRefreshing(false);
-    }
-  };
-
-  const addNewRoute = () => {
-    midiManager.addRoute({ sourceId: VIRTUAL_ID, destinationId: devices.connected[0]?.id ?? '' });
   };
 
   const btnClass = "flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] transition-all hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] active:scale-95 px-3 text-xs font-bold";
