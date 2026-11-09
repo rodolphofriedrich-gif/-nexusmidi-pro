@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildInstrumentList } from './instruments';
 import { parseSf2Presets, summarizePresets } from './sf2';
-import { makeSf2 } from './testSf2';
+import { makeSf2 } from './testSf2.testutil';
 
 describe('parseSf2Presets', () => {
   it('lê nome, banco e programa e ignora o registro terminador', () => {
