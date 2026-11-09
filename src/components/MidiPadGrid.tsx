@@ -15,10 +15,6 @@ interface MidiPadGridProps {
   isEditMode: boolean;
 }
 
-/**
- * Tabela de acordes disponíveis no seletor de edição.
- * As labels são traduzíveis — o `i18n.test.ts` as encontra via padrão `label: '...'`.
- */
 const CHORD_TYPES: ReadonlyArray<{ id: ChordType; label: string }> = [
   { id: 'single', label: 'Nota única' },
   { id: 'maj', label: 'Maior' },
@@ -45,11 +41,8 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
   const [editPadIndex, setEditPadIndex] = useState<number | null>(null);
   const [editChordType, setEditChordType] = useState<ChordType>('single');
 
-  // pointerId → padIndex (índice do pad, não nota — necessário para acordes)
   const activePointersRef = useRef<Map<number, number>>(new Map());
-  // padIndex → notas enviadas (para saber o que soltar)
   const activePadNotesRef = useRef<Map<number, number[]>>(new Map());
-  // nota → quantos pads a estão usando (evita noteOff prematuro entre pads que compartilham nota)
   const noteRefCountRef = useRef<Map<number, number>>(new Map());
 
   const onNoteOffRef = useRef(onNoteOff);
@@ -171,7 +164,6 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
       chordIntervals,
     };
     
-    // Atualiza a store global em vez de um estado local
     padsStore.set((prev) => ({
       banks: prev.banks.map((b, bi) => (bi === bank ? b.map((p, pi) => (pi === editPadIndex ? newPad : p)) : b))
     }));
@@ -187,7 +179,7 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
           <form onSubmit={handleSavePad} className="max-h-[92dvh] w-full max-w-sm space-y-4 overflow-y-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-5 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
               <h3 className="text-sm font-bold text-[var(--text-main)]">{tr('Editar Pad')}</h3>
-              <button type="button" onClick={() => setEditPadIndex(null)} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-main)]"><X size={18} /></button>
+              <button type="button" aria-label={tr('Fechar')} onClick={() => setEditPadIndex(null)} className="p-2 text-[var(--text-muted)] hover:text-[var(--text-main)]"><X size={18} /></button>
             </div>
 
             <div>
@@ -245,7 +237,6 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
         </div>
       )}
 
-      {/* Em telas muito largas a grade para de esticar (pads no máximo 3:1) e fica centralizada. */}
       <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden p-1.5">
       <div className="grid h-full max-w-full aspect-[3/1] grid-cols-4 grid-rows-4 gap-1.5">
         {banksData[bank].map((pad, index) => {
@@ -282,6 +273,7 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
               {isEditMode && (
                 <button
                   type="button"
+                  aria-label={tr('Editar Pad')}
                   onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); setEditChordType(pad.chordType ?? 'single'); }}
                   className={`absolute right-1.5 top-1.5 z-20 rounded-md p-1.5 transition-all ${isPressed ? 'bg-black/20 text-white/80' : 'bg-black/10 text-black/50 hover:bg-black/30 dark:bg-black/40 dark:text-white/50 dark:hover:bg-black/80 dark:hover:text-white'}`}
                 >
