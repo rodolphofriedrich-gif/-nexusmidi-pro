@@ -6,15 +6,12 @@ import { tr } from '../../i18n';
 import type { SoundFontPreset } from '../../types/soundfont';
 
 interface SoundFontListProps {
-  /** Instrumentos realmente presentes nos SoundFonts ligados (vazio = nada importado/ligado). */
   instruments: SoundFontPreset[];
   activeChannel: number;
   channelAssignments: Record<number, number>;
   channelBanks: Record<number, number>;
   onAssignProgram: (preset: SoundFontPreset) => void;
-  /** Há SoundFonts na biblioteca (mesmo que todos estejam desligados)? */
   hasLibrary: boolean;
-  /** Mais de um SoundFont ligado: mostra de qual vem cada instrumento. */
   showLibraryName: boolean;
   onOpenLibrary: () => void;
 }
@@ -54,6 +51,7 @@ export function SoundFontList({
         {hasLibrary && (
           <button
             type="button"
+            aria-label={tr('Abrir Biblioteca')}
             onClick={onOpenLibrary}
             className="mt-3 flex h-10 items-center gap-2 rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white hover:bg-indigo-500"
           >
@@ -86,7 +84,7 @@ export function SoundFontList({
         <div className="flex items-center gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {PRESET_CATEGORIES.map((cat) => {
             const count = cat === 'Todos' ? instruments.length : instruments.filter((i) => i.category === cat).length;
-            if (cat !== 'Todos' && count === 0) return null; // só mostra categorias que existem nos SoundFonts
+            if (cat !== 'Todos' && count === 0) return null;
             return (
               <button
                 type="button"
@@ -113,7 +111,10 @@ export function SoundFontList({
           return (
             <div
               key={preset.id}
+              role="button"
+              tabIndex={0}
               onClick={() => onAssignProgram(preset)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAssignProgram(preset); } }}
               className={`group flex cursor-pointer items-center justify-between rounded-lg border px-2.5 py-2 transition-all ${
                 isActive
                   ? 'border-indigo-500/70 bg-indigo-500/10'
