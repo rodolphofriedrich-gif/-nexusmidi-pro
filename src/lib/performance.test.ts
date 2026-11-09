@@ -67,6 +67,22 @@ describe('PerformanceEngine', () => {
     expect(sent).toEqual(['off:1:60:0']); // Deve desligar no canal 1
   });
 
+  it('mesma nota em canais diferentes: solta só a do canal tocado', () => {
+    // Toca C4 no canal 1 e no canal 2
+    engine.noteOn(1, 60, 100);
+    engine.noteOn(2, 60, 100);
+    sent.length = 0;
+
+    // Solta só a do canal 1
+    engine.noteOff(1, 60);
+    expect(sent).toEqual(['off:1:60:0']);
+
+    // A do canal 2 ainda deve estar ativa
+    sent.length = 0;
+    engine.noteOff(2, 60);
+    expect(sent).toEqual(['off:2:60:0']);
+  });
+
   it('quantiza para a escala', () => {
     settings.scale = 'major';
     engine.noteOn(1, 61, 100);
