@@ -62,9 +62,11 @@ export class MidiService {
   private readonly native: NativeMidiPort;
   private readonly synth: SynthPort;
   private readonly now: () => number;
+  private readonly routesStore: Store<{ routes: MidiRoute[] }>;
+
+  // Fila FIFO por destino (chave = id nativo do dispositivo)
   private readonly sendQueues = new Map<string, Promise<void>>();
   private readonly queueDepths = new Map<string, number>();
-  private readonly routesStore: Store<{ routes: MidiRoute[] }>;
 
   private destinations: MidiDestination[] = [];
   private scannedBleDevices: MidiDestination[] = [];
@@ -73,9 +75,6 @@ export class MidiService {
   private readonly bleAddressToId = new Map<string, string>();
   private readonly sendFailures = new Map<string, number>();
   private readonly reconnectAttempts = new Map<string, number>();
-  
-  // NOVO: Fila de transmissão FIFO por destino para evitar troca de ordem das mensagens MIDI
-  private readonly sendQueues = new Map<string, Promise<void>>();
 
   private bleServerActive = false;
 
@@ -213,13 +212,14 @@ export class MidiService {
     }
   }
 
-   private dropDevice(dest: MidiDestination, reason: 'lost' | 'failed' = 'lost'): void {
+  private dropDevice(dest: MidiDestination, reason: 'lost' | 'failed' = 'lost'): void {
     if (!this.connectedOutputs.delete(dest.id)) return;
     this.connectedInputs.delete(dest.id);
     this.sendFailures.delete(dest.id);
     this.reconnectAttempts.delete(dest.id);
-    this.sendQueues.delete(dest.bleAddress || dest.id);
-    this.queueDepths.delete(dest.bleAddress || dest.id); // NOVO
+    const target = dest.bleAddress || dest.id;
+    this.sendQueues.delete(target);
+    this.queueDepths.delete(target);
     this.onDisconnectCallback?.(dest, reason);
     this.onRefreshCallback?.(this.destinations);
 
@@ -315,7 +315,9 @@ export class MidiService {
     this.connectedInputs.delete(id);
     this.connectedOutputs.delete(id);
     this.sendFailures.delete(id);
-    this.sendQueues.delete(dest.bleAddress || dest.id);
+    const target = dest.bleAddress || dest.id;
+    this.sendQueues.delete(target);
+    this.queueDepths.delete(target);
     this.onDisconnectCallback?.(dest, 'lost');
   }
 
@@ -578,15 +580,30 @@ export class MidiService {
     return command === 0xc0 || command === 0xd0 ? [status, data1] : [status, data1, data2];
   }
 
-  // NOVO: Fila FIFO por dispositivo para garantir a ordem exata das mensagens MIDI
+  /**
+   * Fila FIFO por dispositivo com limite de profundidade.
+   * Regras:
+   *   - Depth < 200: tudo passa normalmente.
+   *   - Depth >= 200: clocks (0xF8..0xFF) são descartados (baixa prioridade).
+   *   - Depth >= 400: mensagens não essenciais (CC, program, pitch bend) também.
+   *   - Notas (Note On/Off) sempre passam — se ficarem presas, o Panic resolve.
+   */
   private async sendToDevice(destination: MidiDestination, bytes: number[]): Promise<void> {
     if (destination.id === VIRTUAL_ID) return;
     const target = destination.id === BLE_SERVER_ID ? BLE_SERVER_ID : destination.bleAddress || destination.id;
 
-    // Pega a promessa anterior na fila (ou uma já resolvida)
+    const isClock = bytes.length === 1 && bytes[0] >= 0xf8;
+    const isNote = bytes[0] >= 0x80 && bytes[0] <= 0x9f;
+    const depth = this.queueDepths.get(target) ?? 0;
+
+    if (depth >= MAX_QUEUE_DEPTH && (isClock || (!isNote && depth >= DROP_THRESHOLD))) {
+      // Descarta — a fila está saturada e essa mensagem é de baixa prioridade
+      return;
+    }
+
+    this.queueDepths.set(target, depth + 1);
     const previous = this.sendQueues.get(target) ?? Promise.resolve();
 
-    // Cria a nova tarefa encadeada
     const current = previous.then(async () => {
       try {
         await this.native.sendTo({ id: target, data: bytes });
@@ -601,13 +618,18 @@ export class MidiService {
       }
     });
 
-    // Salva a nova promessa no mapa
     this.sendQueues.set(target, current);
 
-    // Limpa o mapa se esta foi a última mensagem da fila
+    // Ao terminar, decrementa a profundidade e limpa o mapa se for a última mensagem
     current.finally(() => {
-      if (this.sendQueues.get(target) === current) {
-        this.sendQueues.delete(target);
+      const newDepth = (this.queueDepths.get(target) ?? 1) - 1;
+      if (newDepth <= 0) {
+        this.queueDepths.delete(target);
+        if (this.sendQueues.get(target) === current) {
+          this.sendQueues.delete(target);
+        }
+      } else {
+        this.queueDepths.set(target, newDepth);
       }
     });
 
