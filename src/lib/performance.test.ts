@@ -53,33 +53,47 @@ describe('PerformanceEngine', () => {
   it('mudar o acorde com a tecla pressionada não deixa notas presas', () => {
     settings.chord = 'major';
     engine.noteOn(1, 60, 100);
-    settings.chord = 'minor'; // muda no meio
+    settings.chord = 'minor';
     sent.length = 0;
     engine.noteOff(1, 60);
-    expect(sent).toEqual(['off:1:60:0', 'off:1:64:0', 'off:1:67:0']); // desliga o que LIGOU (maior)
+    expect(sent).toEqual(['off:1:60:0', 'off:1:64:0', 'off:1:67:0']);
   });
 
   it('mudar de canal com a tecla pressionada não deixa notas presas', () => {
     engine.noteOn(1, 60, 100);
     sent.length = 0;
-    // A UI simula a mudança de canal passando o canal 2 no NoteOff
     engine.noteOff(2, 60);
-    expect(sent).toEqual(['off:1:60:0']); // Deve desligar no canal 1
+    expect(sent).toEqual(['off:1:60:0']);
   });
 
   it('mesma nota em canais diferentes: solta só a do canal tocado', () => {
-    // Toca C4 no canal 1 e no canal 2
     engine.noteOn(1, 60, 100);
     engine.noteOn(2, 60, 100);
     sent.length = 0;
 
-    // Solta só a do canal 1
     engine.noteOff(1, 60);
     expect(sent).toEqual(['off:1:60:0']);
 
-    // A do canal 2 ainda deve estar ativa
     sent.length = 0;
     engine.noteOff(2, 60);
+    expect(sent).toEqual(['off:2:60:0']);
+  });
+
+  // NOVO: bug apontado pelo auditor — mesma nota em fontes diferentes
+  it('mesma nota em fontes diferentes (keyboard + pad): solta só a fonte correta mesmo se o canal mudar', () => {
+    // Teclado toca C4 no Ch1; pad toca C4 no Ch2 (mesmo valor de nota, canais diferentes)
+    engine.noteOn(1, 60, 100, 'keyboard');
+    engine.noteOn(2, 60, 100, 'pad-5');
+    sent.length = 0;
+
+    // Usuário muda para Ch3 e solta a tecla do teclado
+    engine.noteOff(3, 60, 'keyboard');
+    // Deve liberar APENAS a entrada do teclado (Ch1), não a do pad (Ch2)
+    expect(sent).toEqual(['off:1:60:0']);
+
+    sent.length = 0;
+    engine.noteOff(3, 60, 'pad-5');
+    // Agora libera a do pad (Ch2)
     expect(sent).toEqual(['off:2:60:0']);
   });
 
@@ -106,7 +120,7 @@ describe('PerformanceEngine', () => {
   });
 
   it('tecla pressionada antes de ligar o arpejo ainda é solta corretamente', () => {
-    engine.noteOn(1, 60, 100); // direta
+    engine.noteOn(1, 60, 100);
     arp.configure({ enabled: true });
     sent.length = 0;
     engine.noteOff(1, 60);
