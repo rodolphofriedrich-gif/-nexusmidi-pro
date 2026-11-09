@@ -25,7 +25,7 @@ interface PerformanceDeps {
  * exatamente o que ela ligou — mesmo que escala/acorde/canal tenham mudado nesse meio-tempo.
  */
 export class PerformanceEngine {
-  // Agora guardamos o canal original junto com as notas
+  // Chave = `${channel}:${note}`. Guarda o canal original para o NoteOff usar o correto.
   private readonly sounding = new Map<string, { notes: number[]; viaArp: boolean; channel: number }>();
   private arpChannel = 1;
 
@@ -55,9 +55,22 @@ export class PerformanceEngine {
     for (const n of notes) this.deps.send(channel, n, velocity, true);
   }
 
-  noteOff(_channel: number, note: number): void {
-    // Ignora o canal passado pela UI (que pode ter mudado no meio do toque).
-    // Procura em todas as notas ativas qual delas corresponde a essa nota física.
+  /**
+   * Solta a nota. Estratégia em duas etapas:
+   *   1. Match EXATO (`canal:nota`): o caso normal (não mudou de canal).
+   *   2. Fallback (qualquer canal): a UI pode ter mudado de canal no meio do toque,
+   *      então soltamos a nota que estiver em qualquer canal para não ficar presa.
+   *
+   * Se a mesma nota está em 2 canais diferentes (ex.: C4 no 1 e no 2), o match exato
+   * garante que só a do canal tocado seja solta.
+   */
+  noteOff(channel: number, note: number): void {
+    const exactKey = `${channel}:${note}`;
+    if (this.sounding.has(exactKey)) {
+      this.releaseKey(exactKey);
+      return;
+    }
+    // Fallback: canal mudou durante o toque. Solta qualquer nota correspondente.
     for (const key of this.sounding.keys()) {
       if (key.endsWith(`:${note}`)) {
         this.releaseKey(key);
