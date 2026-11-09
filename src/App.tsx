@@ -3,10 +3,10 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useRef
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import {
-  Activity, AudioWaveform, GitBranch, LogOut, Music2, Menu, X, Usb, Bluetooth, type LucideIcon,
-  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, LayoutGrid, SlidersHorizontal, Lock, Unlock, ShieldAlert, Settings
+  GitBranch, Menu, X, Music2, Activity, AudioWaveform, Usb, Bluetooth,
+  RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, LayoutGrid, SlidersHorizontal, Lock, Unlock, ShieldAlert
 } from 'lucide-react';
-import { ConnectionMenu } from './components/ConnectionMenu';
+import { AppSidebar } from './app/components/AppSidebar';
 import { ExitDialog } from './components/ExitDialog';
 import { MidiKeyboard, MidiKeyboardHandle } from './components/MidiKeyboard';
 import { MidiMonitorScreen } from './components/MidiMonitorScreen';
@@ -29,13 +29,6 @@ import { synthService } from './services/synthService';
 import { acquireWakeLock, releaseWakeLock } from './services/wakeLockService';
 
 type AppTab = 'play' | 'midi' | 'studio' | 'settings';
-
-const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string; color: string }> = [
-  { id: 'play', Icon: Music2, label: 'Tocar', color: 'text-[var(--nexus-primary)]' },
-  { id: 'midi', Icon: Activity, label: 'MIDI', color: 'text-[var(--nexus-primary)]' },
-  { id: 'studio', Icon: AudioWaveform, label: 'Estúdio', color: 'text-[var(--nexus-primary)]' },
-  { id: 'settings', Icon: Settings, label: 'Configurações', color: 'text-[var(--nexus-primary)]' },
-];
 
 function ChannelSelectPopup({ title, value, onSelect, onClose }: { title: string; value: number; onSelect: (ch: number) => void; onClose: () => void }) {
   return (
@@ -250,54 +243,28 @@ export default function App() {
   return (
     <div className="nexus-app fixed inset-0 flex h-[100dvh] w-full select-none overflow-hidden font-sans antialiased bg-[var(--bg-app)] text-[var(--text-main)]">
 
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setIsSidebarOpen(false)} />
-      )}
-
-      <aside className={`fixed inset-y-0 left-0 z-[100] flex w-64 flex-col border-r border-[var(--border-color)] bg-[var(--bg-panel)] transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex h-14 items-center justify-between px-4 border-b border-[var(--border-color)] shrink-0">
-          <span className="text-sm font-extrabold tracking-wider text-[var(--text-main)]">
-            NEXUSMIDI <span className="text-[var(--nexus-accent)]">Pro</span>
-          </span>
-          <button type="button" aria-label={tr('Fechar menu')} onClick={() => setIsSidebarOpen(false)} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            {NAV_ITEMS.map(({ id, Icon, label }) => {
-              const selected = activeTab === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => { setActiveTab(id); setIsSidebarOpen(false); setOpenMenu(null); }}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-3 transition-colors ${selected ? 'bg-indigo-500/15 text-[var(--nexus-primary)] font-bold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)]'}`}
-                >
-                  <Icon size={20} className={selected ? 'text-[var(--nexus-primary)]' : ''} />
-                  <span className="text-sm">{tr(label)}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="h-px w-full bg-[var(--border-color)]" />
-
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-bold uppercase text-[var(--text-muted)] px-3">{tr('Conexões')}</span>
-            <ConnectionMenu kind="usb" isOpen={openMenu === 'usb'} isConnected={isUsbConnected} statusLabel={isUsbConnected ? tr('Conectado') : tr('Desconectado')} devices={usbDevices} connectedIds={connectedIds} showDisconnectAll={isUsbConnected} onToggleOpen={() => toggleMenu('usb')} onRefresh={() => void devices.refresh()} onToggleDevice={(d) => void devices.toggleConnect(d)} onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }} />
-            <ConnectionMenu kind="ble" isOpen={openMenu === 'ble'} isConnected={isBleConnected || devices.bleServerActive} statusLabel={devices.bleServerActive ? tr('Visível') : isBleConnected ? tr('Conectado') : tr('Desconectado')} devices={bleDevices} connectedIds={connectedIds} showDisconnectAll={devices.connected.length > 0 || devices.bleServerActive} onToggleOpen={() => toggleMenu('ble')} onRefresh={() => void devices.refresh()} onToggleDevice={(d) => void devices.toggleConnect(d)} onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }} isScanning={devices.scanningBle} isServerActive={devices.bleServerActive} onScan={() => void devices.scanBle()} onStartServer={() => void devices.startBleServer()} />
-          </div>
-        </div>
-
-        <div className="p-3 border-t border-[var(--border-color)] shrink-0">
-          <button type="button" onClick={() => { setIsSidebarOpen(false); setShowExit(true); }} className="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-3 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 transition-colors">
-            <LogOut size={18} />
-            <span className="text-xs font-bold">{tr('Sair')}</span>
-          </button>
-        </div>
-      </aside>
+      <AppSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        activeTab={activeTab}
+        onNavigate={(tab) => { setActiveTab(tab); setIsSidebarOpen(false); setOpenMenu(null); }}
+        openMenu={openMenu}
+        onToggleConnectionMenu={toggleMenu}
+        isUsbConnected={isUsbConnected}
+        isBleConnected={isBleConnected}
+        bleServerActive={devices.bleServerActive}
+        usbDevices={usbDevices}
+        bleDevices={bleDevices}
+        connectedIds={connectedIds}
+        connectedDeviceCount={devices.connected.length}
+        scanningBle={devices.scanningBle}
+        onRefresh={() => void devices.refresh()}
+        onToggleDevice={(device) => void devices.toggleConnect(device)}
+        onDisconnectAll={() => { setOpenMenu(null); void devices.disconnectAll(); }}
+        onScanBle={() => void devices.scanBle()}
+        onStartBleServer={() => void devices.startBleServer()}
+        onExit={() => { setIsSidebarOpen(false); setShowExit(true); }}
+      />
 
       <div className="flex h-full flex-1 flex-col overflow-hidden">
         <header className="nexus-header-pad relative z-[80] flex h-[calc(3.5rem+env(safe-area-inset-top))] w-full shrink-0 items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-panel)] pt-[env(safe-area-inset-top)]">
