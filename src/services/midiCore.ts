@@ -15,6 +15,7 @@ export const BLE_SERVER_ID = 'ble-server';
 const MAX_SEND_FAILURES = 3;
 const MAX_QUEUE_DEPTH = 200;
 const DROP_THRESHOLD = 400;
+const MAX_TOTAL_QUEUE_DEPTH = 1500; // limite absoluto de segurança
 const LOG_LIMIT = 300;
 const CLOCK_OR_SENSING = new Set([0xf8, 0xfe]);
 
@@ -58,13 +59,17 @@ export interface MidiTap {
   (event: { status: number; data1: number; data2: number; sourceId?: string }): void;
 }
 
+export interface PanicResult {
+  /** Nomes dos dispositivos que não receberam todas as mensagens do panic. */
+  failed: string[];
+}
+
 export class MidiService {
   private readonly native: NativeMidiPort;
   private readonly synth: SynthPort;
   private readonly now: () => number;
   private readonly routesStore: Store<{ routes: MidiRoute[] }>;
 
-  // Fila FIFO por destino (chave = id nativo do dispositivo)
   private readonly sendQueues = new Map<string, Promise<void>>();
   private readonly queueDepths = new Map<string, number>();
 
@@ -241,11 +246,9 @@ export class MidiService {
 
     this.onDisconnectCallback?.(dest, 'reconnecting');
 
-    // Backoff exponencial: 2s, 4s, 8s
     const delay = 2000 * Math.pow(2, attempts - 1);
     await new Promise((resolve) => setTimeout(resolve, delay));
 
-    // Se o usuário desconectou manualmente nesse meio tempo, aborta
     if (!this.scannedBleDevices.some((d) => d.id === dest.id)) return;
 
     try {
@@ -482,29 +485,41 @@ export class MidiService {
     return { hex: toHex([status, p]) };
   }
 
-  public async sendPanic(channels: readonly number[] = Array.from({ length: 16 }, (_, i) => i + 1)): Promise<void> {
+  /**
+   * MIDI Panic: silencia o synth interno e todos os dispositivos conectados.
+   * Retorna os destinos que NÃO conseguiram receber todas as mensagens — o App
+   * pode usar isso para avisar o usuário (em vez de mostrar sucesso falso).
+   */
+  public async sendPanic(channels: readonly number[] = Array.from({ length: 16 }, (_, i) => i + 1)): Promise<PanicResult> {
     this.synth.allNotesOff();
     const targets = [...this.connectedOutputs.values()].filter((d) => d.id !== VIRTUAL_ID);
     if (this.bleServerActive) targets.push(this.bleServerDestination());
-    
-    // Silencia o sintetizador interno no app
+
     for (const channel of channels) {
       for (const [c, v] of [[64, 0], [120, 0], [123, 0]] as const) {
         this.synth.controlChange(c, v, channel);
       }
     }
 
-    // Envia a tríade de emergência para todos os dispositivos externos
-    await Promise.all(targets.map((dest) => this.sendPanicToDevice(dest, channels)));
+    const results = await Promise.all(
+      targets.map(async (dest) => ({ dest, ok: await this.sendPanicToDevice(dest, channels) })),
+    );
+
+    const failed = results.filter((r) => !r.ok).map((r) => r.dest.displayName);
+    return { failed };
   }
 
-  private async sendPanicToDevice(dest: MidiDestination, channels: readonly number[]): Promise<void> {
+  private async sendPanicToDevice(dest: MidiDestination, channels: readonly number[]): Promise<boolean> {
+    if (dest.id === VIRTUAL_ID) return true;
+    let allOk = true;
     for (const channel of channels) {
       const status = channelStatus(0xb0, channel);
-      await this.sendToDevice(dest, [status, 64, 0]);  // Sustain Off
-      await this.sendToDevice(dest, [status, 120, 0]); // All Sound Off
-      await this.sendToDevice(dest, [status, 123, 0]); // All Notes Off
+      // sendToDevice retorna boolean; se uma falhou, marca failed mas continua (as outras mensagens ainda importam)
+      if (!(await this.sendToDevice(dest, [status, 64, 0]))) allOk = false;
+      if (!(await this.sendToDevice(dest, [status, 120, 0]))) allOk = false;
+      if (!(await this.sendToDevice(dest, [status, 123, 0]))) allOk = false;
     }
+    return allOk;
   }
 
   public async broadcastRealtime(status: number): Promise<void> {
@@ -581,34 +596,55 @@ export class MidiService {
   }
 
   /**
-   * Fila FIFO por dispositivo com limite de profundidade.
-   * Regras:
+   * Fila FIFO por dispositivo. Limites:
    *   - Depth < 200: tudo passa normalmente.
-   *   - Depth >= 200: clocks (0xF8..0xFF) são descartados (baixa prioridade).
-   *   - Depth >= 400: mensagens não essenciais (CC, program, pitch bend) também.
-   *   - Notas (Note On/Off) sempre passam — se ficarem presas, o Panic resolve.
+   *   - Depth >= 200: clocks são descartados.
+   *   - Depth >= 400: também CC, program, pitch bend, poly pressure, etc.
+   *   - Depth >= 1500: limite ABSOLUTO. Tudo é descartado, EXCETO Note Off (evita nota presa).
+   *   - Depth >= 2000: força drop do dispositivo (correção de emergência).
+   *
+   * Retorna `true` se a mensagem foi aceita na fila, `false` se foi descartada
+   * (por saturação ou se o envio nativo falhou).
    */
-  private async sendToDevice(destination: MidiDestination, bytes: number[]): Promise<void> {
-    if (destination.id === VIRTUAL_ID) return;
+  private async sendToDevice(destination: MidiDestination, bytes: number[]): Promise<boolean> {
+    if (destination.id === VIRTUAL_ID) return true;
     const target = destination.id === BLE_SERVER_ID ? BLE_SERVER_ID : destination.bleAddress || destination.id;
 
     const isClock = bytes.length === 1 && bytes[0] >= 0xf8;
-    const isNote = bytes[0] >= 0x80 && bytes[0] <= 0x9f;
+    const isNoteOn = (bytes[0] & 0xf0) === 0x90 && (bytes[2] ?? 0) > 0;
+    const isNoteOff = (bytes[0] & 0xf0) === 0x80 || ((bytes[0] & 0xf0) === 0x90 && (bytes[2] ?? 0) === 0);
     const depth = this.queueDepths.get(target) ?? 0;
 
-    if (depth >= MAX_QUEUE_DEPTH && (isClock || (!isNote && depth >= DROP_THRESHOLD))) {
-      // Descarta — a fila está saturada e essa mensagem é de baixa prioridade
-      return;
+    // Limite absoluto de segurança
+    if (depth >= MAX_TOTAL_QUEUE_DEPTH) {
+      if (isNoteOff) {
+        // Note Off SEMPRE entra (evita nota presa), até um teto de segurança
+        if (depth >= MAX_TOTAL_QUEUE_DEPTH + 500) {
+          console.warn(`Fila MIDI saturada (${depth}). Forçando reconexão de ${destination.displayName}.`);
+          this.dropDevice(destination, 'failed');
+          return false;
+        }
+      } else {
+        // Descarta tudo o mais (inclui Note On — o Panic vai liberar a nota depois)
+        return false;
+      }
+    } else if (depth >= MAX_QUEUE_DEPTH) {
+      // Saturação alta: descarta clocks e mensagens não-essenciais
+      if (isClock || (depth >= DROP_THRESHOLD && !isNoteOn && !isNoteOff)) {
+        return false;
+      }
     }
 
     this.queueDepths.set(target, depth + 1);
     const previous = this.sendQueues.get(target) ?? Promise.resolve();
 
+    let accepted = true;
     const current = previous.then(async () => {
       try {
         await this.native.sendTo({ id: target, data: bytes });
         this.sendFailures.delete(destination.id);
       } catch (error) {
+        accepted = false;
         const failures = (this.sendFailures.get(destination.id) ?? 0) + 1;
         this.sendFailures.set(destination.id, failures);
         if (failures >= MAX_SEND_FAILURES && destination.id !== BLE_SERVER_ID) {
@@ -620,7 +656,6 @@ export class MidiService {
 
     this.sendQueues.set(target, current);
 
-    // Ao terminar, decrementa a profundidade e limpa o mapa se for a última mensagem
     current.finally(() => {
       const newDepth = (this.queueDepths.get(target) ?? 1) - 1;
       if (newDepth <= 0) {
@@ -633,7 +668,8 @@ export class MidiService {
       }
     });
 
-    return current;
+    await current;
+    return accepted;
   }
 
   public async allNotesOffForDevice(destination: MidiDestination): Promise<void> {
