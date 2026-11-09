@@ -223,6 +223,8 @@ export const en: Record<string, string> = {
   "Nova Rota": "New Route",
   "Não foi possível aplicar o preset: {message}": "Could not apply the preset: {message}",
   "Não foi possível exportar: {message}": "Could not export: {message}",
+  "Não foi possível salvar a cena.": "Could not save the scene.",
+  "Não foi possível apagar as cenas.": "Could not delete the scenes.",
   "O NexusMIDI Pro encontrou um erro inesperado. Suas configurações foram preservadas.": "NexusMIDI Pro hit an unexpected error. Your settings were preserved.",
   "Oitavas": "Octaves",
   "Omni": "Omni",
