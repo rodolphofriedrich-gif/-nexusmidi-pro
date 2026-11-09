@@ -245,6 +245,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
                 <div className="text-xs font-semibold text-[var(--text-main)]">Sustain • CC64</div>
               </div>
               <button 
+                type="button"
                 disabled={busy || !isConnected} 
                 onClick={toggleSustain} 
                 className={`w-full h-11 rounded-lg border px-2 text-xs font-bold transition-all disabled:opacity-40 ${prefs.sustain ? 'border-indigo-500 bg-indigo-600 text-white shadow-[0_0_10px_rgba(99,102,241,0.3)]' : 'border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:bg-[var(--bg-panel)]'}`}
@@ -264,6 +265,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
                   className="min-w-0 w-12 h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-panel)] px-1 font-mono text-sm text-center text-[var(--nexus-primary)] outline-none focus:border-indigo-500" 
                 />
                 <button 
+                  type="button"
                   disabled={busy || !isConnected} 
                   onClick={() => void sendAction(() => midiManager.sendProgramChange(channel, program - 1), tr('Program {program} enviado • Canal {channel}', { program, channel }))} 
                   className="flex-1 h-11 rounded-lg bg-indigo-600 px-2 text-xs font-bold text-white disabled:opacity-40 hover:bg-indigo-500 transition"
@@ -321,6 +323,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
             </div>
 
             <button 
+              type="button"
               disabled={busy || !isConnected} 
               onClick={() => { updateState('pitchBend', 8192); void sendAction(() => midiManager.sendPitchBend(channel, 8192), tr('Pitch Bend centralizado • Canal {channel}', { channel })); }} 
               className="flex w-full h-11 items-center justify-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] px-2 text-xs font-bold text-[var(--text-main)] disabled:opacity-40 hover:bg-[var(--bg-panel)] transition"
@@ -330,9 +333,10 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
           </div>
 
           <button 
+            type="button"
             disabled={busy || !isConnected} 
             onClick={() => void panic()} 
-            className="flex w-full h-11 items-center justify-center gap-2 rounded-lg border border-red-800/60 bg-red-950/40 px-2 text-xs font-bold uppercase tracking-wide text-red-400 hover:bg-red-900/60 transition disabled:opacity-40"
+            className="flex w-full h-11 items-center justify-center gap-2 rounded-lg border border-[var(--nexus-danger)]/60 bg-[var(--nexus-danger)]/10 px-2 text-xs font-bold uppercase tracking-wide text-[var(--nexus-danger)] hover:bg-[var(--nexus-danger)]/20 transition disabled:opacity-40"
           >
             <ShieldAlert size={16} /> {tr('MIDI Panic')}
           </button>
@@ -353,7 +357,7 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
               maxLength={40} placeholder={tr('Nome do preset')} 
               className="min-w-0 flex-1 h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 text-xs text-[var(--text-main)] outline-none focus:border-indigo-500 transition" 
             />
-            <button onClick={savePreset} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white hover:bg-indigo-500 transition">
+            <button type="button" onClick={savePreset} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white hover:bg-indigo-500 transition">
               <Save size={14} /> {tr('Salvar')}
             </button>
           </div>
@@ -371,14 +375,21 @@ export function MidiControlsScreen({ channel, isConnected, onStatus }: Props) {
                   </div>
                   <div className="flex gap-1">
                     <button 
-                      title={tr('Aplicar')} disabled={busy || !isConnected} onClick={() => void applyPreset(preset)} 
+                      type="button"
+                      aria-label={tr('Aplicar')}
+                      title={tr('Aplicar')} 
+                      disabled={busy || !isConnected} 
+                      onClick={() => void applyPreset(preset)} 
                       className="rounded bg-indigo-500/20 p-2 text-[var(--nexus-primary)] hover:bg-indigo-500/30 disabled:opacity-40 transition-colors"
                     >
                       <Play size={14} />
                     </button>
                     <button 
-                      title={tr('Excluir')} onClick={() => setPresets((current) => current.filter((item) => item.id !== preset.id))} 
-                      className="rounded border border-transparent p-2 text-[var(--text-muted)] hover:bg-red-950/50 hover:text-red-500 hover:border-red-900/50 transition-colors"
+                      type="button"
+                      aria-label={tr('Excluir')}
+                      title={tr('Excluir')} 
+                      onClick={() => setPresets((current) => current.filter((item) => item.id !== preset.id))} 
+                      className="rounded border border-transparent p-2 text-[var(--text-muted)] hover:bg-[var(--nexus-danger)]/10 hover:text-[var(--nexus-danger)] hover:border-[var(--nexus-danger)]/30 transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
