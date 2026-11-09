@@ -24,7 +24,7 @@ type ConfigTab = 'effects' | 'timbre' | 'system';
 type PopupMode = ConfigTab | null;
 type InlineView = 'presets' | 'library' | null;
 
-const SCENES = ['A', 'B', 'C', 'D'];
+const SCENES = ['1', '2', '3', '4', '5', '6'];
 const SCENES_KEY = 'nexusmidi_studio_scenes';
 
 function Popup({ title, onClose, children, widthClass = 'max-w-2xl' }: { title: string; onClose: () => void; children: React.ReactNode; widthClass?: string }) {
@@ -57,7 +57,7 @@ function MidiChannelsPanel({ activeChannel, muted, solo, onSelect, onToggleMute,
   onToggleMute: (ch: number) => void;
   onToggleSolo: (ch: number) => void;
 }) {
-  const [page, setPage] = useState(0); // 0 = 1-8, 1 = 9-16
+  const [page, setPage] = useState(0);
 
   const renderChannel = (ch: number) => {
     const isActive = ch === activeChannel;
@@ -83,7 +83,6 @@ function MidiChannelsPanel({ activeChannel, muted, solo, onSelect, onToggleMute,
     <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-2">
       <div className="mb-2 flex items-center justify-between px-1">
         <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{tr('Canais MIDI')}</span>
-        {/* Paginação só aparece em telas menores que lg (tablets) */}
         <div className="flex items-center gap-2 text-xs font-bold text-[var(--nexus-primary)] lg:hidden">
           <button type="button" disabled={page === 0} onClick={() => setPage(0)} className="px-2 disabled:opacity-30">‹</button>
           {page * 8 + 1}-{page * 8 + 8}
@@ -92,11 +91,9 @@ function MidiChannelsPanel({ activeChannel, muted, solo, onSelect, onToggleMute,
       </div>
 
       <div className="flex flex-col gap-2">
-        {/* Canais 1-8 */}
         <div className={`grid grid-cols-8 gap-1 ${page === 1 ? 'hidden lg:grid' : 'grid'}`}>
           {Array.from({ length: 8 }, (_, i) => renderChannel(i + 1))}
         </div>
-        {/* Canais 9-16 */}
         <div className={`grid grid-cols-8 gap-1 ${page === 0 ? 'hidden lg:grid' : 'grid'}`}>
           {Array.from({ length: 8 }, (_, i) => renderChannel(i + 9))}
         </div>
@@ -296,9 +293,14 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const saveScene = () => {
     const newScenes = { ...scenes, [activeScene]: { channels: channelsStore.get(), settings: synthSettingsStore.get(), channelSettings: channelSettingsStore.get() } };
-    setScenes(newScenes);
-    localStorage.setItem(SCENES_KEY, JSON.stringify(newScenes));
-    onStatus(tr('Cena {scene} salva com sucesso.', { scene: activeScene }), 'success');
+    try {
+      localStorage.setItem(SCENES_KEY, JSON.stringify(newScenes));
+      setScenes(newScenes);
+      onStatus(tr('Cena {scene} salva com sucesso.', { scene: activeScene }), 'success');
+    } catch (err) {
+      console.error('Falha ao salvar cena:', err);
+      onStatus(tr('Não foi possível salvar a cena.'), 'error');
+    }
   };
 
   const toggleSceneSelection = (scene: string) => {
@@ -309,15 +311,20 @@ export function SoundFontScreen({ onStatus }: Props) {
     if (scenesToDelete.length === 0) { setIsDeleteModalOpen(false); return; }
     const newScenes = { ...scenes };
     scenesToDelete.forEach((s) => delete newScenes[s]);
-    setScenes(newScenes);
-    localStorage.setItem(SCENES_KEY, JSON.stringify(newScenes));
-    if (scenesToDelete.includes(activeScene)) {
-      const firstAvailable = SCENES.find((s) => newScenes[s]) || 'A';
-      setActiveScene(firstAvailable);
+    try {
+      localStorage.setItem(SCENES_KEY, JSON.stringify(newScenes));
+      setScenes(newScenes);
+      if (scenesToDelete.includes(activeScene)) {
+        const firstAvailable = SCENES.find((s) => newScenes[s]) || 'A';
+        setActiveScene(firstAvailable);
+      }
+      onStatus(tr('Cenas apagadas com sucesso.'), 'info');
+      setIsDeleteModalOpen(false);
+      setScenesToDelete([]);
+    } catch (err) {
+      console.error('Falha ao apagar cenas:', err);
+      onStatus(tr('Não foi possível apagar as cenas.'), 'error');
     }
-    onStatus(tr('Cenas apagadas com sucesso.'), 'info');
-    setIsDeleteModalOpen(false);
-    setScenesToDelete([]);
   };
 
   const inlineTabClass = (view: 'presets' | 'library') =>
@@ -374,7 +381,7 @@ export function SoundFontScreen({ onStatus }: Props) {
             <button
               type="button"
               onClick={() => setIsDeleteModalOpen(true)}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-red-500/70 transition-colors hover:bg-red-900/20 hover:text-red-400 ml-1"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--nexus-danger)]/70 transition-colors hover:bg-[var(--nexus-danger)]/10 hover:text-[var(--nexus-danger)] ml-1"
               title={tr('Apagar Cenas')}
               aria-label={tr('Apagar Cenas')}
             >
@@ -433,7 +440,7 @@ export function SoundFontScreen({ onStatus }: Props) {
                 {tr('Abra PRESETS para escolher um instrumento ou BIBLIOTECA para gerenciar seus SoundFonts.')}
               </p>
               {hasLibrary && (
-                <p className="text-[11px] text-emerald-500">
+                <p className="text-[11px] text-[var(--nexus-success)]">
                   {instruments.length} {tr('instrumentos disponíveis')}
                 </p>
               )}
@@ -536,7 +543,7 @@ export function SoundFontScreen({ onStatus }: Props) {
                     onClick={() => toggleSceneSelection(scene)}
                     className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
                       !hasData ? 'opacity-40 cursor-not-allowed bg-[var(--bg-app)] border-transparent' :
-                      isSelected ? 'bg-red-900/20 border-red-600/50 text-red-400' : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'
+                      isSelected ? 'bg-[var(--nexus-danger)]/10 border-[var(--nexus-danger)]/50 text-[var(--nexus-danger)]' : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--bg-elevated)]'
                     }`}
                   >
                     <span className="font-bold">Cena {scene}</span>
