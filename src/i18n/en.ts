@@ -182,6 +182,7 @@ export const en: Record<string, string> = {
   "MIDI Panic": "MIDI Panic",
   "MIDI Panic enviado": "MIDI Panic sent",
   "MIDI Panic enviado ao canal {channel}.": "MIDI Panic sent to channel {channel}.",
+  "MIDI Panic enviado parcialmente. Dispositivos sem resposta: {names}": "MIDI Panic sent partially. Unresponsive devices: {names}",
   "Madeiras": "Woodwinds",
   "Maior": "Major",
   "Manter": "Keep",
