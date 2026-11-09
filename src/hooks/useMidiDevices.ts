@@ -29,10 +29,23 @@ export function useMidiDevices(notify: Notify) {
     const handleRefresh = () => {
       if (mounted) void refresh();
     };
-    const handleDisconnect = (lost: MidiDestination) => {
+
+    // Trata o `reason` corretamente:
+    // - 'reconnecting': NÃO faz refresh (evita spam de notificações a cada tentativa)
+    // - 'failed': avisa e faz refresh
+    // - 'lost' (ou ausente): avisa e faz refresh
+    const handleDisconnect = (lost: MidiDestination, reason?: 'lost' | 'reconnecting' | 'failed') => {
       if (!mounted) return;
+      if (reason === 'reconnecting') {
+        notify(tr('Reconectando a "{name}"...', { name: lost.displayName }), 'info', 2000);
+        return;
+      }
       void refresh();
-      notify(tr('Destino "{name}" desconectado.', { name: lost.displayName }), 'warn', 4000);
+      if (reason === 'failed') {
+        notify(tr('Falha ao reconectar a "{name}".', { name: lost.displayName }), 'error', 4000);
+      } else {
+        notify(tr('Destino "{name}" desconectado.', { name: lost.displayName }), 'warn', 4000);
+      }
     };
 
     midiManager.setCallbacks(handleRefresh, handleDisconnect);
@@ -49,7 +62,6 @@ export function useMidiDevices(notify: Notify) {
 
     return () => {
       mounted = false;
-      // NOVO: Limpa os callbacks para evitar memory leaks ao desmontar
       midiManager.clearCallbacks();
     };
   }, [refresh, notify]);
