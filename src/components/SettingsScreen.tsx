@@ -32,13 +32,13 @@ export function SettingsScreen({ onStatus }: Props) {
     <div className="custom-scrollbar flex min-h-0 w-full flex-1 flex-col overflow-y-auto bg-[var(--bg-app)] p-4 sm:p-6">
       <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-4 md:grid-cols-2">
         
-        {/* CARD APARÊNCIA */}
         <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-4 shadow-md">
           <h3 className="mb-3 flex items-center gap-2 border-b border-[var(--border-color)] pb-2 text-xs font-bold uppercase tracking-wider text-[var(--nexus-primary)]">
             <Monitor size={15} /> {tr('Aparência')}
           </h3>
           <div className="grid grid-cols-3 gap-2">
             <button
+              type="button"
               onClick={() => prefsStore.set({ theme: 'dark' })}
               className={`flex flex-col items-center justify-center py-3 rounded-xl border transition-all ${
                 prefs.theme === 'dark'
@@ -50,6 +50,7 @@ export function SettingsScreen({ onStatus }: Props) {
               <span className="text-xs font-bold">Dark</span>
             </button>
             <button
+              type="button"
               onClick={() => prefsStore.set({ theme: 'light' })}
               className={`flex flex-col items-center justify-center py-3 rounded-xl border transition-all ${
                 prefs.theme === 'light'
@@ -61,6 +62,7 @@ export function SettingsScreen({ onStatus }: Props) {
               <span className="text-xs font-bold">Light</span>
             </button>
             <button
+              type="button"
               onClick={() => prefsStore.set({ theme: 'system' })}
               className={`flex flex-col items-center justify-center py-3 rounded-xl border transition-all ${
                 prefs.theme === 'system'
@@ -74,7 +76,6 @@ export function SettingsScreen({ onStatus }: Props) {
           </div>
         </section>
 
-        {/* CARD IDIOMA */}
         <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-4 shadow-md">
           <h3 className="mb-3 flex items-center gap-2 border-b border-[var(--border-color)] pb-2 text-xs font-bold uppercase tracking-wider text-[var(--nexus-primary)]">
             <Globe size={15} /> {tr('Idioma')}
@@ -82,6 +83,7 @@ export function SettingsScreen({ onStatus }: Props) {
           <div className="flex flex-col gap-2">
             {LANGUAGES.map((lang) => (
               <button
+                type="button"
                 key={lang.id}
                 onClick={() => setLanguage(lang.id)}
                 className={`flex w-full items-center justify-between rounded-xl border p-3 text-sm font-semibold transition-all ${
@@ -97,7 +99,6 @@ export function SettingsScreen({ onStatus }: Props) {
           </div>
         </section>
 
-        {/* CARD PREFERÊNCIAS GERAIS */}
         <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-4 shadow-md md:col-span-2">
           <h3 className="mb-3 flex items-center gap-2 border-b border-[var(--border-color)] pb-2 text-xs font-bold uppercase tracking-wider text-[var(--nexus-primary)]">
             <SunDim size={15} /> {tr('Preferências Gerais')}
@@ -119,7 +120,6 @@ export function SettingsScreen({ onStatus }: Props) {
           </div>
         </section>
 
-        {/* CARD SOBRE */}
         <section className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-panel)] p-4 shadow-md md:col-span-2">
           <h3 className="mb-3 flex items-center gap-2 border-b border-[var(--border-color)] pb-2 text-xs font-bold uppercase tracking-wider text-[var(--nexus-primary)]">
             <Info size={15} /> {tr('Sobre o App')}
