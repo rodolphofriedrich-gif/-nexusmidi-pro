@@ -31,7 +31,6 @@ import { acquireWakeLock, releaseWakeLock } from './services/wakeLockService';
 type AppTab = 'play' | 'midi' | 'studio' | 'settings';
 
 const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string; color: string }> = [
-  // Ícone trocado de Play para Music2
   { id: 'play', Icon: Music2, label: 'Tocar', color: 'text-[var(--nexus-primary)]' }, 
   { id: 'midi', Icon: Activity, label: 'MIDI', color: 'text-[var(--nexus-primary)]' },
   { id: 'studio', Icon: AudioWaveform, label: 'Estúdio', color: 'text-[var(--nexus-primary)]' },
@@ -44,7 +43,7 @@ function ChannelSelectPopup({ title, value, onSelect, onClose }: { title: string
       <div className="flex w-full max-w-xs flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl">
         <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-color)] px-4 py-3">
           <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-main)]">{title}</h3>
-          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-muted)] transition hover:text-[var(--text-main)]">
+          <button type="button" aria-label={tr('Fechar')} onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] text-[var(--text-muted)] transition hover:text-[var(--text-main)]">
             <X size={20} />
           </button>
         </div>
@@ -103,7 +102,6 @@ export default function App() {
   const [filterPos, setFilterPos] = useState({ top: 60, left: 8 });
   const [monitorPaused, setMonitorPaused] = useState(false);
 
-  // Ref para controlar o estado do BackButton sem vazar memória
   const uiStateRef = useRef({ isSidebarOpen, openMenu, isPadChannelOpen, showExit });
   useEffect(() => {
     uiStateRef.current = { isSidebarOpen, openMenu, isPadChannelOpen, showExit };
@@ -122,7 +120,7 @@ export default function App() {
     };
     CapApp.addListener('backButton', handleBack).then(l => { backListener = l; });
     return () => { if (backListener) backListener.remove(); };
-  }, []); // Roda apenas uma vez
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = prefs.language;
@@ -136,20 +134,16 @@ export default function App() {
   
   useEffect(() => {
     let cancelled = false;
-
     const apply = () => {
       if (cancelled) return;
       if (prefs.wakeLock) void acquireWakeLock();
       else void releaseWakeLock();
     };
-
     apply();
-
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && prefs.wakeLock) void acquireWakeLock();
     };
     document.addEventListener('visibilitychange', handleVisibility);
-
     return () => {
       cancelled = true;
       document.removeEventListener('visibilitychange', handleVisibility);
@@ -164,11 +158,9 @@ export default function App() {
       setVuLevel(velocity);
     };
     midiManager.addActivityListener(onActivity);
-
     const interval = setInterval(() => {
       if (Date.now() - lastActivity > 150) setVuLevel(0);
     }, 200);
-
     return () => {
       midiManager.removeActivityListener(onActivity);
       clearInterval(interval);
@@ -251,7 +243,7 @@ export default function App() {
           <span className="text-sm font-extrabold tracking-wider text-[var(--text-main)]">
             NEXUSMIDI <span className="text-[var(--nexus-accent)]">Pro</span>
           </span>
-          <button onClick={() => setIsSidebarOpen(false)} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition">
+          <button type="button" aria-label={tr('Fechar menu')} onClick={() => setIsSidebarOpen(false)} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition">
             <X size={20} />
           </button>
         </div>
@@ -295,7 +287,7 @@ export default function App() {
         <header className="nexus-header-pad relative z-[80] flex h-[calc(3.5rem+env(safe-area-inset-top))] w-full shrink-0 items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-panel)] pt-[env(safe-area-inset-top)]">
           
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
-            <button type="button" onClick={() => setIsSidebarOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] transition-colors" title={tr('Menu')}>
+            <button type="button" aria-label={tr('Abrir menu')} onClick={() => setIsSidebarOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] transition-colors">
               <Menu size={22} />
             </button>
 
@@ -325,7 +317,7 @@ export default function App() {
                       <span className="min-w-[16px] text-center font-mono text-sm font-bold text-[var(--nexus-primary)]">{String(prefs.channel).padStart(2, '0')}</span>
                       <ChevronDown size={14} />
                     </button>
-                    <button type="button" onClick={() => keyboardRef.current?.openSettingsPopup()} className={`${btnClass} w-10`}>
+                    <button type="button" aria-label={tr('Configurações do teclado')} onClick={() => keyboardRef.current?.openSettingsPopup()} className={`${btnClass} w-10`}>
                       <SlidersHorizontal size={16} />
                     </button>
                   </div>
@@ -431,10 +423,10 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                <button type="button" onClick={() => setMonitorPaused(!monitorPaused)} className={`flex h-10 w-10 items-center justify-center rounded-lg border transition ${monitorPaused ? 'border-amber-600/60 bg-amber-900/30 text-amber-500' : 'border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
+                <button type="button" aria-label={monitorPaused ? tr('Continuar') : tr('Pausar')} onClick={() => setMonitorPaused(!monitorPaused)} className={`flex h-10 w-10 items-center justify-center rounded-lg border transition ${monitorPaused ? 'border-amber-600/60 bg-amber-900/30 text-amber-500' : 'border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
                   {monitorPaused ? <Play size={16} /> : <Pause size={16} />}
                 </button>
-                <button type="button" onClick={() => { midiManager.clearLog(); setMonitorPaused(false); }} className={`${btnClass} w-10 hover:bg-red-950/50 hover:text-red-500`}>
+                <button type="button" aria-label={tr('Limpar')} onClick={() => { midiManager.clearLog(); setMonitorPaused(false); }} className={`${btnClass} w-10 hover:bg-red-950/50 hover:text-red-500`}>
                   <Trash2 size={16} />
                 </button>
               </>
@@ -442,20 +434,21 @@ export default function App() {
 
             <button
               type="button"
-              onClick={handlePanic}
+              aria-label={tr('MIDI Panic')}
               title={tr('MIDI Panic')}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-red-800/60 bg-red-950/40 text-red-500 transition hover:bg-red-900/60"
+              onClick={handlePanic}
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-red-800/60 bg-red-950/40 text-[var(--nexus-danger)] transition hover:bg-red-900/60"
             >
               <ShieldAlert size={18} />
             </button>
 
             {isUsbConnected && (
-              <div className="flex items-center justify-center h-8 w-8 rounded-md bg-emerald-900/30 text-emerald-500 border border-emerald-800/50" title="USB Conectado">
+              <div className="flex items-center justify-center h-8 w-8 rounded-md bg-[var(--nexus-success)]/15 text-[var(--nexus-success)] border border-[var(--nexus-success)]/30" title="USB Conectado">
                 <Usb size={16} />
               </div>
             )}
             {(isBleConnected || devices.bleServerActive) && (
-              <div className="flex items-center justify-center h-8 w-8 rounded-md bg-emerald-900/30 text-emerald-500 border border-emerald-800/50" title="Bluetooth Conectado">
+              <div className="flex items-center justify-center h-8 w-8 rounded-md bg-[var(--nexus-success)]/15 text-[var(--nexus-success)] border border-[var(--nexus-success)]/30" title="Bluetooth Conectado">
                 <Bluetooth size={16} />
               </div>
             )}
@@ -486,7 +479,7 @@ export default function App() {
                     isConnected={canPlay}
                     selectedChannel={prefs.channel}
                     onSelectChannel={(channel) => { prefsStore.set({ channel }); showMessage(tr('Canal: {n}', { n: channel }), 'info', 1500); }}
-                    onNoteOn={(note) => handleNoteOn(note, prefs.channel)} // Corrigido no MidiKeyboard, mas mantido seguro aqui
+                    onNoteOn={(note) => handleNoteOn(note, prefs.channel)}
                     onNoteOff={(note) => handleNoteOff(note, prefs.channel)} 
                     onDisabledPress={handleDisabledPress}
                     onActiveNotesChange={setActiveNotes}
