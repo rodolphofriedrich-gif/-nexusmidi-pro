@@ -27,15 +27,15 @@
   /* Cores de função (padrão das DAWs): só aparecem com significado */
   --nexus-success: #34d399;
   --nexus-success-end: #059669;
-  --nexus-warning: #fbbf24; /* mute */
-  --nexus-danger: #ef4444;  /* gravação / perigo */
-  --nexus-solo: #0ea5e9;    /* solo */
+  --nexus-warning: #fbbf24;
+  --nexus-danger: #ef4444;
+  --nexus-solo: #0ea5e9;
 
   --nexus-border: rgba(255, 255, 255, 0.06);
   --nexus-border-strong: rgba(255, 255, 255, 0.1);
   --nexus-glass: rgba(255, 255, 255, 0.03);
 
-  /* Aliases usados pelos componentes (SoundFontScreen, Mixer, Menu...). Seguem o tema claro/escuro. */
+  /* Aliases usados pelos componentes. Seguem o tema claro/escuro. */
   --bg-app: var(--nexus-bg-bottom);
   --bg-panel: var(--nexus-panel);
   --bg-elevated: var(--nexus-panel-raised);
@@ -49,7 +49,6 @@
   --nexus-radius-lg: 10px;
   --nexus-radius-xl: 12px;
 
-  /* Sombra neutra para cards/painéis (profundidade suave, sem glow) */
   --nexus-shadow-card:
     0 1px 2px rgba(0, 0, 0, 0.35),
     0 2px 10px rgba(0, 0, 0, 0.22),
@@ -59,7 +58,6 @@
     0 18px 48px rgba(0, 0, 0, 0.55),
     0 4px 12px rgba(0, 0, 0, 0.35);
 
-  /* Reservado SOMENTE para estados ativos/selecionados */
   --nexus-shadow-primary:
     0 2px 10px rgba(99, 102, 241, 0.28);
 
@@ -100,6 +98,14 @@ html.light {
   --nexus-text: #1a2030;
   --nexus-text-secondary: #55617a;
   --nexus-text-muted: #7a8599;
+
+  /* Semânticas ESCURECIDAS para atender WCAG AA (4.5:1) sobre fundo branco.
+     Valores originais (root) são claros demais em tema claro — usados só no dark. */
+  --nexus-success: #065f46;
+  --nexus-success-end: #064e3b;
+  --nexus-warning: #92400e;
+  --nexus-danger: #b91c1c;
+  --nexus-solo: #0369a1;
 
   --nexus-border: rgba(15, 23, 42, 0.08);
   --nexus-border-strong: rgba(15, 23, 42, 0.14);
