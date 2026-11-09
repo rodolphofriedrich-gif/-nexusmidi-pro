@@ -4,7 +4,7 @@
 
 O NexusMIDI Pro transforma o celular ou tablet em controlador MIDI, roteador (patchbay), sintetizador SoundFont, gravador e ferramenta de performance — tudo em uma interface com o tema "Midnight Studio" (Dark/Light). Funciona offline.
 
-[![Build](https://github.com/SEU-USUARIO/SEU-REPOSITORIO/actions/workflows/build.yml/badge.svg)](https://github.com/SEU-USUARIO/SEU-REPOSITORIO/actions/workflows/build.yml)
+[![Build](https://github.com/rodolphofriedrich-gif/Teclado-MIDI-BLUETOOTH-/actions/workflows/build.yml/badge.svg)](https://github.com/rodolphofriedrich-gif/Teclado-MIDI-BLUETOOTH-/actions/workflows/build.yml)
 
 ---
 
@@ -56,20 +56,22 @@ O NexusMIDI Pro transforma o celular ou tablet em controlador MIDI, roteador (pa
 ## 🚀 Começando
 
 ### Pré-requisitos
+
 - [Node.js](https://nodejs.org/) **22.0 ou superior** (exigido pelo Capacitor CLI)
 - Para o app Android: [Android Studio](https://developer.android.com/studio) (ou apenas JDK 21 + Android SDK)
 
 ### Rodar na web (desenvolvimento)
+
 ```bash
-git clone https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git
-cd SEU-REPOSITORIO
+git clone https://github.com/rodolphofriedrich-gif/Teclado-MIDI-BLUETOOTH-.git
+cd Teclado-MIDI-BLUETOOTH-
 npm ci
 npm run dev          # http://localhost:3000
 ```
 
 USB/BLE nativos só existem no app Android. No navegador você tem teclado, sintetizador, gravador e ferramentas.
 
-Gerar o app Android
+### Gerar o app Android
 
 ```bash
 npm ci
@@ -77,29 +79,30 @@ npm run cap:sync     # build do bundle + npx cap sync android
 npx cap open android # abre no Android Studio e rode no aparelho
 ```
 
-Ou, direto pela linha de comando (gera android/app/build/outputs/apk/debug/app-debug.apk):
+Ou, direto pela linha de comando (gera `android/app/build/outputs/apk/debug/app-debug.apk`):
 
 ```bash
 npm run android:debug
 ```
 
-Scripts úteis
+### Scripts úteis
 
-Comando O que faz
-npm run dev Servidor de desenvolvimento
-npm run build Build web
-npm run build:android Build do bundle embutido no APK (sem Service Worker)
-npm run typecheck Verificação de tipos (tsc --noEmit)
-npm run lint Lint (Oxlint)
-npm test Testes (Vitest)
-npm run check typecheck + lint + testes
-npm run format Formata o código (Prettier)
+| Comando | O que faz |
+| --- | --- |
+| `npm run dev` | Servidor de desenvolvimento |
+| `npm run build` | Build web |
+| `npm run build:android` | Build do bundle embutido no APK (sem Service Worker) |
+| `npm run typecheck` | Verificação de tipos (`tsc --noEmit`) |
+| `npm run lint` | Lint (Oxlint) |
+| `npm test` | Testes (Vitest) |
+| `npm run check` | typecheck + lint + testes |
+| `npm run format` | Formata o código (Prettier) |
 
 ---
 
-🚢 Publicar uma versão (CI/CD)
+## 🚢 Publicar uma versão (CI/CD)
 
-O workflow .github/workflows/build.yml roda typecheck, lint, testes e build em todo PR/push e gera o APK debug como artefato.
+O workflow `.github/workflows/build.yml` roda typecheck, lint, testes e build em todo PR/push e gera o APK debug como artefato.
 
 Para publicar um Release assinado no GitHub:
 
@@ -108,16 +111,19 @@ Para publicar um Release assinado no GitHub:
    keytool -genkeypair -v -keystore nexusmidi.jks -alias nexusmidi -keyalg RSA -keysize 2048 -validity 10000
    base64 -w0 nexusmidi.jks   # copie a saída
    ```
-2. Em Settings → Secrets and variables → Actions, crie: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
+
+2. Em **Settings → Secrets and variables → Actions**, crie: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+
 3. Crie e envie uma tag:
    ```bash
    git tag v1.1.0 && git push origin v1.1.0
    ```
-   O CI compila assembleRelease + bundleRelease e anexa o APK e o AAB ao Release. Sem os segredos, o Release leva apenas o APK de debug.
+
+   O CI compila `assembleRelease` + `bundleRelease` e anexa o APK e o AAB ao Release. Sem os segredos, o Release leva apenas o APK de debug.
 
 ---
 
-🗂️ Estrutura
+## 🗂️ Estrutura
 
 ```
 src/
@@ -131,28 +137,28 @@ src/
 android/               Projeto Android (plugin NativeMidi + BleMidiServer em Java)
 ```
 
-Decisões de arquitetura:
+**Decisões de arquitetura:**
 
-· Lógica pura em lib/ (sem React, sem Web Audio, sem Capacitor), com injeção de dependências — por isso é testável sem hardware.
-· Stores reativos (createStore + useSyncExternalStore) com persistência segura em localStorage.
-· O SpessaSynth é carregado sob demanda (somente ao abrir o primeiro SoundFont), reduzindo o tempo de abertura.
+- Lógica pura em `lib/` (sem React, sem Web Audio, sem Capacitor), com injeção de dependências — por isso é testável sem hardware.
+- Stores reativos (`createStore` + `useSyncExternalStore`) com persistência segura em `localStorage`.
+- O SpessaSynth é carregado sob demanda (somente ao abrir o primeiro SoundFont), reduzindo o tempo de abertura.
 
 ---
 
-🧪 Testes
+## 🧪 Testes
 
 ```bash
 npm test
 ```
 
-Cobrem matemática MIDI, curvas de velocity, escalas/acordes, arpejador, arquivo .mid (ida e volta), gravador/player, MIDI Learn, parser de bytes, roteamento, conexões USB/BLE, falhas de envio, hot-plug, biblioteca de SoundFonts e i18n (todo texto tem tradução).
+Cobrem matemática MIDI, curvas de velocity, escalas/acordes, arpejador, arquivo `.mid` (ida e volta), gravador/player, MIDI Learn, parser de bytes, roteamento, conexões USB/BLE, falhas de envio, hot-plug, biblioteca de SoundFonts e i18n (todo texto tem tradução).
 
 ---
 
-🤝 Contribuindo
+## 🤝 Contribuindo
 
-Veja o CONTRIBUTING.md. Histórico de mudanças em CHANGELOG.md.
+Veja o [CONTRIBUTING.md](CONTRIBUTING.md). Histórico de mudanças em [CHANGELOG.md](CHANGELOG.md).
 
-📄 Licença
+## 📄 Licença
 
-MIT. Bibliotecas de terceiros em THIRD_PARTY_LICENSES.md.
+MIT. Bibliotecas de terceiros em [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
