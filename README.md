@@ -11,7 +11,7 @@ O NexusMIDI Pro transforma o celular ou tablet em controlador MIDI, roteador (pa
 ## ✨ Funcionalidades
 
 **Tocar**
-- **🎹 Teclado virtual** multi-touch com *glissando*, zoom, rolagem livre e **split point** visual (Fase 3).
+- **🎹 Teclado virtual** multi-touch com *glissando*, zoom e rolagem livre.
 - **🥁 Pads de bateria**: 16 pads General MIDI em 4 bancos (64 pads no total).
 - **🎶 Chord Pads**: cada pad pode tocar uma nota única, um acorde pré-definido (maior, menor, 7ª, etc.) ou intervalos customizados.
 - **📈 VU meters** que reagem à velocity real (tocada ou recebida).
@@ -87,7 +87,7 @@ Scripts úteis
 
 Comando O que faz
 npm run dev Servidor de desenvolvimento
-npm run build Build web/PWA
+npm run build Build web
 npm run build:android Build do bundle embutido no APK (sem Service Worker)
 npm run typecheck Verificação de tipos (tsc --noEmit)
 npm run lint Lint (Oxlint)
