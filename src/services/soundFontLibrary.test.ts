@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { makeSf2 } from '../lib/testSf2';
+import { makeSf2 } from '../lib/testSf2.testutil';
 import { createMemoryStorage, createStore } from '../lib/storeCore';
 import { SoundFontLibrary } from './soundFontLibrary';
 import type { SoundFontMeta, SoundFontStorage } from './storageService';
