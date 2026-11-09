@@ -36,7 +36,7 @@ export function ConnectionMenu(props: Props) {
         <button type="button" aria-label={tr('Atualizar lista')} onClick={props.onRefresh} className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors">
           <RefreshCw size={16} />
         </button>
-        <button type="button" onClick={props.onToggleOpen} className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors">
+        <button type="button" aria-label={tr('Fechar')} onClick={props.onToggleOpen} className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] transition-colors">
           <X size={18} />
         </button>
       </div>
@@ -49,7 +49,7 @@ export function ConnectionMenu(props: Props) {
         type="button"
         aria-expanded={isOpen}
         onClick={props.onToggleOpen}
-        className={`nexus-connection-button flex h-10 w-full items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 transition-colors hover:bg-[var(--bg-elevated)] ${isConnected ? 'text-emerald-400' : 'text-[var(--text-main)]'}`}
+        className={`nexus-connection-button flex h-10 w-full items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 transition-colors hover:bg-[var(--bg-elevated)] ${isConnected ? 'text-[var(--nexus-success)]' : 'text-[var(--text-main)]'}`}
       >
         <span className="flex items-center justify-center">
           <Icon size={18} strokeWidth={1.8} />
@@ -69,8 +69,9 @@ export function ConnectionMenu(props: Props) {
             {showDisconnectAll && (
               <button
                 type="button"
+                aria-label={tr('Desconectar Todos')}
                 onClick={props.onDisconnectAll}
-                className="flex w-full items-center justify-center gap-2 border-b border-[var(--border-color)] bg-red-950/20 px-4 py-2.5 text-xs font-bold uppercase text-red-400 transition-colors hover:bg-red-900/30"
+                className="flex w-full items-center justify-center gap-2 border-b border-[var(--border-color)] bg-[var(--nexus-danger)]/10 px-4 py-2.5 text-xs font-bold uppercase text-[var(--nexus-danger)] transition-colors hover:bg-[var(--nexus-danger)]/20"
               >
                 {tr('Desconectar Todos')}
               </button>
@@ -91,11 +92,12 @@ export function ConnectionMenu(props: Props) {
                       <button
                         key={dest.id}
                         type="button"
+                        aria-pressed={selected}
                         onClick={() => props.onToggleDevice(dest)}
-                        className={`flex w-full items-center justify-between rounded-lg p-3 transition-colors hover:bg-[var(--bg-elevated)] ${selected ? 'bg-[var(--bg-elevated)]/50 text-emerald-400' : 'text-[var(--text-main)]'}`}
+                        className={`flex w-full items-center justify-between rounded-lg p-3 transition-colors hover:bg-[var(--bg-elevated)] ${selected ? 'bg-[var(--bg-elevated)]/50 text-[var(--nexus-success)]' : 'text-[var(--text-main)]'}`}
                       >
                         <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">{dest.displayName}</span>
-                        {selected ? <CheckCircle2 size={18} className="text-emerald-400 shrink-0" /> : <Circle size={16} className="text-[var(--text-muted)] shrink-0" />}
+                        {selected ? <CheckCircle2 size={18} className="text-[var(--nexus-success)] shrink-0" /> : <Circle size={16} className="text-[var(--text-muted)] shrink-0" />}
                       </button>
                     );
                   })}
@@ -118,7 +120,7 @@ export function ConnectionMenu(props: Props) {
                   type="button"
                   onClick={props.isServerActive ? props.onDisconnectAll : props.onStartServer}
                   className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-bold transition-colors ${
-                    props.isServerActive ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' : 'bg-[var(--bg-elevated)] text-[var(--text-main)] hover:bg-[var(--bg-panel)]'
+                    props.isServerActive ? 'bg-[var(--nexus-danger)]/20 text-[var(--nexus-danger)] hover:bg-[var(--nexus-danger)]/30' : 'bg-[var(--bg-elevated)] text-[var(--text-main)] hover:bg-[var(--bg-panel)]'
                   }`}
                 >
                   {props.isServerActive ? <Power size={18} /> : <Bluetooth size={18} />}
