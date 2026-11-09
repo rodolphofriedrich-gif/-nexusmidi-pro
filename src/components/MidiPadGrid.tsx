@@ -9,8 +9,8 @@ interface MidiPadGridProps {
   bank: number;
   isActive: boolean;
   isConnected: boolean;
-  onNoteOn: (note: number, velocity?: number) => void;
-  onNoteOff: (note: number) => void;
+  onNoteOn: (note: number, velocity?: number, sourceId?: string) => void;
+  onNoteOff: (note: number, sourceId?: string) => void;
   onDisabledPress: () => void;
   isEditMode: boolean;
 }
@@ -45,8 +45,10 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
   const activePadNotesRef = useRef<Map<number, number[]>>(new Map());
   const noteRefCountRef = useRef<Map<number, number>>(new Map());
 
+  const onNoteOnRef = useRef(onNoteOn);
   const onNoteOffRef = useRef(onNoteOff);
 
+  useEffect(() => { onNoteOnRef.current = onNoteOn; }, [onNoteOn]);
   useEffect(() => { onNoteOffRef.current = onNoteOff; }, [onNoteOff]);
 
   const incNote = (note: number): boolean => {
@@ -82,13 +84,14 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
 
     const notes = resolveChordNotes(pad.note, pad.chordType ?? 'single', pad.chordIntervals);
     const velocity = pad.velocity ?? 100;
+    const sourceId = `pad-${bank}-${padIndex}`;
 
     activePadNotesRef.current.set(padIndex, notes);
     activePointersRef.current.set(pointerId, padIndex);
     setPressedPads((current) => { const next = new Set(current); next.add(padIndex); return next; });
 
     for (const note of notes) {
-      if (incNote(note)) void onNoteOn(note, velocity);
+      if (incNote(note)) void onNoteOnRef.current(note, velocity, sourceId);
     }
   };
 
@@ -104,8 +107,9 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
     activePadNotesRef.current.delete(padIndex);
     setPressedPads((current) => { const next = new Set(current); next.delete(padIndex); return next; });
 
+    const sourceId = `pad-${bank}-${padIndex}`;
     for (const note of notes) {
-      if (decNote(note)) void onNoteOffRef.current(note);
+      if (decNote(note)) void onNoteOffRef.current(note, sourceId);
     }
   };
 
@@ -115,8 +119,9 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
     activePointersRef.current.clear();
     noteRefCountRef.current.clear();
     setPressedPads(new Set());
-    for (const [, notes] of entries) {
-      for (const note of notes) void onNoteOffRef.current(note);
+    for (const [padIndex, notes] of entries) {
+      const sourceId = `pad-${bank}-${padIndex}`;
+      for (const note of notes) void onNoteOffRef.current(note, sourceId);
     }
   };
 
@@ -134,7 +139,7 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
       window.removeEventListener('pointercancel', handleGlobalPointerUp);
       releaseAllNotes();
     };
-  }, []);
+  }, [bank]);
 
   useEffect(() => {
     releaseAllNotes();
@@ -163,11 +168,11 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
       chordType,
       chordIntervals,
     };
-    
+
     padsStore.set((prev) => ({
       banks: prev.banks.map((b, bi) => (bi === bank ? b.map((p, pi) => (pi === editPadIndex ? newPad : p)) : b))
     }));
-    
+
     setEditPadIndex(null);
   };
 
@@ -238,57 +243,57 @@ export function MidiPadGrid({ bank, isActive, isConnected, onNoteOn, onNoteOff, 
       )}
 
       <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden p-1.5">
-      <div className="grid h-full max-w-full aspect-[3/1] grid-cols-4 grid-rows-4 gap-1.5">
-        {banksData[bank].map((pad, index) => {
-          const isPressed = pressedPads.has(index);
-          const chordBadge = pad.chordType ? CHORD_BADGE[pad.chordType] : '';
-          return (
-            <div key={index}
-              onPointerDown={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); pressPad(index, e.pointerId); }}
-              onPointerEnter={(e) => { if (activePointersRef.current.has(e.pointerId)) pressPad(index, e.pointerId); }}
-              onPointerUp={(e) => { releasePad(index, e.pointerId); }}
-              onPointerCancel={(e) => { releasePad(index, e.pointerId); }}
-              onLostPointerCapture={() => releasePad(index, -1)}
-              onContextMenu={(e) => { e.preventDefault(); if (isEditMode) { setEditPadIndex(index); setEditChordType(pad.chordType ?? 'single'); } }}
-              role="button"
-              className={`relative flex min-h-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-xl border-2 transition-all duration-100 ease-out ${
-                isPressed 
-                  ? 'scale-[0.97] z-10 border-cyan-400/80 shadow-[0_0_20px_rgba(34,211,238,0.4)]' 
-                  : 'border-[var(--border-color)] bg-[var(--bg-elevated)] shadow-sm hover:border-slate-400'
-              } ${!isActive ? 'cursor-not-allowed opacity-50 grayscale' : ''}`}
-              style={{ touchAction: 'none' }}
-            >
-              <div 
-                className={`absolute inset-0 transition-opacity duration-100 ${pad.color} ${isPressed ? 'opacity-100' : 'opacity-10'}`} 
-              />
+        <div className="grid h-full max-w-full aspect-[3/1] grid-cols-4 grid-rows-4 gap-1.5">
+          {banksData[bank].map((pad, index) => {
+            const isPressed = pressedPads.has(index);
+            const chordBadge = pad.chordType ? CHORD_BADGE[pad.chordType] : '';
+            return (
+              <div key={index}
+                onPointerDown={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); pressPad(index, e.pointerId); }}
+                onPointerEnter={(e) => { if (activePointersRef.current.has(e.pointerId)) pressPad(index, e.pointerId); }}
+                onPointerUp={(e) => { releasePad(index, e.pointerId); }}
+                onPointerCancel={(e) => { releasePad(index, e.pointerId); }}
+                onLostPointerCapture={() => releasePad(index, -1)}
+                onContextMenu={(e) => { e.preventDefault(); if (isEditMode) { setEditPadIndex(index); setEditChordType(pad.chordType ?? 'single'); } }}
+                role="button"
+                className={`relative flex min-h-0 cursor-pointer select-none flex-col items-center justify-center overflow-hidden rounded-xl border-2 transition-all duration-100 ease-out ${
+                  isPressed
+                    ? 'scale-[0.97] z-10 border-cyan-400/80 shadow-[0_0_20px_rgba(34,211,238,0.4)]'
+                    : 'border-[var(--border-color)] bg-[var(--bg-elevated)] shadow-sm hover:border-slate-400'
+                } ${!isActive ? 'cursor-not-allowed opacity-50 grayscale' : ''}`}
+                style={{ touchAction: 'none' }}
+              >
+                <div
+                  className={`absolute inset-0 transition-opacity duration-100 ${pad.color} ${isPressed ? 'opacity-100' : 'opacity-10'}`}
+                />
 
-              {isPressed && <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />}
+                {isPressed && <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />}
 
-              {chordBadge && (
-                <span className="pointer-events-none absolute left-1 top-1 z-20 rounded bg-black/45 px-1 py-0.5 font-mono text-[8px] font-bold text-white/90">
-                  {chordBadge}
-                </span>
-              )}
+                {chordBadge && (
+                  <span className="pointer-events-none absolute left-1 top-1 z-20 rounded bg-black/45 px-1 py-0.5 font-mono text-[8px] font-bold text-white/90">
+                    {chordBadge}
+                  </span>
+                )}
 
-              {isEditMode && (
-                <button
-                  type="button"
-                  aria-label={tr('Editar Pad')}
-                  onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); setEditChordType(pad.chordType ?? 'single'); }}
-                  className={`absolute right-1.5 top-1.5 z-20 rounded-md p-1.5 transition-all ${isPressed ? 'bg-black/20 text-white/80' : 'bg-black/10 text-black/50 hover:bg-black/30 dark:bg-black/40 dark:text-white/50 dark:hover:bg-black/80 dark:hover:text-white'}`}
-                >
-                  <Settings2 size={12} />
-                </button>
-              )}
+                {isEditMode && (
+                  <button
+                    type="button"
+                    aria-label={tr('Editar Pad')}
+                    onClick={(e) => { e.stopPropagation(); setEditPadIndex(index); setEditChordType(pad.chordType ?? 'single'); }}
+                    className={`absolute right-1.5 top-1.5 z-20 rounded-md p-1.5 transition-all ${isPressed ? 'bg-black/20 text-white/80' : 'bg-black/10 text-black/50 hover:bg-black/30 dark:bg-black/40 dark:text-white/50 dark:hover:bg-black/80 dark:hover:text-white'}`}
+                  >
+                    <Settings2 size={12} />
+                  </button>
+                )}
 
-              <div className="pointer-events-none z-10 flex h-full w-full flex-col items-center justify-center p-0.5">
-                <span className={`w-full truncate px-1 text-center text-[11px] font-extrabold leading-tight drop-shadow-md sm:text-xs ${isPressed ? 'text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]' : 'text-[var(--text-main)]'}`}>{pad.label}</span>
-                <span className={`mt-0.5 font-mono text-[9px] font-bold ${isPressed ? 'text-white/90' : 'text-[var(--text-muted)]'}`}>N{pad.note}</span>
+                <div className="pointer-events-none z-10 flex h-full w-full flex-col items-center justify-center p-0.5">
+                  <span className={`w-full truncate px-1 text-center text-[11px] font-extrabold leading-tight drop-shadow-md sm:text-xs ${isPressed ? 'text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]' : 'text-[var(--text-main)]'}`}>{pad.label}</span>
+                  <span className={`mt-0.5 font-mono text-[9px] font-bold ${isPressed ? 'text-white/90' : 'text-[var(--text-muted)]'}`}>N{pad.note}</span>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
