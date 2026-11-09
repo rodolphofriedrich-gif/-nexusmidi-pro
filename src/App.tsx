@@ -31,7 +31,7 @@ import { acquireWakeLock, releaseWakeLock } from './services/wakeLockService';
 type AppTab = 'play' | 'midi' | 'studio' | 'settings';
 
 const NAV_ITEMS: ReadonlyArray<{ id: AppTab; Icon: LucideIcon; label: string; color: string }> = [
-  { id: 'play', Icon: Music2, label: 'Tocar', color: 'text-[var(--nexus-primary)]' }, 
+  { id: 'play', Icon: Music2, label: 'Tocar', color: 'text-[var(--nexus-primary)]' },
   { id: 'midi', Icon: Activity, label: 'MIDI', color: 'text-[var(--nexus-primary)]' },
   { id: 'studio', Icon: AudioWaveform, label: 'Estúdio', color: 'text-[var(--nexus-primary)]' },
   { id: 'settings', Icon: Settings, label: 'Configurações', color: 'text-[var(--nexus-primary)]' },
@@ -95,7 +95,7 @@ export default function App() {
 
   const [studioTab, setStudioTab] = useState<'synth' | 'mixer' | 'tools'>('synth');
   const [midiTab, setMidiTab] = useState<'router' | 'monitor'>('router');
-  
+
   const [isRouterRefreshing, setIsRouterRefreshing] = useState(false);
   const [monitorFilter, setMonitorFilter] = useState<'all' | 'RX' | 'TX'>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -131,7 +131,7 @@ export default function App() {
     if (prefs.theme !== 'system') return;
     return subscribeSystemTheme(() => applyTheme('system'));
   }, [prefs.theme]);
-  
+
   useEffect(() => {
     let cancelled = false;
     const apply = () => {
@@ -174,8 +174,10 @@ export default function App() {
   const isBleConnected = devices.connected.some((d) => d.type === 'ble');
   const canPlay = devices.connected.length > 0 || devices.bleServerActive || synth.ready;
 
-  const handleNoteOn = useCallback((note: number, channel: number, velocity?: number) => performanceEngine.noteOn(channel, note, velocity ?? prefsStore.get().velocity), []);
-  const handleNoteOff = useCallback((note: number, channel: number) => performanceEngine.noteOff(channel, note), []);
+  const handleNoteOn = useCallback((note: number, channel: number, velocity?: number, sourceId?: string) =>
+    performanceEngine.noteOn(channel, note, velocity ?? prefsStore.get().velocity, sourceId), []);
+  const handleNoteOff = useCallback((note: number, channel: number, sourceId?: string) =>
+    performanceEngine.noteOff(channel, note, sourceId), []);
 
   const handleDisabledPress = useCallback(() => {
     showMessage(tr('Conecte um destino MIDI ou carregue um SoundFont.'), 'warn', 2500);
@@ -185,7 +187,13 @@ export default function App() {
     const next = !prefs.sustain;
     prefsStore.set({ sustain: next });
     try {
-      await midiManager.sendControlChange(prefsStore.get().channel, 64, next ? 127 : 0);
+      // O Sustain na UI é global: enviamos CC64 para TODOS os 16 canais para
+      // garantir que nenhum canal fique com o pedal "preso" após troca de canal.
+      const jobs: Promise<unknown>[] = [];
+      for (let ch = 1; ch <= 16; ch++) {
+        jobs.push(midiManager.sendControlChange(ch, 64, next ? 127 : 0));
+      }
+      await Promise.all(jobs);
       showMessage(next ? tr('Sustain Ligado') : tr('Sustain Desligado'), 'info', 1500);
     } catch (error) {
       showMessage(tr('Erro ao enviar Sustain: {message}', { message: error instanceof Error ? error.message : '' }), 'error', 2500);
@@ -194,8 +202,16 @@ export default function App() {
 
   const handlePanic = useCallback(async () => {
     try {
-      await midiManager.sendPanic();
-      showMessage(tr('MIDI Panic enviado'), 'info', 1500);
+      const result = await midiManager.sendPanic();
+      if (result.failed.length > 0) {
+        showMessage(
+          tr('MIDI Panic enviado parcialmente. Dispositivos sem resposta: {names}', { names: result.failed.join(', ') }),
+          'warn',
+          3500,
+        );
+      } else {
+        showMessage(tr('MIDI Panic enviado'), 'info', 1500);
+      }
     } catch {
       showMessage(tr('Falha no MIDI Panic'), 'error', 2500);
     }
@@ -233,7 +249,7 @@ export default function App() {
 
   return (
     <div className="nexus-app fixed inset-0 flex h-[100dvh] w-full select-none overflow-hidden font-sans antialiased bg-[var(--bg-app)] text-[var(--text-main)]">
-      
+
       {isSidebarOpen && (
         <div className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setIsSidebarOpen(false)} />
       )}
@@ -285,7 +301,7 @@ export default function App() {
 
       <div className="flex h-full flex-1 flex-col overflow-hidden">
         <header className="nexus-header-pad relative z-[80] flex h-[calc(3.5rem+env(safe-area-inset-top))] w-full shrink-0 items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-panel)] pt-[env(safe-area-inset-top)]">
-          
+
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
             <button type="button" aria-label={tr('Abrir menu')} onClick={() => setIsSidebarOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-main)] transition-colors">
               <Menu size={22} />
@@ -293,7 +309,7 @@ export default function App() {
 
             {activeTab === 'play' && (
               <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
-                
+
                 <div className="flex items-center gap-1 shrink-0 bg-[var(--bg-app)] p-0.5 rounded-lg border border-[var(--border-color)] mr-2">
                   <button type="button" onClick={() => setPlayTab('keyboard')} className={`flex items-center gap-1.5 px-3 h-9 rounded-md text-xs font-bold transition-all ${playTab === 'keyboard' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}>
                     <Music2 size={14} /> <span className="hidden sm:inline">{tr('Teclado')}</span>
@@ -479,8 +495,8 @@ export default function App() {
                     isConnected={canPlay}
                     selectedChannel={prefs.channel}
                     onSelectChannel={(channel) => { prefsStore.set({ channel }); showMessage(tr('Canal: {n}', { n: channel }), 'info', 1500); }}
-                    onNoteOn={(note) => handleNoteOn(note, prefs.channel)}
-                    onNoteOff={(note) => handleNoteOff(note, prefs.channel)} 
+                    onNoteOn={(note) => handleNoteOn(note, prefs.channel, undefined, 'keyboard')}
+                    onNoteOff={(note) => handleNoteOff(note, prefs.channel, 'keyboard')}
                     onDisabledPress={handleDisabledPress}
                     onActiveNotesChange={setActiveNotes}
                     isActive={true}
@@ -502,13 +518,13 @@ export default function App() {
               <div className="flex min-h-0 flex-1 flex-row gap-1">
                 <div className="py-1"><VuMeter level={vuLevel} /></div>
                 <div className="flex min-h-0 flex-1 flex-col">
-                  <MidiPadGrid 
-                    bank={padBank} 
-                    isActive={true} 
-                    isConnected={canPlay} 
-                    onNoteOn={(note, velocity) => handleNoteOn(note, prefs.padsChannel, velocity)} 
-                    onNoteOff={(note) => handleNoteOff(note, prefs.padsChannel)} 
-                    onDisabledPress={handleDisabledPress} 
+                  <MidiPadGrid
+                    bank={padBank}
+                    isActive={true}
+                    isConnected={canPlay}
+                    onNoteOn={(note, velocity, sourceId) => handleNoteOn(note, prefs.padsChannel, velocity, sourceId)}
+                    onNoteOff={(note, sourceId) => handleNoteOff(note, prefs.padsChannel, sourceId)}
+                    onDisabledPress={handleDisabledPress}
                     isEditMode={isPadEditMode}
                   />
                 </div>
