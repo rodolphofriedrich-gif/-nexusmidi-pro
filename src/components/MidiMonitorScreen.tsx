@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from 'react';
+import { useMemo, useRef, useSyncExternalStore } from 'react';
 import { tr } from '../i18n';
 import { midiManager } from '../services/midiService';
 import type { MidiLogEntry } from '../types/midi';
@@ -20,11 +20,74 @@ interface Props {
   paused: boolean;
 }
 
-export function MidiMonitorScreen({ maxVisible = 150, filter, paused }: Props) {
-  const log = useSyncExternalStore(midiManager.subscribeLog, midiManager.getLog, midiManager.getLog);
-  const frozen = useMemo(() => log, [paused]); // Simplificação para evitar complexidade extra
+/**
+ * Throttle de renders do Monitor.
+ *
+ * Em vez de re-renderizar a cada mensagem (pitch bend = ~100 msgs/s), só
+ * notifica o React 1x por frame (~60 fps) via requestAnimationFrame.
+ *
+ * Funcionamento:
+ *   - `midiManager.subscribeLog` dispara a cada pushLog (síncrono, mantém
+ *     os 188 testes de midiCore.ts intactos).
+ *   - Aqui, o primeiro disparo do frame agenda um rAF. Disparos subsequentes
+ *     no mesmo frame são descartados (rafId !== null).
+ *   - No rAF, atualizamos `committedLog` (referência estável que o React vê)
+ *     e chamamos `pendingNotify` — o callback do useSyncExternalStore.
+ *
+ * Estado de módulo (fora do componente) porque o Monitor é a única tela que
+ * assina o log do midiManager, e useSyncExternalStore exige subscribe estável.
+ */
+let committedLog: readonly MidiLogEntry[] | null = null;
+let pendingNotify: (() => void) | null = null;
+let rafId: number | null = null;
 
-  const source = paused ? frozen : log;
+function commitAndNotify(): void {
+  rafId = null;
+  committedLog = midiManager.getLog();
+  const fn = pendingNotify;
+  pendingNotify = null;
+  fn?.();
+}
+
+function subscribeThrottled(cb: () => void): () => void {
+  pendingNotify = cb;
+  // Inicializa o cache na primeira montagem, lendo o log atual (pode ter
+  // mensagens acumuladas antes do Monitor abrir — não queremos perder).
+  if (committedLog === null) committedLog = midiManager.getLog();
+  const unsubscribe = midiManager.subscribeLog(() => {
+    if (rafId === null) rafId = requestAnimationFrame(commitAndNotify);
+  });
+  return () => {
+    unsubscribe();
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    pendingNotify = null;
+  };
+}
+
+function getSnapshotThrottled(): readonly MidiLogEntry[] {
+  // Fallback para o caso de getSnapshot ser chamado antes do subscribe
+  // (React pode chamar getSnapshot no render inicial antes de assinar).
+  return committedLog ?? midiManager.getLog();
+}
+
+export function MidiMonitorScreen({ maxVisible = 150, filter, paused }: Props) {
+  const log = useSyncExternalStore(subscribeThrottled, getSnapshotThrottled, getSnapshotThrottled);
+
+  // Captura o log no momento em que `paused` vira true, para congelar a UI.
+  // Usa useRef (não useMemo) porque a dep `log` mudaria a cada frame e
+  // recapturaria o valor — o `prevPaused` guard garante que só capturamos
+  // na transição false → true, preservando a semântica de "pausa".
+  const frozenRef = useRef<readonly MidiLogEntry[]>(log);
+  const prevPausedRef = useRef(paused);
+  if (prevPausedRef.current !== paused && paused) {
+    frozenRef.current = log;
+  }
+  prevPausedRef.current = paused;
+
+  const source = paused ? frozenRef.current : log;
   const visible = useMemo(
     () => (filter === 'all' ? source : source.filter((e) => e.direction === filter)).slice(0, maxVisible),
     [source, filter, maxVisible],
