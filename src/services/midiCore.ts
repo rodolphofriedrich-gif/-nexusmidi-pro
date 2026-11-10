@@ -81,6 +81,20 @@ export class MidiService {
   private readonly sendFailures = new Map<string, number>();
   private readonly reconnectAttempts = new Map<string, number>();
 
+  /**
+   * IDs de dispositivos que o usuário desconectou explicitamente (via UI).
+   * Enquanto o ID estiver neste Set, o reconnect automático de BLE é suprimido.
+   * Removido apenas quando o usuário reconecta manualmente via connectOutput.
+   */
+  private readonly manuallyDisconnected = new Set<string>();
+
+  /**
+   * Timers de reconnect BLE pendentes, por device. Permite cancelar um
+   * setTimeout em andamento quando o usuário desconecta manualmente,
+   * evitando que o device "volte sozinho" após alguns segundos.
+   */
+  private readonly reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
   private bleServerActive = false;
 
   private messageListeners = new Set<(message: MidiMessage) => void>();
@@ -222,6 +236,7 @@ export class MidiService {
     this.connectedInputs.delete(dest.id);
     this.sendFailures.delete(dest.id);
     this.reconnectAttempts.delete(dest.id);
+    this.clearReconnectTimer(dest.id);
     const target = dest.bleAddress || dest.id;
     this.sendQueues.delete(target);
     this.queueDepths.delete(target);
@@ -233,8 +248,23 @@ export class MidiService {
     }
   }
 
+  /**
+   * Cancela um timer de reconnect pendente (se houver). Chamado em
+   * disconnectOutput (manual) e em dropDevice (para evitar duplicação
+   * antes de agendar um novo timer).
+   */
+  private clearReconnectTimer(id: string): void {
+    const timer = this.reconnectTimers.get(id);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      this.reconnectTimers.delete(id);
+    }
+  }
+
   private async attemptBleReconnect(dest: MidiDestination): Promise<void> {
     if (!dest.bleAddress) return;
+    // Guard 1: usuário desconectou manualmente — não reconectar.
+    if (this.manuallyDisconnected.has(dest.id)) return;
     const attempts = (this.reconnectAttempts.get(dest.id) ?? 0) + 1;
     this.reconnectAttempts.set(dest.id, attempts);
 
@@ -247,12 +277,25 @@ export class MidiService {
     this.onDisconnectCallback?.(dest, 'reconnecting');
 
     const delay = 2000 * Math.pow(2, attempts - 1);
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    // Guard 2: agenda via timer controlável para poder cancelar em disconnectOutput.
+    const timer = setTimeout(() => {
+      this.reconnectTimers.delete(dest.id);
+      void this.runReconnectAttempt(dest);
+    }, delay);
+    this.reconnectTimers.set(dest.id, timer);
+  }
 
+  /**
+   * Executa a tentativa de reconnect após o delay do timer. Guard 3:
+   * re-checa manuallyDisconnected (pode ter mudado durante a espera).
+   */
+  private async runReconnectAttempt(dest: MidiDestination): Promise<void> {
+    if (this.manuallyDisconnected.has(dest.id)) return;
     if (!this.scannedBleDevices.some((d) => d.id === dest.id)) return;
 
     try {
-      await this.connectOutput(dest);
+      // isReconnect=true: connectOutput sabe que NÃO deve limpar manuallyDisconnected.
+      await this.connectOutput(dest, { isReconnect: true });
       this.reconnectAttempts.delete(dest.id);
       this.onRefreshCallback?.(this.destinations);
     } catch {
@@ -260,8 +303,16 @@ export class MidiService {
     }
   }
 
-  public async connectOutput(destination: MidiDestination): Promise<void> {
+  public async connectOutput(destination: MidiDestination, opts?: { isReconnect?: boolean }): Promise<void> {
     if (this.connectedOutputs.has(destination.id)) return;
+
+    // Reconnect automático nunca deve reverter uma desconexão manual.
+    if (opts?.isReconnect) {
+      if (this.manuallyDisconnected.has(destination.id)) return;
+    } else {
+      // Conexão manual do usuário: limpa o bloqueio de desconexão manual.
+      this.manuallyDisconnected.delete(destination.id);
+    }
 
     let canSend = destination.id === VIRTUAL_ID;
     if (destination.id !== VIRTUAL_ID) {
@@ -304,7 +355,12 @@ export class MidiService {
   public async disconnectOutput(id: string): Promise<void> {
     const dest = this.connectedOutputs.get(id);
     if (!dest) return;
+
+    // Desconexão manual: suprime reconnect automático de BLE e cancela timer pendente.
+    this.manuallyDisconnected.add(id);
     this.reconnectAttempts.delete(id);
+    this.clearReconnectTimer(id);
+
     await this.allNotesOffForDevice(dest);
     if (id !== VIRTUAL_ID) {
       const nativeId = dest.bleAddress || dest.id;
