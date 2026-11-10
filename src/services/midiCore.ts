@@ -17,6 +17,8 @@ const MAX_QUEUE_DEPTH = 200;
 const DROP_THRESHOLD = 400;
 const MAX_TOTAL_QUEUE_DEPTH = 1500; // limite absoluto de segurança
 const LOG_LIMIT = 300;
+const SEND_TIMEOUT_MS = 5000; // timeout por mensagem individual
+const PANIC_TIMEOUT_MS = 30000; // timeout global do panic (somatório)
 const CLOCK_OR_SENSING = new Set([0xf8, 0xfe]);
 
 export type NativeMidiPort = Pick<
@@ -62,6 +64,23 @@ export interface MidiTap {
 export interface PanicResult {
   /** Nomes dos dispositivos que não receberam todas as mensagens do panic. */
   failed: string[];
+}
+
+/**
+ * Envolve uma Promise com um timeout. Se a Promise original não resolver/rejeitar
+ * dentro de `ms`, a Promise retornada rejeita com um Error identificando `label`.
+ *
+ * O `clearTimeout` no `finally` evita timers pendentes após resolução normal
+ * (o `Promise.race` já lida com rejeições tardias da Promise original).
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label}: timeout após ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer !== undefined) clearTimeout(timer);
+  });
 }
 
 export class MidiService {
@@ -545,6 +564,10 @@ export class MidiService {
    * MIDI Panic: silencia o synth interno e todos os dispositivos conectados.
    * Retorna os destinos que NÃO conseguiram receber todas as mensagens — o App
    * pode usar isso para avisar o usuário (em vez de mostrar sucesso falso).
+   *
+   * Protegido por timeout global (PANIC_TIMEOUT_MS): se um dispositivo travar
+   * (native.sendTo nunca resolve), o panic retorna em vez de travar o app.
+   * Devices que não completaram antes do timeout são reportados como failed.
    */
   public async sendPanic(channels: readonly number[] = Array.from({ length: 16 }, (_, i) => i + 1)): Promise<PanicResult> {
     this.synth.allNotesOff();
@@ -557,11 +580,30 @@ export class MidiService {
       }
     }
 
-    const results = await Promise.all(
-      targets.map(async (dest) => ({ dest, ok: await this.sendPanicToDevice(dest, channels) })),
-    );
+    if (targets.length === 0) return { failed: [] };
 
-    const failed = results.filter((r) => !r.ok).map((r) => r.dest.displayName);
+    // Coleta os IDs cujo panic completou com sucesso. Quem não estiver no Set
+    // (seja por retorno false, throw ou timeout global) é reportado como failed.
+    const okSet = new Set<string>();
+
+    const tasks = targets.map(async (dest) => {
+      try {
+        const ok = await this.sendPanicToDevice(dest, channels);
+        if (ok) okSet.add(dest.id);
+      } catch {
+        // Erro individual do device: será reportado como failed pela ausência no okSet.
+      }
+    });
+
+    try {
+      await withTimeout(Promise.all(tasks), PANIC_TIMEOUT_MS, 'sendPanic');
+    } catch (error) {
+      // Timeout global: o synth interno já foi silenciado, mas não pudemos
+      // confirmar todos os devices. Retornamos o que sabemos abaixo.
+      console.warn('MIDI Panic: timeout global atingido', error);
+    }
+
+    const failed = targets.filter((d) => !okSet.has(d.id)).map((d) => d.displayName);
     return { failed };
   }
 
@@ -659,6 +701,10 @@ export class MidiService {
    *   - Depth >= 1500: limite ABSOLUTO. Tudo é descartado, EXCETO Note Off (evita nota presa).
    *   - Depth >= 2000: força drop do dispositivo (correção de emergência).
    *
+   * Cada `native.sendTo` é envolvido em `withTimeout` (SEND_TIMEOUT_MS):
+   * se o dispositivo travar, a mensagem falha após 5s, incrementa o contador
+   * de falhas e, após MAX_SEND_FAILURES, dispara `dropDevice`.
+   *
    * Retorna `true` se a mensagem foi aceita na fila, `false` se foi descartada
    * (por saturação ou se o envio nativo falhou).
    */
@@ -697,7 +743,11 @@ export class MidiService {
     let accepted = true;
     const current = previous.then(async () => {
       try {
-        await this.native.sendTo({ id: target, data: bytes });
+        await withTimeout(
+          this.native.sendTo({ id: target, data: bytes }),
+          SEND_TIMEOUT_MS,
+          `sendTo(${destination.displayName})`,
+        );
         this.sendFailures.delete(destination.id);
       } catch (error) {
         accepted = false;
