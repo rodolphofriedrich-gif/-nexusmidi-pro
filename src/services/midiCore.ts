@@ -17,8 +17,9 @@ const MAX_QUEUE_DEPTH = 200;
 const DROP_THRESHOLD = 400;
 const MAX_TOTAL_QUEUE_DEPTH = 1500; // limite absoluto de segurança
 const LOG_LIMIT = 300;
-const SEND_TIMEOUT_MS = 5000; // timeout por mensagem individual
-const PANIC_TIMEOUT_MS = 30000; // timeout global do panic (somatório)
+const SEND_TIMEOUT_MS = 5000; // timeout por mensagem individual (fila normal)
+const URGENT_TIMEOUT_MS = 3000; // timeout por mensagem no panic (bypass)
+const PANIC_TIMEOUT_MS = 30000; // timeout global do panic
 const CLOCK_OR_SENSING = new Set([0xf8, 0xfe]);
 
 export type NativeMidiPort = Pick<
@@ -565,9 +566,12 @@ export class MidiService {
    * Retorna os destinos que NÃO conseguiram receber todas as mensagens — o App
    * pode usar isso para avisar o usuário (em vez de mostrar sucesso falso).
    *
-   * Protegido por timeout global (PANIC_TIMEOUT_MS): se um dispositivo travar
-   * (native.sendTo nunca resolve), o panic retorna em vez de travar o app.
-   * Devices que não completaram antes do timeout são reportados como failed.
+   * Usa `sendUrgent` (bypass da fila) para devices externos — o panic precisa
+   * chegar ANTES de clocks/CCs acumulados na fila FIFO.
+   *
+   * Protegido por timeout global (PANIC_TIMEOUT_MS): se um dispositivo travar,
+   * o panic retorna em vez de travar o app. Devices que não completaram antes
+   * do timeout são reportados como failed.
    */
   public async sendPanic(channels: readonly number[] = Array.from({ length: 16 }, (_, i) => i + 1)): Promise<PanicResult> {
     this.synth.allNotesOff();
@@ -607,15 +611,30 @@ export class MidiService {
     return { failed };
   }
 
+  /**
+   * Envia a tríade de emergência (CC64=0, CC120=0, CC123=0) em todos os canais.
+   *
+   * Usa `sendUrgent` (bypass da fila FIFO) para garantir que o panic chegue ao
+   * dispositivo mesmo quando a fila está saturada por clocks/CCs acumulados.
+   * Aborta cedo após MAX_SEND_FAILURES falhas consecutivas — se o dispositivo
+   * está claramente morto, não faz sentido insistir nas outras 45 mensagens.
+   */
   private async sendPanicToDevice(dest: MidiDestination, channels: readonly number[]): Promise<boolean> {
     if (dest.id === VIRTUAL_ID) return true;
     let allOk = true;
+    let consecutiveFails = 0;
     for (const channel of channels) {
       const status = channelStatus(0xb0, channel);
-      // sendToDevice retorna boolean; se uma falhou, marca failed mas continua (as outras mensagens ainda importam)
-      if (!(await this.sendToDevice(dest, [status, 64, 0]))) allOk = false;
-      if (!(await this.sendToDevice(dest, [status, 120, 0]))) allOk = false;
-      if (!(await this.sendToDevice(dest, [status, 123, 0]))) allOk = false;
+      for (const [cc, value] of [[64, 0], [120, 0], [123, 0]] as const) {
+        const ok = await this.sendUrgent(dest, [status, cc, value]);
+        if (ok) {
+          consecutiveFails = 0;
+        } else {
+          allOk = false;
+          consecutiveFails++;
+          if (consecutiveFails >= MAX_SEND_FAILURES) return false;
+        }
+      }
     }
     return allOk;
   }
@@ -776,6 +795,42 @@ export class MidiService {
 
     await current;
     return accepted;
+  }
+
+  /**
+   * Envio de EMERGÊNCIA: bypassa a fila FIFO e chama `native.sendTo` direto.
+   *
+   * Usado pelo MIDI Panic e por `allNotesOffForDevice` (que roda antes de
+   * desconectar um device). Motivo: quando a fila tem centenas de clocks/CCs
+   * pendentes, o panic precisa chegar ANTES delas para silenciar o device.
+   *
+   * Trade-off: pode chegar fora de ordem em relação a mensagens enfileiradas.
+   * Para panic, isso é aceitável — o objetivo é silenciar, não tocar.
+   *
+   * Usa `withTimeout(URGENT_TIMEOUT_MS)` (menor que SEND_TIMEOUT_MS, para
+   * limitar o tempo total do panic) e conta para `sendFailures`, igual ao
+   * `sendToDevice`. Após MAX_SEND_FAILURES, dispara `dropDevice`.
+   */
+  private async sendUrgent(destination: MidiDestination, bytes: number[]): Promise<boolean> {
+    if (destination.id === VIRTUAL_ID) return true;
+    const target = destination.id === BLE_SERVER_ID ? BLE_SERVER_ID : destination.bleAddress || destination.id;
+    try {
+      await withTimeout(
+        this.native.sendTo({ id: target, data: bytes }),
+        URGENT_TIMEOUT_MS,
+        `sendUrgent(${destination.displayName})`,
+      );
+      this.sendFailures.delete(destination.id);
+      return true;
+    } catch (error) {
+      const failures = (this.sendFailures.get(destination.id) ?? 0) + 1;
+      this.sendFailures.set(destination.id, failures);
+      if (failures >= MAX_SEND_FAILURES && destination.id !== BLE_SERVER_ID) {
+        console.warn(`Destino ${destination.displayName} não responde (urgent):`, error);
+        this.dropDevice(destination, 'failed');
+      }
+      return false;
+    }
   }
 
   public async allNotesOffForDevice(destination: MidiDestination): Promise<void> {
