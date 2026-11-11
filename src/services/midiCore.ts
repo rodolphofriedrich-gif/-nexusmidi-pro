@@ -7,19 +7,15 @@ import type { MidiLearn } from '../lib/midiLearn';
 import type { MidiDestination, MidiLogEntry, MidiMessage, MidiRoute } from '../types/midi';
 import type { NativeBleDevice, NativeMidiPlugin } from './nativeMidi';
 import { MidiMonitor, type MidiTap } from './midi/midiMonitor';
+import { MidiSendQueue } from './midi/midiSendQueue';
+import { BLE_SERVER_ID, VIRTUAL_ID } from './midi/midiConstants';
+import { withTimeout } from './midi/midiTimeout';
 
 export { getNoteName };
 export type { MidiMessage };
 export type { MidiTap } from './midi/midiMonitor';
+export { BLE_SERVER_ID, VIRTUAL_ID };
 
-export const VIRTUAL_ID = 'virtual-main';
-export const BLE_SERVER_ID = 'ble-server';
-const MAX_SEND_FAILURES = 3;
-const MAX_QUEUE_DEPTH = 200;
-const DROP_THRESHOLD = 400;
-const MAX_TOTAL_QUEUE_DEPTH = 1500; // limite absoluto de segurança
-const SEND_TIMEOUT_MS = 5000; // timeout por mensagem individual (fila normal)
-const URGENT_TIMEOUT_MS = 3000; // timeout por mensagem no panic (bypass)
 const PANIC_TIMEOUT_MS = 30000; // timeout global do panic
 const CLOCK_OR_SENSING = new Set([0xf8, 0xfe]);
 
@@ -64,23 +60,6 @@ export interface PanicResult {
   failed: string[];
 }
 
-/**
- * Envolve uma Promise com um timeout. Se a Promise original não resolver/rejeitar
- * dentro de `ms`, a Promise retornada rejeita com um Error identificando `label`.
- *
- * O `clearTimeout` no `finally` evita timers pendentes após resolução normal
- * (o `Promise.race` já lida com rejeições tardias da Promise original).
- */
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${label}: timeout após ${ms}ms`)), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => {
-    if (timer !== undefined) clearTimeout(timer);
-  });
-}
-
 export class MidiService {
   private readonly native: NativeMidiPort;
   private readonly synth: SynthPort;
@@ -89,19 +68,22 @@ export class MidiService {
 
   /**
    * Monitor: log, listeners de mensagem, taps, VU e MIDI Learn.
-   * Extraído para `midiMonitor.ts` na Fase 1 da refatoração (feedback item 3).
+   * Extraído para `midi/midiMonitor.ts` na Fase 1.
    */
   private readonly monitor: MidiMonitor;
 
-  private readonly sendQueues = new Map<string, Promise<void>>();
-  private readonly queueDepths = new Map<string, number>();
+  /**
+   * Fila de envio por dispositivo. Extraída para `midi/midiSendQueue.ts` na
+   * Fase 2. O `onDeviceFailed` é ligado a `dropDevice(dest, 'failed')` no
+   * construtor — é o único ponto de acoplamento entre a fila e o core.
+   */
+  private readonly sendQueue: MidiSendQueue;
 
   private destinations: MidiDestination[] = [];
   private scannedBleDevices: MidiDestination[] = [];
   private readonly connectedOutputs = new Map<string, MidiDestination>();
   private readonly connectedInputs = new Set<string>();
   private readonly bleAddressToId = new Map<string, string>();
-  private readonly sendFailures = new Map<string, number>();
   private readonly reconnectAttempts = new Map<string, number>();
 
   /**
@@ -129,6 +111,10 @@ export class MidiService {
     this.synth = deps.synth;
     this.now = deps.now ?? Date.now;
     this.monitor = new MidiMonitor({ now: this.now });
+    this.sendQueue = new MidiSendQueue({
+      native: this.native,
+      onDeviceFailed: (dest) => this.dropDevice(dest, 'failed'),
+    });
     this.routesStore = createStore('nexusmidi.routes', { routes: [] as MidiRoute[] }, { storage: deps.storage, persistDelayMs: 0 });
     this.listenersReady = this.installNativeListeners();
   }
@@ -250,12 +236,9 @@ export class MidiService {
   private dropDevice(dest: MidiDestination, reason: 'lost' | 'failed' = 'lost'): void {
     if (!this.connectedOutputs.delete(dest.id)) return;
     this.connectedInputs.delete(dest.id);
-    this.sendFailures.delete(dest.id);
     this.reconnectAttempts.delete(dest.id);
     this.clearReconnectTimer(dest.id);
-    const target = dest.bleAddress || dest.id;
-    this.sendQueues.delete(target);
-    this.queueDepths.delete(target);
+    this.sendQueue.reset(dest);
     this.onDisconnectCallback?.(dest, reason);
     this.onRefreshCallback?.(this.destinations);
 
@@ -389,10 +372,7 @@ export class MidiService {
     }
     this.connectedInputs.delete(id);
     this.connectedOutputs.delete(id);
-    this.sendFailures.delete(id);
-    const target = dest.bleAddress || dest.id;
-    this.sendQueues.delete(target);
-    this.queueDepths.delete(target);
+    this.sendQueue.reset(dest);
     this.onDisconnectCallback?.(dest, 'lost');
   }
 
@@ -467,8 +447,7 @@ export class MidiService {
   }
 
   // ---- Monitor (delegação) ---------------------------------------------
-  // A implementação real está em `midi/midiMonitor.ts`. Estes métodos mantêm
-  // a API pública de MidiService inalterada para não quebrar consumidores.
+  // A implementação real está em `midi/midiMonitor.ts` (Fase 1).
 
   public addActivityListener(listener: (velocity: number) => void): void {
     this.monitor.addActivityListener(listener);
@@ -560,8 +539,6 @@ export class MidiService {
 
     if (targets.length === 0) return { failed: [] };
 
-    // Coleta os IDs cujo panic completou com sucesso. Quem não estiver no Set
-    // (seja por retorno false, throw ou timeout global) é reportado como failed.
     const okSet = new Set<string>();
 
     const tasks = targets.map(async (dest) => {
@@ -576,8 +553,6 @@ export class MidiService {
     try {
       await withTimeout(Promise.all(tasks), PANIC_TIMEOUT_MS, 'sendPanic');
     } catch (error) {
-      // Timeout global: o synth interno já foi silenciado, mas não pudemos
-      // confirmar todos os devices. Retornamos o que sabemos abaixo.
       console.warn('MIDI Panic: timeout global atingido', error);
     }
 
@@ -600,13 +575,13 @@ export class MidiService {
     for (const channel of channels) {
       const status = channelStatus(0xb0, channel);
       for (const [cc, value] of [[64, 0], [120, 0], [123, 0]] as const) {
-        const ok = await this.sendUrgent(dest, [status, cc, value]);
+        const ok = await this.sendQueue.sendUrgent(dest, [status, cc, value]);
         if (ok) {
           consecutiveFails = 0;
         } else {
           allOk = false;
           consecutiveFails++;
-          if (consecutiveFails >= MAX_SEND_FAILURES) return false;
+          if (consecutiveFails >= 3) return false;
         }
       }
     }
@@ -617,7 +592,7 @@ export class MidiService {
     if (status < 0xf8) return;
     const targets = [...this.connectedOutputs.values()].filter((d) => d.id !== VIRTUAL_ID);
     if (this.bleServerActive) targets.push(this.bleServerDestination());
-    await Promise.all(targets.map((d) => this.sendToDevice(d, [status])));
+    await Promise.all(targets.map((d) => this.sendQueue.sendToDevice(d, [status])));
   }
 
   private bleServerDestination(): MidiDestination {
@@ -663,7 +638,7 @@ export class MidiService {
     }
 
     if (fromApp && this.bleServerActive) {
-      void this.sendToDevice(this.bleServerDestination(), this.encode(command, inputChannel, data1, data2));
+      void this.sendQueue.sendToDevice(this.bleServerDestination(), this.encode(command, inputChannel, data1, data2));
     }
 
     for (const route of this.getRoutes()) {
@@ -677,134 +652,13 @@ export class MidiService {
 
       const outputChannel = route.outputChannel > 0 ? clampInt(route.outputChannel, 1, 16) : inputChannel;
       const dest = this.connectedOutputs.get(route.destinationId);
-      if (dest) void this.sendToDevice(dest, this.encode(command, outputChannel, out1, out2));
+      if (dest) void this.sendQueue.sendToDevice(dest, this.encode(command, outputChannel, out1, out2));
     }
   }
 
   private encode(command: number, channel: number, data1: number, data2: number): number[] {
     const status = command + channel - 1;
     return command === 0xc0 || command === 0xd0 ? [status, data1] : [status, data1, data2];
-  }
-
-  /**
-   * Fila FIFO por dispositivo. Limites:
-   *   - Depth < 200: tudo passa normalmente.
-   *   - Depth >= 200: clocks são descartados.
-   *   - Depth >= 400: também CC, program, pitch bend, poly pressure, etc.
-   *   - Depth >= 1500: limite ABSOLUTO. Tudo é descartado, EXCETO Note Off (evita nota presa).
-   *   - Depth >= 2000: força drop do dispositivo (correção de emergência).
-   *
-   * Cada `native.sendTo` é envolvido em `withTimeout` (SEND_TIMEOUT_MS):
-   * se o dispositivo travar, a mensagem falha após 5s, incrementa o contador
-   * de falhas e, após MAX_SEND_FAILURES, dispara `dropDevice`.
-   *
-   * Retorna `true` se a mensagem foi aceita na fila, `false` se foi descartada
-   * (por saturação ou se o envio nativo falhou).
-   */
-  private async sendToDevice(destination: MidiDestination, bytes: number[]): Promise<boolean> {
-    if (destination.id === VIRTUAL_ID) return true;
-    const target = destination.id === BLE_SERVER_ID ? BLE_SERVER_ID : destination.bleAddress || destination.id;
-
-    const isClock = bytes.length === 1 && bytes[0] >= 0xf8;
-    const isNoteOn = (bytes[0] & 0xf0) === 0x90 && (bytes[2] ?? 0) > 0;
-    const isNoteOff = (bytes[0] & 0xf0) === 0x80 || ((bytes[0] & 0xf0) === 0x90 && (bytes[2] ?? 0) === 0);
-    const depth = this.queueDepths.get(target) ?? 0;
-
-    // Limite absoluto de segurança
-    if (depth >= MAX_TOTAL_QUEUE_DEPTH) {
-      if (isNoteOff) {
-        // Note Off SEMPRE entra (evita nota presa), até um teto de segurança
-        if (depth >= MAX_TOTAL_QUEUE_DEPTH + 500) {
-          console.warn(`Fila MIDI saturada (${depth}). Forçando reconexão de ${destination.displayName}.`);
-          this.dropDevice(destination, 'failed');
-          return false;
-        }
-      } else {
-        // Descarta tudo o mais (inclui Note On — o Panic vai liberar a nota depois)
-        return false;
-      }
-    } else if (depth >= MAX_QUEUE_DEPTH) {
-      // Saturação alta: descarta clocks e mensagens não-essenciais
-      if (isClock || (depth >= DROP_THRESHOLD && !isNoteOn && !isNoteOff)) {
-        return false;
-      }
-    }
-
-    this.queueDepths.set(target, depth + 1);
-    const previous = this.sendQueues.get(target) ?? Promise.resolve();
-
-    let accepted = true;
-    const current = previous.then(async () => {
-      try {
-        await withTimeout(
-          this.native.sendTo({ id: target, data: bytes }),
-          SEND_TIMEOUT_MS,
-          `sendTo(${destination.displayName})`,
-        );
-        this.sendFailures.delete(destination.id);
-      } catch (error) {
-        accepted = false;
-        const failures = (this.sendFailures.get(destination.id) ?? 0) + 1;
-        this.sendFailures.set(destination.id, failures);
-        if (failures >= MAX_SEND_FAILURES && destination.id !== BLE_SERVER_ID) {
-          console.warn(`Destino ${destination.displayName} não responde:`, error);
-          this.dropDevice(destination, 'failed');
-        }
-      }
-    });
-
-    this.sendQueues.set(target, current);
-
-    current.finally(() => {
-      const newDepth = (this.queueDepths.get(target) ?? 1) - 1;
-      if (newDepth <= 0) {
-        this.queueDepths.delete(target);
-        if (this.sendQueues.get(target) === current) {
-          this.sendQueues.delete(target);
-        }
-      } else {
-        this.queueDepths.set(target, newDepth);
-      }
-    });
-
-    await current;
-    return accepted;
-  }
-
-  /**
-   * Envio de EMERGÊNCIA: bypassa a fila FIFO e chama `native.sendTo` direto.
-   *
-   * Usado pelo MIDI Panic e por `allNotesOffForDevice` (que roda antes de
-   * desconectar um device). Motivo: quando a fila tem centenas de clocks/CCs
-   * pendentes, o panic precisa chegar ANTES delas para silenciar o device.
-   *
-   * Trade-off: pode chegar fora de ordem em relação a mensagens enfileiradas.
-   * Para panic, isso é aceitável — o objetivo é silenciar, não tocar.
-   *
-   * Usa `withTimeout(URGENT_TIMEOUT_MS)` (menor que SEND_TIMEOUT_MS, para
-   * limitar o tempo total do panic) e conta para `sendFailures`, igual ao
-   * `sendToDevice`. Após MAX_SEND_FAILURES, dispara `dropDevice`.
-   */
-  private async sendUrgent(destination: MidiDestination, bytes: number[]): Promise<boolean> {
-    if (destination.id === VIRTUAL_ID) return true;
-    const target = destination.id === BLE_SERVER_ID ? BLE_SERVER_ID : destination.bleAddress || destination.id;
-    try {
-      await withTimeout(
-        this.native.sendTo({ id: target, data: bytes }),
-        URGENT_TIMEOUT_MS,
-        `sendUrgent(${destination.displayName})`,
-      );
-      this.sendFailures.delete(destination.id);
-      return true;
-    } catch (error) {
-      const failures = (this.sendFailures.get(destination.id) ?? 0) + 1;
-      this.sendFailures.set(destination.id, failures);
-      if (failures >= MAX_SEND_FAILURES && destination.id !== BLE_SERVER_ID) {
-        console.warn(`Destino ${destination.displayName} não responde (urgent):`, error);
-        this.dropDevice(destination, 'failed');
-      }
-      return false;
-    }
   }
 
   public async allNotesOffForDevice(destination: MidiDestination): Promise<void> {
@@ -848,7 +702,7 @@ export class MidiService {
       if (!route.enabled) continue;
       if (route.sourceId && route.sourceId !== sourceId) continue;
       const dest = this.connectedOutputs.get(route.destinationId);
-      if (dest) void this.sendToDevice(dest, [status]);
+      if (dest) void this.sendQueue.sendToDevice(dest, [status]);
     }
   }
 }
