@@ -31,7 +31,10 @@ export function useMidiDevices(notify: Notify) {
 
     const handleRefresh = () => {
       if (mounted) {
-        reconnectingNotified.clear();
+        const connectedIds = new Set(midiManager.getConnectedDestinations().map((destination) => destination.id));
+        for (const id of reconnectingNotified) {
+          if (connectedIds.has(id)) reconnectingNotified.delete(id);
+        }
         void refresh();
       }
     };
@@ -59,6 +62,7 @@ export function useMidiDevices(notify: Notify) {
         reconnectingNotified.delete(lost.id);
         notify(tr('Falha ao reconectar a "{name}".', { name: lost.displayName }), 'error', 4000);
       } else {
+        reconnectingNotified.delete(lost.id);
         notify(tr('Destino "{name}" desconectado.', { name: lost.displayName }), 'warn', 4000);
       }
     };
