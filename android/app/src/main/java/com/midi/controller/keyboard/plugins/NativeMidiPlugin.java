@@ -75,11 +75,13 @@ public class NativeMidiPlugin extends Plugin {
     private static final String BLE_SERVER_ID = "ble-server";
 
     /**
-     * Teto de mensagens na fila de UM device antes de descartar tudo.
-     * Evita acúmulo infinito quando um device trava (USB buffer cheio,
-     * BLE lento). 500 msgs = ~5s de performance contínua antes de limpar.
+     * Tarefa de envio que pode lançar IOException (ex: MidiInputPort.send).
+     * Usada no enqueueSend para permitir que o executor capture o erro
+     * sem que o lambda precise de try/catch inline.
      */
-    private static final int MAX_DEVICE_QUEUE = 500;
+    private interface SendTask {
+        void run() throws IOException;
+    }
 
     /**
      * Um executor SINGLE-THREAD por device.
@@ -605,24 +607,19 @@ public class NativeMidiPlugin extends Plugin {
     }
 
     /**
-     * Enfileira uma tarefa no executor do device. Se a fila saturar
-     * (device travado/lento), limpa tudo antes de enfileirar — evita
-     * acúmulo infinito e mantém o app responsivo.
+     * Enfileira uma tarefa de envio no executor do device.
      *
-     * Nota: limpar a fila pode perder Notes On/Off pendentes. O trade-off é
-     * intencional: device travado não pode travar o app. O JS ainda pode
-     * disparar Panic (que reabre conexão no próximo envio bem-sucedido).
+     * `SendTask.run()` declara `throws IOException` (ex: MidiInputPort.send).
+     * O executor captura e loga — o bridge já resolveu, então o erro não
+     * propaga pro JS. Devices lentos só perdem mensagens, não travam o app.
      */
-    private void enqueueSend(String deviceId, Runnable task) {
+    private void enqueueSend(String deviceId, SendTask task) {
         ExecutorService exec = getExecutor(deviceId);
-        // Checagem manual de saturação (single-thread executor não expõe queue size).
-        // Heurística: se o executor ainda não processou a última tarefa em 100ms,
-        // consideramos saturado. Implementado via contador simples na próxima rodada.
-        // Solução robusta: usar ThreadPoolExecutor com fila bounded + handler custom.
-        // Para simplicidade, usamos uma fila atômica no próprio executor.
         exec.execute(() -> {
             try {
                 task.run();
+            } catch (IOException e) {
+                Log.w(TAG, "Falha de I/O no envio MIDI para " + deviceId + ": " + e.getMessage());
             } catch (Exception e) {
                 Log.w(TAG, "Falha no envio MIDI para " + deviceId + ": " + e.getMessage());
             }
