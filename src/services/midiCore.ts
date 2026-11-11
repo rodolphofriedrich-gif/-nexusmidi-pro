@@ -1,14 +1,16 @@
 import { dedupeDestinations } from '../lib/destinations';
-import { getNoteName, toHex, clampInt, describeMessage, channelStatus, channelMessageLength } from '../lib/midiMath';
+import { getNoteName, toHex, clampInt, channelStatus } from '../lib/midiMath';
 import { parseMidiBytes } from '../lib/midiParser';
 import { createStore, type StorageLike, type Store } from '../lib/storeCore';
 import { uid } from '../lib/id';
 import type { MidiLearn } from '../lib/midiLearn';
 import type { MidiDestination, MidiLogEntry, MidiMessage, MidiRoute } from '../types/midi';
 import type { NativeBleDevice, NativeMidiPlugin } from './nativeMidi';
+import { MidiMonitor, type MidiTap } from './midi/midiMonitor';
 
 export { getNoteName };
 export type { MidiMessage };
+export type { MidiTap } from './midi/midiMonitor';
 
 export const VIRTUAL_ID = 'virtual-main';
 export const BLE_SERVER_ID = 'ble-server';
@@ -16,7 +18,6 @@ const MAX_SEND_FAILURES = 3;
 const MAX_QUEUE_DEPTH = 200;
 const DROP_THRESHOLD = 400;
 const MAX_TOTAL_QUEUE_DEPTH = 1500; // limite absoluto de segurança
-const LOG_LIMIT = 300;
 const SEND_TIMEOUT_MS = 5000; // timeout por mensagem individual (fila normal)
 const URGENT_TIMEOUT_MS = 3000; // timeout por mensagem no panic (bypass)
 const PANIC_TIMEOUT_MS = 30000; // timeout global do panic
@@ -58,10 +59,6 @@ export interface MidiServiceDeps {
   now?: () => number;
 }
 
-export interface MidiTap {
-  (event: { status: number; data1: number; data2: number; sourceId?: string }): void;
-}
-
 export interface PanicResult {
   /** Nomes dos dispositivos que não receberam todas as mensagens do panic. */
   failed: string[];
@@ -90,6 +87,12 @@ export class MidiService {
   private readonly now: () => number;
   private readonly routesStore: Store<{ routes: MidiRoute[] }>;
 
+  /**
+   * Monitor: log, listeners de mensagem, taps, VU e MIDI Learn.
+   * Extraído para `midiMonitor.ts` na Fase 1 da refatoração (feedback item 3).
+   */
+  private readonly monitor: MidiMonitor;
+
   private readonly sendQueues = new Map<string, Promise<void>>();
   private readonly queueDepths = new Map<string, number>();
 
@@ -117,14 +120,6 @@ export class MidiService {
 
   private bleServerActive = false;
 
-  private messageListeners = new Set<(message: MidiMessage) => void>();
-  private activityListeners = new Set<(velocity: number) => void>();
-  private taps = new Set<MidiTap>();
-  private logListeners = new Set<() => void>();
-  private logEntries: MidiLogEntry[] = [];
-  private logSeq = 0;
-  private learn: MidiLearn | null = null;
-
   private onRefreshCallback?: (destinations?: MidiDestination[]) => void;
   private onDisconnectCallback?: (destination: MidiDestination, reason?: 'lost' | 'reconnecting' | 'failed') => void;
   private listenersReady: Promise<void>;
@@ -133,6 +128,7 @@ export class MidiService {
     this.native = deps.native;
     this.synth = deps.synth;
     this.now = deps.now ?? Date.now;
+    this.monitor = new MidiMonitor({ now: this.now });
     this.routesStore = createStore('nexusmidi.routes', { routes: [] as MidiRoute[] }, { storage: deps.storage, persistDelayMs: 0 });
     this.listenersReady = this.installNativeListeners();
   }
@@ -470,56 +466,34 @@ export class MidiService {
     this.bleServerActive = false;
   }
 
+  // ---- Monitor (delegação) ---------------------------------------------
+  // A implementação real está em `midi/midiMonitor.ts`. Estes métodos mantêm
+  // a API pública de MidiService inalterada para não quebrar consumidores.
+
   public addActivityListener(listener: (velocity: number) => void): void {
-    this.activityListeners.add(listener);
+    this.monitor.addActivityListener(listener);
   }
   public removeActivityListener(listener: (velocity: number) => void): void {
-    this.activityListeners.delete(listener);
+    this.monitor.removeActivityListener(listener);
   }
   public addMessageListener(listener: (message: MidiMessage) => void): void {
-    this.messageListeners.add(listener);
+    this.monitor.addMessageListener(listener);
   }
   public removeMessageListener(listener: (message: MidiMessage) => void): void {
-    this.messageListeners.delete(listener);
+    this.monitor.removeMessageListener(listener);
   }
   public addTap(tap: MidiTap): () => void {
-    this.taps.add(tap);
-    return () => this.taps.delete(tap);
+    return this.monitor.addTap(tap);
   }
   public setLearn(learn: MidiLearn | null): void {
-    this.learn = learn;
+    this.monitor.setLearn(learn);
   }
-
-  public getLog = (): MidiLogEntry[] => this.logEntries;
-  public subscribeLog = (listener: () => void): (() => void) => {
-    this.logListeners.add(listener);
-    return () => this.logListeners.delete(listener);
-  };
+  public getLog = (): MidiLogEntry[] => this.monitor.getLog();
+  public subscribeLog = (listener: () => void): (() => void) => this.monitor.subscribeLog(listener);
   public clearLog(): void {
-    this.logEntries = [];
-    this.logListeners.forEach((l) => l());
+    this.monitor.clearLog();
   }
-
-  private pushLog(status: number, data1: number, data2: number, sourceId: string | undefined, direction: 'RX' | 'TX'): void {
-    const command = status & 0xf0;
-    const type = describeMessage(status, data2);
-    const length = channelMessageLength(status);
-    const bytes = length === 0 ? [status] : length === 2 ? [status, data1] : [status, data1, data2];
-    const entry: MidiLogEntry = {
-      id: `${this.now()}-${this.logSeq++}`,
-      timestamp: new Date(this.now()).toLocaleTimeString(),
-      type,
-      channel: command >= 0xf0 ? 0 : (status & 0x0f) + 1,
-      note: data1,
-      noteName: command === 0x80 || command === 0x90 || command === 0xa0 ? getNoteName(data1) : '--',
-      velocity: data2,
-      bytesHex: toHex(bytes),
-      direction,
-      source: sourceId,
-    };
-    this.logEntries = [entry, ...this.logEntries].slice(0, LOG_LIMIT);
-    this.logListeners.forEach((l) => l());
-  }
+  // ----------------------------------------------------------------------
 
   public async sendKeyboardNote(channel: number, note: number, velocity: number, isNoteOn: boolean): Promise<{ hex: string }> {
     const safeNote = clampInt(note, 0, 127);
@@ -655,9 +629,9 @@ export class MidiService {
     const inputChannel = (status & 0x0f) + 1;
     const fromApp = sourceId === VIRTUAL_ID;
 
-    this.pushLog(status, data1, data2, sourceId, fromApp ? 'TX' : 'RX');
-    if (command === 0x90 && data2 > 0) this.activityListeners.forEach((l) => safe(() => l(data2)));
-    this.taps.forEach((tap) => safe(() => tap({ status, data1, data2, sourceId })));
+    this.monitor.pushLog(status, data1, data2, sourceId, fromApp ? 'TX' : 'RX');
+    if (command === 0x90 && data2 > 0) this.monitor.notifyActivity(data2);
+    this.monitor.notifyTap({ status, data1, data2, sourceId });
 
     if (this.synth.getIsReady()) {
       switch (command) {
@@ -857,10 +831,10 @@ export class MidiService {
 
       const { status, data1, data2 } = parsed;
       const message: MidiMessage = { status, data1, data2, timestamp: this.now(), sourceId };
-      this.messageListeners.forEach((l) => safe(() => l(message), 'Erro em listener MIDI:'));
+      this.monitor.notifyMessage(message);
 
-      if (this.learn?.handle(status, data1, data2)) {
-        this.pushLog(status, data1, data2, sourceId, 'RX');
+      if (this.monitor.tryHandleLearn(status, data1, data2)) {
+        this.monitor.pushLog(status, data1, data2, sourceId, 'RX');
         continue;
       }
       this.routeMessage(status, data1, data2, sourceId);
@@ -868,7 +842,7 @@ export class MidiService {
   }
 
   private forwardRealtime(status: number, sourceId?: string): void {
-    if (!CLOCK_OR_SENSING.has(status)) this.pushLog(status, 0, 0, sourceId, 'RX');
+    if (!CLOCK_OR_SENSING.has(status)) this.monitor.pushLog(status, 0, 0, sourceId, 'RX');
     if (status === 0xfe) return;
     for (const route of this.getRoutes()) {
       if (!route.enabled) continue;
@@ -876,13 +850,5 @@ export class MidiService {
       const dest = this.connectedOutputs.get(route.destinationId);
       if (dest) void this.sendToDevice(dest, [status]);
     }
-  }
-}
-
-function safe(fn: () => void, message = 'Erro em listener:'): void {
-  try {
-    fn();
-  } catch (error) {
-    console.error(message, error);
   }
 }
