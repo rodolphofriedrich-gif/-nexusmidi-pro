@@ -277,6 +277,9 @@ export class MidiConnectionManager {
    * backoff exponencial), a menos que o usuário tenha desconectado.
    */
   public dropDevice(dest: MidiDestination, reason: 'lost' | 'failed' = 'lost'): void {
+    // Uma falha durante o panic de uma desconexão manual não deve ser tratada
+    // como perda inesperada nem iniciar o fluxo de reconexão automática.
+    if (this.manuallyDisconnected.has(dest.id)) return;
     if (!this.connectedOutputs.delete(dest.id)) return;
     this.connectedInputs.delete(dest.id);
     this.reconnectAttempts.delete(dest.id);
