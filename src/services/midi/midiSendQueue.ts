@@ -1,3 +1,4 @@
+import { channelStatus } from '../../lib/midiMath';
 import type { MidiDestination } from '../../types/midi';
 import type { NativeMidiPlugin } from '../nativeMidi';
 import { BLE_SERVER_ID, VIRTUAL_ID } from './midiConstants';
