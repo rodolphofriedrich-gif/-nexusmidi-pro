@@ -49,7 +49,7 @@ export function ConnectionMenu(props: Props) {
         type="button"
         aria-expanded={isOpen}
         onClick={props.onToggleOpen}
-        className={`nexus-connection-button flex h-10 w-full items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 transition-colors hover:bg-[var(--bg-elevated)] ${isConnected ? 'text-[var(--nexus-success)]' : 'text-[var(--text-main)]'}`}
+        className={`nexus-connection-button flex h-10 w-full items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-3 transition-colors hover:bg-[var(--bg-elevated)] ${isConnected ? 'is-connected text-[var(--nexus-success)]' : 'text-[var(--text-main)]'}`}
       >
         <span className="flex items-center justify-center">
           <Icon size={18} strokeWidth={1.8} />
@@ -65,7 +65,7 @@ export function ConnectionMenu(props: Props) {
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6" onClick={(e) => { if (e.target === e.currentTarget) props.onToggleOpen(); }}>
           <div className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-panel)] shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {header}
-            
+
             {showDisconnectAll && (
               <button
                 type="button"
