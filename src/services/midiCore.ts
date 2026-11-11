@@ -1,13 +1,13 @@
 import { dedupeDestinations } from '../lib/destinations';
 import { getNoteName, toHex, clampInt, channelStatus } from '../lib/midiMath';
 import { parseMidiBytes } from '../lib/midiParser';
-import { createStore, type StorageLike, type Store } from '../lib/storeCore';
-import { uid } from '../lib/id';
+import type { StorageLike } from '../lib/storeCore';
 import type { MidiLearn } from '../lib/midiLearn';
 import type { MidiDestination, MidiLogEntry, MidiMessage, MidiRoute } from '../types/midi';
 import type { NativeBleDevice, NativeMidiPlugin } from './nativeMidi';
 import { MidiMonitor, type MidiTap } from './midi/midiMonitor';
 import { MidiSendQueue } from './midi/midiSendQueue';
+import { MidiRoutingEngine } from './midi/midiRoutingEngine';
 import { BLE_SERVER_ID, VIRTUAL_ID } from './midi/midiConstants';
 import { withTimeout } from './midi/midiTimeout';
 
@@ -64,7 +64,6 @@ export class MidiService {
   private readonly native: NativeMidiPort;
   private readonly synth: SynthPort;
   private readonly now: () => number;
-  private readonly routesStore: Store<{ routes: MidiRoute[] }>;
 
   /**
    * Monitor: log, listeners de mensagem, taps, VU e MIDI Learn.
@@ -78,6 +77,14 @@ export class MidiService {
    * construtor — é o único ponto de acoplamento entre a fila e o core.
    */
   private readonly sendQueue: MidiSendQueue;
+
+  /**
+   * Gerenciamento e aplicação de rotas. Extraído para
+   * `midi/midiRoutingEngine.ts` na Fase 3. Recebe duas callbacks:
+   * `getDestination` (para descobrir se o destino ainda está conectado) e
+   * `send` (para enfileirar o envio via `sendQueue`).
+   */
+  private readonly routing: MidiRoutingEngine;
 
   private destinations: MidiDestination[] = [];
   private scannedBleDevices: MidiDestination[] = [];
@@ -115,7 +122,11 @@ export class MidiService {
       native: this.native,
       onDeviceFailed: (dest) => this.dropDevice(dest, 'failed'),
     });
-    this.routesStore = createStore('nexusmidi.routes', { routes: [] as MidiRoute[] }, { storage: deps.storage, persistDelayMs: 0 });
+    this.routing = new MidiRoutingEngine({
+      storage: deps.storage,
+      getDestination: (id) => this.connectedOutputs.get(id),
+      send: (dest, bytes) => void this.sendQueue.sendToDevice(dest, bytes),
+    });
     this.listenersReady = this.installNativeListeners();
   }
 
@@ -348,7 +359,7 @@ export class MidiService {
     }
 
     this.connectedOutputs.set(destination.id, destination);
-    if (canSend && destination.id !== VIRTUAL_ID) this.ensureDefaultRoute(destination);
+    if (canSend && destination.id !== VIRTUAL_ID) this.routing.ensureDefaultRoute(destination);
   }
 
   public async disconnectOutput(id: string): Promise<void> {
@@ -392,36 +403,24 @@ export class MidiService {
     this.connectedInputs.delete(inputId);
   }
 
-  public getRoutes = (): MidiRoute[] => this.routesStore.get().routes;
+  // ---- Rotas (delegação para o RoutingEngine) --------------------------
 
-  public subscribeRoutes = (listener: () => void): (() => void) => this.routesStore.subscribe(listener);
+  public getRoutes = (): MidiRoute[] => this.routing.getRoutes();
+
+  public subscribeRoutes = (listener: () => void): (() => void) => this.routing.subscribeRoutes(listener);
 
   public addRoute(route: Partial<MidiRoute> & { destinationId: string }): MidiRoute {
-    const full: MidiRoute = {
-      id: route.id ?? uid('route-'),
-      enabled: route.enabled ?? true,
-      sourceId: route.sourceId === undefined ? VIRTUAL_ID : route.sourceId,
-      destinationId: route.destinationId,
-      inputChannel: route.inputChannel ?? 0,
-      outputChannel: route.outputChannel ?? 0,
-      transpose: route.transpose ?? 0,
-    };
-    this.routesStore.set((s) => ({ routes: [...s.routes, full] }));
-    return full;
+    return this.routing.addRoute(route);
   }
 
   public updateRoute(id: string, updates: Partial<MidiRoute>): void {
-    this.routesStore.set((s) => ({ routes: s.routes.map((r) => (r.id === id ? { ...r, ...updates } : r)) }));
+    this.routing.updateRoute(id, updates);
   }
 
   public removeRoute(id: string): void {
-    this.routesStore.set((s) => ({ routes: s.routes.filter((r) => r.id !== id) }));
+    this.routing.removeRoute(id);
   }
-
-  private ensureDefaultRoute(dest: MidiDestination): void {
-    if (this.getRoutes().some((r) => r.destinationId === dest.id)) return;
-    this.addRoute({ sourceId: VIRTUAL_ID, destinationId: dest.id });
-  }
+  // ----------------------------------------------------------------------
 
   public getBleServerActive(): boolean {
     return this.bleServerActive;
@@ -641,19 +640,7 @@ export class MidiService {
       void this.sendQueue.sendToDevice(this.bleServerDestination(), this.encode(command, inputChannel, data1, data2));
     }
 
-    for (const route of this.getRoutes()) {
-      if (!route.enabled) continue;
-      if (route.sourceId && route.sourceId !== sourceId) continue;
-      if (route.inputChannel > 0 && inputChannel !== route.inputChannel) continue;
-
-      let out1 = clampInt(data1, 0, 127);
-      const out2 = clampInt(data2, 0, 127);
-      if (command === 0x90 || command === 0x80 || command === 0xa0) out1 = clampInt(out1 + route.transpose, 0, 127);
-
-      const outputChannel = route.outputChannel > 0 ? clampInt(route.outputChannel, 1, 16) : inputChannel;
-      const dest = this.connectedOutputs.get(route.destinationId);
-      if (dest) void this.sendQueue.sendToDevice(dest, this.encode(command, outputChannel, out1, out2));
-    }
+    this.routing.dispatch(status, data1, data2, sourceId);
   }
 
   private encode(command: number, channel: number, data1: number, data2: number): number[] {
@@ -698,11 +685,6 @@ export class MidiService {
   private forwardRealtime(status: number, sourceId?: string): void {
     if (!CLOCK_OR_SENSING.has(status)) this.monitor.pushLog(status, 0, 0, sourceId, 'RX');
     if (status === 0xfe) return;
-    for (const route of this.getRoutes()) {
-      if (!route.enabled) continue;
-      if (route.sourceId && route.sourceId !== sourceId) continue;
-      const dest = this.connectedOutputs.get(route.destinationId);
-      if (dest) void this.sendQueue.sendToDevice(dest, [status]);
-    }
+    this.routing.dispatchRealtime(status, sourceId);
   }
 }
