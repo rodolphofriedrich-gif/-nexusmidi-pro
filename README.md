@@ -4,7 +4,7 @@
 
 O NexusMIDI Pro transforma o celular ou tablet em controlador MIDI, roteador (patchbay), sintetizador SoundFont, gravador e ferramenta de performance — tudo em uma interface com o tema "Midnight Studio" (Dark/Light). Funciona offline.
 
-[![Build](https://github.com/rodolphofriedrich-gif/Teclado-MIDI-BLUETOOTH-/actions/workflows/build.yml/badge.svg)](https://github.com/rodolphofriedrich-gif/Teclado-MIDI-BLUETOOTH-/actions/workflows/build.yml)
+[![Build](https://github.com/rodolphofriedrich-gif/-nexusmidi-pro/actions/workflows/build.yml/badge.svg)](https://github.com/rodolphofriedrich-gif/-nexusmidi-pro/actions/workflows/build.yml)
 
 ---
 
@@ -63,8 +63,8 @@ O NexusMIDI Pro transforma o celular ou tablet em controlador MIDI, roteador (pa
 ### Rodar na web (desenvolvimento)
 
 ```bash
-git clone https://github.com/rodolphofriedrich-gif/Teclado-MIDI-BLUETOOTH-.git
-cd Teclado-MIDI-BLUETOOTH-
+git clone https://github.com/rodolphofriedrich-gif/-nexusmidi-pro.git
+cd -- -nexusmidi-pro
 npm ci
 npm run dev          # http://localhost:3000
 ```

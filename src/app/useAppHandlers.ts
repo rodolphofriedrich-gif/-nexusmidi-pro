@@ -98,8 +98,12 @@ export function useAppHandlers({
   }, [refreshDevices, setIsRouterRefreshing]);
 
   const addNewRoute = useCallback(() => {
-    midiManager.addRoute({ sourceId: VIRTUAL_ID, destinationId: firstConnectedDeviceId ?? '' });
-  }, [firstConnectedDeviceId]);
+    if (!firstConnectedDeviceId) {
+      showMessage(tr('Conecte um dispositivo MIDI de saída antes de criar uma rota.'), 'warn', 2500);
+      return;
+    }
+    midiManager.addRoute({ sourceId: VIRTUAL_ID, destinationId: firstConnectedDeviceId });
+  }, [firstConnectedDeviceId, showMessage]);
 
   return {
     handleNoteOn,

@@ -84,6 +84,7 @@ export const en: Record<string, string> = {
   "Conecte um destino MIDI ou carregue um SoundFont antes de enviar controles.": "Connect a MIDI destination or load a SoundFont before sending controls.",
   "Conecte um destino MIDI ou carregue um SoundFont antes de executar o MIDI Panic.": "Connect a MIDI destination or load a SoundFont before running MIDI Panic.",
   "Conecte um destino MIDI ou carregue um SoundFont.": "Connect a MIDI destination or load a SoundFont.",
+  "Conecte um dispositivo MIDI de saída antes de criar uma rota.": "Connect a MIDI output device before creating a route.",
   "Conecte um dispositivo USB/BLE no topo.": "Connect a USB/BLE device at the top.",
   "Configurações": "Settings",
   "Configurações do canal {ch} restauradas.": "Channel {ch} settings restored.",
