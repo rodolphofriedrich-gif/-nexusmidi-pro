@@ -52,13 +52,12 @@ jobs:
         run: npm run build
 
   # ---------------------------------------------------------------------------
-  # Android: gera o APK debug a cada push; em tags `v*` gera release assinado (se houver segredos)
-  # e publica no GitHub Releases.
+  # Android: gera APK debug em PRs e pushes; em tags v* gera release assinado
+  # (se houver segredos) e publica no GitHub Releases.
   # ---------------------------------------------------------------------------
   android:
     name: Build Android
     needs: check
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: write # necessário para criar o Release
@@ -86,7 +85,7 @@ jobs:
           restore-keys: npm-${{ runner.os }}-
 
       - name: Instalar dependências
-        run:  npm ci
+        run: npm ci
 
       - name: Definir versão do app
         run: |

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { tr } from '../i18n';
 import { midiManager } from '../services/midiService';
+import type { DisconnectReason } from '../services/midiService';
 import type { MidiDestination } from '../types/midi';
 import type { ToastType } from './useToast';
 
@@ -25,25 +26,43 @@ export function useMidiDevices(notify: Notify) {
 
   useEffect(() => {
     let mounted = true;
+    // Evita repetir o mesmo aviso durante as tentativas automáticas de BLE.
+    const reconnectingNotified = new Set<string>();
 
     const handleRefresh = () => {
-      if (mounted) void refresh();
+      if (mounted) {
+        const connectedIds = new Set(midiManager.getConnectedDestinations().map((destination) => destination.id));
+        for (const id of reconnectingNotified) {
+          if (connectedIds.has(id)) reconnectingNotified.delete(id);
+        }
+        void refresh();
+      }
     };
 
     // Trata o `reason` corretamente:
     // - 'reconnecting': NÃO faz refresh (evita spam de notificações a cada tentativa)
     // - 'failed': avisa e faz refresh
     // - 'lost' (ou ausente): avisa e faz refresh
-    const handleDisconnect = (lost: MidiDestination, reason?: 'lost' | 'reconnecting' | 'failed') => {
+    const handleDisconnect = (lost: MidiDestination, reason?: DisconnectReason) => {
       if (!mounted) return;
       if (reason === 'reconnecting') {
-        notify(tr('Reconectando a "{name}"...', { name: lost.displayName }), 'info', 2000);
+        if (!reconnectingNotified.has(lost.id)) {
+          reconnectingNotified.add(lost.id);
+          notify(tr('Reconectando a "{name}"...', { name: lost.displayName }), 'info', 2000);
+        }
         return;
       }
       void refresh();
+      // A ação manual já exibe seu aviso em toggleConnect; evita duplicidade.
+      if (reason === 'manual') {
+        reconnectingNotified.delete(lost.id);
+        return;
+      }
       if (reason === 'failed') {
+        reconnectingNotified.delete(lost.id);
         notify(tr('Falha ao reconectar a "{name}".', { name: lost.displayName }), 'error', 4000);
       } else {
+        reconnectingNotified.delete(lost.id);
         notify(tr('Destino "{name}" desconectado.', { name: lost.displayName }), 'warn', 4000);
       }
     };
