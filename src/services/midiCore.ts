@@ -1,4 +1,3 @@
-import { dedupeDestinations } from '../lib/destinations';
 import { getNoteName, toHex, clampInt, channelStatus } from '../lib/midiMath';
 import { parseMidiBytes } from '../lib/midiParser';
 import type { StorageLike } from '../lib/storeCore';
@@ -8,12 +7,15 @@ import type { NativeBleDevice, NativeMidiPlugin } from './nativeMidi';
 import { MidiMonitor, type MidiTap } from './midi/midiMonitor';
 import { MidiSendQueue } from './midi/midiSendQueue';
 import { MidiRoutingEngine } from './midi/midiRoutingEngine';
+import { MidiConnectionManager, type DisconnectReason } from './midi/midiConnectionManager';
+import { bleServerDestination } from './midi/midiDestinations';
 import { BLE_SERVER_ID, VIRTUAL_ID } from './midi/midiConstants';
 import { withTimeout } from './midi/midiTimeout';
 
 export { getNoteName };
 export type { MidiMessage };
 export type { MidiTap } from './midi/midiMonitor';
+export type { DisconnectReason } from './midi/midiConnectionManager';
 export { BLE_SERVER_ID, VIRTUAL_ID };
 
 const PANIC_TIMEOUT_MS = 30000; // timeout global do panic
@@ -65,68 +67,57 @@ export class MidiService {
   private readonly synth: SynthPort;
   private readonly now: () => number;
 
-  /**
-   * Monitor: log, listeners de mensagem, taps, VU e MIDI Learn.
-   * Extraído para `midi/midiMonitor.ts` na Fase 1.
-   */
+  /** Log, listeners de mensagem, taps, VU e MIDI Learn. Fase 1. */
   private readonly monitor: MidiMonitor;
 
-  /**
-   * Fila de envio por dispositivo. Extraída para `midi/midiSendQueue.ts` na
-   * Fase 2. O `onDeviceFailed` é ligado a `dropDevice(dest, 'failed')` no
-   * construtor — é o único ponto de acoplamento entre a fila e o core.
-   */
+  /** Fila FIFO por device e envio urgent. Fase 2. */
   private readonly sendQueue: MidiSendQueue;
 
-  /**
-   * Gerenciamento e aplicação de rotas. Extraído para
-   * `midi/midiRoutingEngine.ts` na Fase 3. Recebe duas callbacks:
-   * `getDestination` (para descobrir se o destino ainda está conectado) e
-   * `send` (para enfileirar o envio via `sendQueue`).
-   */
+  /** Rotas: persistência, CRUD e aplicação. Fase 3. */
   private readonly routing: MidiRoutingEngine;
 
-  private destinations: MidiDestination[] = [];
-  private scannedBleDevices: MidiDestination[] = [];
-  private readonly connectedOutputs = new Map<string, MidiDestination>();
-  private readonly connectedInputs = new Set<string>();
-  private readonly bleAddressToId = new Map<string, string>();
-  private readonly reconnectAttempts = new Map<string, number>();
-
-  /**
-   * IDs de dispositivos que o usuário desconectou explicitamente (via UI).
-   * Enquanto o ID estiver neste Set, o reconnect automático de BLE é suprimido.
-   * Removido apenas quando o usuário reconecta manualmente via connectOutput.
-   */
-  private readonly manuallyDisconnected = new Set<string>();
-
-  /**
-   * Timers de reconnect BLE pendentes, por device. Permite cancelar um
-   * setTimeout em andamento quando o usuário desconecta manualmente,
-   * evitando que o device "volte sozinho" após alguns segundos.
-   */
-  private readonly reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
-  private bleServerActive = false;
+  /** Conexões USB/BLE, reconnect, BLE server. Fase 4. */
+  private readonly connections: MidiConnectionManager;
 
   private onRefreshCallback?: (destinations?: MidiDestination[]) => void;
-  private onDisconnectCallback?: (destination: MidiDestination, reason?: 'lost' | 'reconnecting' | 'failed') => void;
+  private onDisconnectCallback?: (destination: MidiDestination, reason?: DisconnectReason) => void;
   private listenersReady: Promise<void>;
 
   constructor(deps: MidiServiceDeps) {
     this.native = deps.native;
     this.synth = deps.synth;
     this.now = deps.now ?? Date.now;
+
     this.monitor = new MidiMonitor({ now: this.now });
+
+    // onDeviceFailed do sendQueue → dropDevice do manager.
+    // Referência lazy: `this.connections` ainda não existe, mas o callback
+    // só é chamado em runtime, depois do construtor.
     this.sendQueue = new MidiSendQueue({
       native: this.native,
-      onDeviceFailed: (dest) => this.dropDevice(dest, 'failed'),
+      onDeviceFailed: (dest) => this.connections.dropDevice(dest, 'failed'),
     });
+
+    // Manager não conhece routing/sendQueue — recebe callbacks.
+    // `ensureDefaultRoute` é lazy (usa this.routing, que ainda não existe).
+    // `onRefresh`/`onDisconnect` são lazy também: leem os callbacks atuais
+    // do core, refletindo eventuais `setCallbacks()` posteriores.
+    this.connections = new MidiConnectionManager({
+      native: this.native,
+      sendQueue: this.sendQueue,
+      ensureDefaultRoute: (dest) => this.routing.ensureDefaultRoute(dest),
+      onRefresh: (destinations) => this.onRefreshCallback?.(destinations),
+      onDisconnect: (dest, reason) => this.onDisconnectCallback?.(dest, reason),
+    });
+
+    // Routing depende de connections (para saber se destino está conectado)
+    // e de sendQueue (para enviar). Ambas resolvidas por closure lazy.
     this.routing = new MidiRoutingEngine({
       storage: deps.storage,
-      getDestination: (id) => this.connectedOutputs.get(id),
+      getDestination: (id) => this.connections.getConnectedDestination(id),
       send: (dest, bytes) => void this.sendQueue.sendToDevice(dest, bytes),
     });
+
     this.listenersReady = this.installNativeListeners();
   }
 
@@ -136,11 +127,8 @@ export class MidiService {
         if (!event || !Array.isArray(event.data)) return;
         this.handleIncomingBytes(event.data, event.sourceId != null ? String(event.sourceId) : undefined);
       });
-      await this.native.addListener('devicesChanged', () => void this.onDevicesChanged());
-      await this.native.addListener('bleServerChanged', (status) => {
-        this.bleServerActive = status?.active === true;
-        this.onRefreshCallback?.(this.destinations);
-      });
+      await this.native.addListener('devicesChanged', () => void this.connections.handleDevicesChanged());
+      await this.native.addListener('bleServerChanged', (status) => this.connections.handleBleServerChanged(status));
     } catch (error) {
       console.error('Não foi possível registrar os listeners MIDI nativos:', error);
     }
@@ -148,7 +136,7 @@ export class MidiService {
 
   public setCallbacks(
     onRefresh: (destinations?: MidiDestination[]) => void,
-    onDisconnect: (destination: MidiDestination, reason?: 'lost' | 'reconnecting' | 'failed') => void,
+    onDisconnect: (destination: MidiDestination, reason?: DisconnectReason) => void,
   ): void {
     this.onRefreshCallback = onRefresh;
     this.onDisconnectCallback = onDisconnect;
@@ -164,249 +152,49 @@ export class MidiService {
     await this.native.initialize();
   }
 
+  // ---- Descoberta (delegação para o ConnectionManager) -----------------
+
   public async getAvailableDestinations(): Promise<MidiDestination[]> {
-    return this.refreshDevices();
+    return this.connections.getAvailableDestinations();
   }
 
   public async refreshDevices(): Promise<MidiDestination[]> {
-    try {
-      const result = await this.native.getDevices();
-      const nativeDevices: MidiDestination[] = (result.devices || []).map((device) => ({
-        id: String(device.id),
-        name: device.name,
-        displayName: device.displayName || device.name,
-        type:
-          device.type === 'usb' || device.type === 'ble' || device.type === 'virtual' || device.type === 'local'
-            ? device.type
-            : 'usb',
-        manufacturer: device.manufacturer,
-        inputPortCount: device.inputPortCount,
-        outputPortCount: device.outputPortCount,
-      }));
-
-      const virtualKeyboard: MidiDestination = {
-        id: VIRTUAL_ID,
-        name: 'Teclado Virtual',
-        displayName: 'Teclado Virtual (NexusMIDI Pro)',
-        type: 'virtual',
-        inputPortCount: 0,
-        outputPortCount: 0,
-      };
-
-      const merged = [virtualKeyboard, ...nativeDevices.filter((d) => d.id !== VIRTUAL_ID)];
-      for (const ble of this.scannedBleDevices) {
-        if (!merged.some((d) => d.bleAddress === ble.bleAddress || d.id === ble.id)) merged.push(ble);
-      }
-
-      this.destinations = dedupeDestinations(merged);
-      this.onRefreshCallback?.(this.destinations);
-      return this.destinations;
-    } catch (error) {
-      console.error('Erro ao atualizar dispositivos MIDI:', error);
-      return this.destinations;
-    }
+    return this.connections.refreshDevices();
   }
 
   public async scanBleDevice(): Promise<NativeBleDevice[]> {
-    try {
-      const result = await this.native.scanBleDevices({ durationMs: 10000 });
-      const devices = result.devices || [];
-
-      this.scannedBleDevices = devices.map((dev) => ({
-        id: `ble-${dev.address}`,
-        name: dev.name,
-        displayName: `${dev.name} (BLE)`,
-        type: 'ble' as const,
-        bleAddress: dev.address,
-        inputPortCount: 1,
-        outputPortCount: 1,
-      }));
-      this.scannedBleDevices.forEach((d) => d.bleAddress && this.bleAddressToId.set(d.bleAddress, d.id));
-
-      await this.refreshDevices();
-      return devices;
-    } catch (error) {
-      console.error('Erro ao procurar dispositivos BLE:', error);
-      throw error;
-    }
+    return this.connections.scanBleDevice();
   }
 
   public getDestinations(): MidiDestination[] {
-    return [...this.destinations];
+    return this.connections.getDestinations();
   }
 
-  private async onDevicesChanged(): Promise<void> {
-    const list = await this.refreshDevices();
-    const present = new Set(list.map((d) => d.id));
-    for (const dest of [...this.connectedOutputs.values()]) {
-      if (dest.id === VIRTUAL_ID || dest.type === 'ble') continue;
-      if (!present.has(dest.id)) this.dropDevice(dest, 'lost');
-    }
-  }
-
-  private dropDevice(dest: MidiDestination, reason: 'lost' | 'failed' = 'lost'): void {
-    if (!this.connectedOutputs.delete(dest.id)) return;
-    this.connectedInputs.delete(dest.id);
-    this.reconnectAttempts.delete(dest.id);
-    this.clearReconnectTimer(dest.id);
-    this.sendQueue.reset(dest);
-    this.onDisconnectCallback?.(dest, reason);
-    this.onRefreshCallback?.(this.destinations);
-
-    if (reason === 'failed' && dest.type === 'ble') {
-      void this.attemptBleReconnect(dest);
-    }
-  }
-
-  /**
-   * Cancela um timer de reconnect pendente (se houver). Chamado em
-   * disconnectOutput (manual) e em dropDevice (para evitar duplicação
-   * antes de agendar um novo timer).
-   */
-  private clearReconnectTimer(id: string): void {
-    const timer = this.reconnectTimers.get(id);
-    if (timer !== undefined) {
-      clearTimeout(timer);
-      this.reconnectTimers.delete(id);
-    }
-  }
-
-  private async attemptBleReconnect(dest: MidiDestination): Promise<void> {
-    if (!dest.bleAddress) return;
-    // Guard 1: usuário desconectou manualmente — não reconectar.
-    if (this.manuallyDisconnected.has(dest.id)) return;
-    const attempts = (this.reconnectAttempts.get(dest.id) ?? 0) + 1;
-    this.reconnectAttempts.set(dest.id, attempts);
-
-    if (attempts > 3) {
-      this.reconnectAttempts.delete(dest.id);
-      this.onDisconnectCallback?.(dest, 'failed');
-      return;
-    }
-
-    this.onDisconnectCallback?.(dest, 'reconnecting');
-
-    const delay = 2000 * Math.pow(2, attempts - 1);
-    // Guard 2: agenda via timer controlável para poder cancelar em disconnectOutput.
-    const timer = setTimeout(() => {
-      this.reconnectTimers.delete(dest.id);
-      void this.runReconnectAttempt(dest);
-    }, delay);
-    this.reconnectTimers.set(dest.id, timer);
-  }
-
-  /**
-   * Executa a tentativa de reconnect após o delay do timer. Guard 3:
-   * re-checa manuallyDisconnected (pode ter mudado durante a espera).
-   */
-  private async runReconnectAttempt(dest: MidiDestination): Promise<void> {
-    if (this.manuallyDisconnected.has(dest.id)) return;
-    if (!this.scannedBleDevices.some((d) => d.id === dest.id)) return;
-
-    try {
-      // isReconnect=true: connectOutput sabe que NÃO deve limpar manuallyDisconnected.
-      await this.connectOutput(dest, { isReconnect: true });
-      this.reconnectAttempts.delete(dest.id);
-      this.onRefreshCallback?.(this.destinations);
-    } catch {
-      void this.attemptBleReconnect(dest);
-    }
-  }
+  // ---- Conexão (delegação para o ConnectionManager) --------------------
 
   public async connectOutput(destination: MidiDestination, opts?: { isReconnect?: boolean }): Promise<void> {
-    if (this.connectedOutputs.has(destination.id)) return;
-
-    // Reconnect automático nunca deve reverter uma desconexão manual.
-    if (opts?.isReconnect) {
-      if (this.manuallyDisconnected.has(destination.id)) return;
-    } else {
-      // Conexão manual do usuário: limpa o bloqueio de desconexão manual.
-      this.manuallyDisconnected.delete(destination.id);
-    }
-
-    let canSend = destination.id === VIRTUAL_ID;
-    if (destination.id !== VIRTUAL_ID) {
-      if (destination.type === 'ble' && destination.bleAddress) {
-        await this.native.connectBleMidi({ address: destination.bleAddress, outputPortIndex: 0, inputPortIndex: 0 });
-        this.bleAddressToId.set(destination.bleAddress, destination.id);
-        this.connectedInputs.add(destination.id);
-        canSend = true;
-      } else {
-        const hasOutputPort = (destination.inputPortCount ?? 1) > 0;
-        const hasInputPort = (destination.outputPortCount ?? 0) > 0;
-        let firstError: unknown;
-        let anyOk = false;
-        if (hasOutputPort) {
-          try {
-            await this.native.connectOutput({ id: destination.id, portIndex: 0 });
-            canSend = true;
-            anyOk = true;
-          } catch (error) {
-            firstError = error;
-          }
-        }
-        if (hasInputPort) {
-          try {
-            await this.native.connectInput({ id: destination.id, portIndex: 0 });
-            this.connectedInputs.add(destination.id);
-            anyOk = true;
-          } catch (error) {
-            firstError ??= error;
-          }
-        }
-        if (!anyOk) throw firstError instanceof Error ? firstError : new Error('Dispositivo sem portas MIDI utilizáveis.');
-      }
-    }
-
-    this.connectedOutputs.set(destination.id, destination);
-    if (canSend && destination.id !== VIRTUAL_ID) this.routing.ensureDefaultRoute(destination);
+    return this.connections.connectOutput(destination, opts);
   }
 
   public async disconnectOutput(id: string): Promise<void> {
-    const dest = this.connectedOutputs.get(id);
-    if (!dest) return;
-
-    // Desconexão manual: suprime reconnect automático de BLE e cancela timer pendente.
-    this.manuallyDisconnected.add(id);
-    this.reconnectAttempts.delete(id);
-    this.clearReconnectTimer(id);
-
-    await this.allNotesOffForDevice(dest);
-    if (id !== VIRTUAL_ID) {
-      const nativeId = dest.bleAddress || dest.id;
-      try {
-        await this.native.disconnectOutput({ id: nativeId });
-        if (this.connectedInputs.has(id)) await this.native.disconnectInput({ id: nativeId });
-      } catch (error) {
-        console.warn('Falha ao desconectar no plugin nativo:', error);
-      }
-    }
-    this.connectedInputs.delete(id);
-    this.connectedOutputs.delete(id);
-    this.sendQueue.reset(dest);
-    this.onDisconnectCallback?.(dest, 'lost');
+    return this.connections.disconnectOutput(id);
   }
 
   public getConnectedDestinations(): MidiDestination[] {
-    return Array.from(this.connectedOutputs.values());
+    return this.connections.getConnectedDestinations();
   }
 
   public async connectInput(inputId: string): Promise<void> {
-    if (inputId === VIRTUAL_ID || this.connectedInputs.has(inputId)) return;
-    await this.native.connectInput({ id: String(inputId), portIndex: 0 });
-    this.connectedInputs.add(inputId);
+    return this.connections.connectInput(inputId);
   }
 
   public async disconnectInput(inputId: string): Promise<void> {
-    if (inputId === VIRTUAL_ID || !this.connectedInputs.has(inputId)) return;
-    await this.native.disconnectInput({ id: String(inputId) });
-    this.connectedInputs.delete(inputId);
+    return this.connections.disconnectInput(inputId);
   }
 
   // ---- Rotas (delegação para o RoutingEngine) --------------------------
 
   public getRoutes = (): MidiRoute[] => this.routing.getRoutes();
-
   public subscribeRoutes = (listener: () => void): (() => void) => this.routing.subscribeRoutes(listener);
 
   public addRoute(route: Partial<MidiRoute> & { destinationId: string }): MidiRoute {
@@ -420,33 +208,26 @@ export class MidiService {
   public removeRoute(id: string): void {
     this.routing.removeRoute(id);
   }
-  // ----------------------------------------------------------------------
+
+  // ---- BLE server (delegação para o ConnectionManager) -----------------
 
   public getBleServerActive(): boolean {
-    return this.bleServerActive;
+    return this.connections.getBleServerActive();
   }
 
   public async isBleServerRunning(): Promise<boolean> {
-    try {
-      this.bleServerActive = (await this.native.isBleServerRunning()).active === true;
-    } catch {
-      this.bleServerActive = false;
-    }
-    return this.bleServerActive;
+    return this.connections.isBleServerRunning();
   }
 
   public async startBleServer(): Promise<boolean> {
-    this.bleServerActive = (await this.native.startBleServer()).active === true;
-    return this.bleServerActive;
+    return this.connections.startBleServer();
   }
 
   public async stopBleServer(): Promise<void> {
-    await this.native.stopBleServer();
-    this.bleServerActive = false;
+    return this.connections.stopBleServer();
   }
 
   // ---- Monitor (delegação) ---------------------------------------------
-  // A implementação real está em `midi/midiMonitor.ts` (Fase 1).
 
   public addActivityListener(listener: (velocity: number) => void): void {
     this.monitor.addActivityListener(listener);
@@ -471,7 +252,8 @@ export class MidiService {
   public clearLog(): void {
     this.monitor.clearLog();
   }
-  // ----------------------------------------------------------------------
+
+  // ---- API de envio ----------------------------------------------------
 
   public async sendKeyboardNote(channel: number, note: number, velocity: number, isNoteOn: boolean): Promise<{ hex: string }> {
     const safeNote = clampInt(note, 0, 127);
@@ -518,8 +300,8 @@ export class MidiService {
    * Retorna os destinos que NÃO conseguiram receber todas as mensagens — o App
    * pode usar isso para avisar o usuário (em vez de mostrar sucesso falso).
    *
-   * Usa `sendUrgent` (bypass da fila) para devices externos — o panic precisa
-   * chegar ANTES de clocks/CCs acumulados na fila FIFO.
+   * `sendQueue.panicToDevice` usa `sendUrgent` (bypass da fila) para devices
+   * externos — o panic precisa chegar ANTES de clocks/CCs acumulados na FIFO.
    *
    * Protegido por timeout global (PANIC_TIMEOUT_MS): se um dispositivo travar,
    * o panic retorna em vez de travar o app. Devices que não completaram antes
@@ -527,8 +309,8 @@ export class MidiService {
    */
   public async sendPanic(channels: readonly number[] = Array.from({ length: 16 }, (_, i) => i + 1)): Promise<PanicResult> {
     this.synth.allNotesOff();
-    const targets = [...this.connectedOutputs.values()].filter((d) => d.id !== VIRTUAL_ID);
-    if (this.bleServerActive) targets.push(this.bleServerDestination());
+    const targets = this.connections.getConnectedDestinations().filter((d) => d.id !== VIRTUAL_ID);
+    if (this.connections.getBleServerActive()) targets.push(bleServerDestination());
 
     for (const channel of channels) {
       for (const [c, v] of [[64, 0], [120, 0], [123, 0]] as const) {
@@ -545,7 +327,7 @@ export class MidiService {
         const ok = await this.sendQueue.panicToDevice(dest, channels);
         if (ok) okSet.add(dest.id);
       } catch {
-        // Erro individual do device: será reportado como failed pela ausência no okSet.
+        // Erro individual do device: reportado como failed pela ausência no okSet.
       }
     });
 
@@ -559,43 +341,15 @@ export class MidiService {
     return { failed };
   }
 
-  /**
-   * Envia a tríade de emergência (CC64=0, CC120=0, CC123=0) em todos os canais.
-   *
-   * Usa `sendUrgent` (bypass da fila FIFO) para garantir que o panic chegue ao
-   * dispositivo mesmo quando a fila está saturada por clocks/CCs acumulados.
-   * Aborta cedo após MAX_SEND_FAILURES falhas consecutivas — se o dispositivo
-   * está claramente morto, não faz sentido insistir nas outras 45 mensagens.
-   */
-  private async sendPanicToDevice(dest: MidiDestination, channels: readonly number[]): Promise<boolean> {
-    if (dest.id === VIRTUAL_ID) return true;
-    let allOk = true;
-    let consecutiveFails = 0;
-    for (const channel of channels) {
-      const status = channelStatus(0xb0, channel);
-      for (const [cc, value] of [[64, 0], [120, 0], [123, 0]] as const) {
-        const ok = await this.sendQueue.sendUrgent(dest, [status, cc, value]);
-        if (ok) {
-          consecutiveFails = 0;
-        } else {
-          allOk = false;
-          consecutiveFails++;
-          if (consecutiveFails >= 3) return false;
-        }
-      }
-    }
-    return allOk;
-  }
-
   public async broadcastRealtime(status: number): Promise<void> {
     if (status < 0xf8) return;
-    const targets = [...this.connectedOutputs.values()].filter((d) => d.id !== VIRTUAL_ID);
-    if (this.bleServerActive) targets.push(this.bleServerDestination());
+    const targets = this.connections.getConnectedDestinations().filter((d) => d.id !== VIRTUAL_ID);
+    if (this.connections.getBleServerActive()) targets.push(bleServerDestination());
     await Promise.all(targets.map((d) => this.sendQueue.sendToDevice(d, [status])));
   }
 
-  private bleServerDestination(): MidiDestination {
-    return { id: BLE_SERVER_ID, name: 'BLE MIDI (visível)', displayName: 'BLE MIDI (visível)', type: 'ble' };
+  public async allNotesOffForDevice(destination: MidiDestination): Promise<void> {
+    await this.sendQueue.allNotesOff(destination);
   }
 
   public routeMessage(status: number, data1: number, data2: number, sourceId?: string): void {
@@ -636,8 +390,8 @@ export class MidiService {
       }
     }
 
-    if (fromApp && this.bleServerActive) {
-      void this.sendQueue.sendToDevice(this.bleServerDestination(), this.encode(command, inputChannel, data1, data2));
+    if (fromApp && this.connections.getBleServerActive()) {
+      void this.sendQueue.sendToDevice(bleServerDestination(), this.encode(command, inputChannel, data1, data2));
     }
 
     this.routing.dispatch(status, data1, data2, sourceId);
@@ -648,18 +402,9 @@ export class MidiService {
     return command === 0xc0 || command === 0xd0 ? [status, data1] : [status, data1, data2];
   }
 
-  public async allNotesOffForDevice(destination: MidiDestination): Promise<void> {
-  await this.sendQueue.allNotesOff(destination);
-}
-
-  private normalizeSource(sourceId?: string): string | undefined {
-    if (!sourceId) return sourceId;
-    return this.bleAddressToId.get(sourceId) ?? sourceId;
-  }
-
   public handleIncomingBytes(bytes: number[], rawSourceId?: string): void {
     if (!Array.isArray(bytes) || bytes.length === 0) return;
-    const sourceId = this.normalizeSource(rawSourceId);
+    const sourceId = this.connections.normalizeSource(rawSourceId);
 
     for (const parsed of parseMidiBytes(bytes)) {
       if (parsed.kind === 'sysex') continue;
