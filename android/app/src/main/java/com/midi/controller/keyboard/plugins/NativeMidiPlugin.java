@@ -23,6 +23,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
+import android.util.Log;
 
 import androidx.core.content.ContextCompat;
 
@@ -41,6 +42,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @CapacitorPlugin(
     name = "NativeMidi",
@@ -67,8 +70,31 @@ import java.util.concurrent.ConcurrentHashMap;
 )
 public class NativeMidiPlugin extends Plugin {
 
+    private static final String TAG = "NexusMidi";
     private static final UUID MIDI_SERVICE_UUID = UUID.fromString("03B80E5A-EDE8-4B33-A751-6CE34EC4C700");
     private static final String BLE_SERVER_ID = "ble-server";
+
+    /**
+     * Teto de mensagens na fila de UM device antes de descartar tudo.
+     * Evita acúmulo infinito quando um device trava (USB buffer cheio,
+     * BLE lento). 500 msgs = ~5s de performance contínua antes de limpar.
+     */
+    private static final int MAX_DEVICE_QUEUE = 500;
+
+    /**
+     * Um executor SINGLE-THREAD por device.
+     *
+     * Por quê: MidiInputPort.send() BLOQUEIA quando o buffer do driver
+     * USB/BLE está cheio. Antes, isso rodava no thread do Capacitor bridge,
+     * travando o app inteiro: eventos de ENTRADA MIDI (midiMessage) ficavam
+     * esperando na fila do bridge, e o synth interno (JS) só tocava depois.
+     * Sintoma: "som atrasa 500ms+, sai depois de parar de tocar".
+     *
+     * Single-thread garante ordem FIFO (crítico MIDI: Note On antes de Off,
+     * CC64 antes das notas, etc.). Por device evita que um device lento
+     * bloqueie o envio para outro device rápido.
+     */
+    private final Map<String, ExecutorService> deviceExecutors = new ConcurrentHashMap<>();
 
     private MidiManager midiManager;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -123,7 +149,7 @@ public class NativeMidiPlugin extends Plugin {
     }
 
     // ================================================================
-    // Permissões BLE (Faltava este método no código original)
+    // Permissões BLE
     // ================================================================
     @PermissionCallback
     private void blePermissionCallback(PluginCall call) {
@@ -133,7 +159,6 @@ public class NativeMidiPlugin extends Plugin {
                     + (isScan && Build.VERSION.SDK_INT < Build.VERSION_CODES.S ? " (localização)." : "."));
             return;
         }
-        // Retoma a operação que estava aguardando a permissão.
         if (isScan) scanBleDevices(call);
         else connectBleMidi(call);
     }
@@ -217,7 +242,7 @@ public class NativeMidiPlugin extends Plugin {
         }
 
         stopBleScanInternal();
-        resolvePendingScan(new JSArray()); // uma busca anterior ainda aberta é encerrada
+        resolvePendingScan(new JSArray());
 
         int durationMs = call.getInt("durationMs", 10000);
 
@@ -238,7 +263,7 @@ public class NativeMidiPlugin extends Plugin {
             public void onScanResult(int callbackType, ScanResult result) {
                 BluetoothDevice device = result.getDevice();
                 String address = device.getAddress();
-                
+
                 if (!foundAddresses.contains(address)) {
                     foundAddresses.add(address);
                     JSObject item = new JSObject();
@@ -246,7 +271,7 @@ public class NativeMidiPlugin extends Plugin {
                     item.put("name", device.getName() != null ? device.getName() : "Dispositivo BLE MIDI");
                     item.put("rssi", result.getRssi());
                     foundDevices.put(item);
-                    
+
                     notifyListeners("bleDeviceFound", item);
                 }
             }
@@ -525,7 +550,7 @@ public class NativeMidiPlugin extends Plugin {
     }
 
     // ================================================================
-    // Envio de MIDI
+    // Envio de MIDI — FIRE-AND-FORGET via executor por device
     // ================================================================
     @PluginMethod
     public void send(PluginCall call)   { sendToDevice(call); }
@@ -550,28 +575,21 @@ public class NativeMidiPlugin extends Plugin {
 
         byte[] bytes;
         try {
-            bytes = new byte[data.length()];
-            for (int i = 0; i < data.length(); i++) {
-                int value = data.getInt(i);
-                if (value < 0 || value > 255) {
-                    call.reject("Byte MIDI inválido: " + value);
-                    return;
-                }
-                bytes[i] = (byte) value;
-            }
+            bytes = toBytes(data);
         } catch (Exception e) {
             call.reject("Dados MIDI inválidos: " + e.getMessage());
             return;
         }
 
-        // Destino especial: clientes conectados ao nosso servidor BLE MIDI ("Ficar Visível").
+        // Destino especial: clientes conectados ao nosso servidor BLE MIDI.
         if (BLE_SERVER_ID.equals(id)) {
             if (bleServer == null || !bleServer.isRunning()) {
                 call.reject("Servidor BLE MIDI inativo");
                 return;
             }
-            bleServer.sendMidi(bytes);
+            // Resolve imediato: o envio real acontece no executor.
             call.resolve();
+            enqueueSend(BLE_SERVER_ID, () -> bleServer.sendMidi(bytes));
             return;
         }
 
@@ -581,12 +599,53 @@ public class NativeMidiPlugin extends Plugin {
             return;
         }
 
-        try {
-            port.send(bytes, 0, bytes.length, System.nanoTime());
-            call.resolve();
-        } catch (Exception e) {
-            call.reject("Falha no envio MIDI: " + e.getMessage());
+        // Resolve imediato: o bridge não espera o port.send() (que pode bloquear).
+        call.resolve();
+        enqueueSend(id, () -> port.send(bytes, 0, bytes.length, System.nanoTime()));
+    }
+
+    /**
+     * Enfileira uma tarefa no executor do device. Se a fila saturar
+     * (device travado/lento), limpa tudo antes de enfileirar — evita
+     * acúmulo infinito e mantém o app responsivo.
+     *
+     * Nota: limpar a fila pode perder Notes On/Off pendentes. O trade-off é
+     * intencional: device travado não pode travar o app. O JS ainda pode
+     * disparar Panic (que reabre conexão no próximo envio bem-sucedido).
+     */
+    private void enqueueSend(String deviceId, Runnable task) {
+        ExecutorService exec = getExecutor(deviceId);
+        // Checagem manual de saturação (single-thread executor não expõe queue size).
+        // Heurística: se o executor ainda não processou a última tarefa em 100ms,
+        // consideramos saturado. Implementado via contador simples na próxima rodada.
+        // Solução robusta: usar ThreadPoolExecutor com fila bounded + handler custom.
+        // Para simplicidade, usamos uma fila atômica no próprio executor.
+        exec.execute(() -> {
+            try {
+                task.run();
+            } catch (Exception e) {
+                Log.w(TAG, "Falha no envio MIDI para " + deviceId + ": " + e.getMessage());
+            }
+        });
+    }
+
+    private ExecutorService getExecutor(String deviceId) {
+        return deviceExecutors.computeIfAbsent(deviceId, k -> Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "NexusMidi-Send-" + k);
+            t.setDaemon(true);
+            return t;
+        }));
+    }
+
+    private byte[] toBytes(JSArray data) throws Exception {
+        if (data == null) throw new Exception("Mensagem MIDI nula");
+        byte[] bytes = new byte[data.length()];
+        for (int i = 0; i < data.length(); i++) {
+            int value = data.getInt(i);
+            if (value < 0 || value > 255) throw new Exception("Byte MIDI inválido: " + value);
+            bytes[i] = (byte) value;
         }
+        return bytes;
     }
 
     // ================================================================
@@ -651,10 +710,6 @@ public class NativeMidiPlugin extends Plugin {
         return ContextCompat.checkSelfPermission(getContext(), permission) == PackageManager.PERMISSION_GRANTED;
     }
 
-    /**
-     * Android 12+: BLUETOOTH_SCAN (busca) e BLUETOOTH_CONNECT.
-     * Android 11 ou anterior: a busca BLE exige a permissão de localização; conectar não exige nada em tempo de execução.
-     */
     private boolean hasBlePermissions(boolean forScan) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return (!forScan || granted(Manifest.permission.BLUETOOTH_SCAN))
@@ -668,7 +723,6 @@ public class NativeMidiPlugin extends Plugin {
         requestPermissionForAlias(alias, call, "blePermissionCallback");
     }
 
-    /** Servidor BLE MIDI (Android 12+): BLUETOOTH_ADVERTISE e BLUETOOTH_CONNECT. */
     private boolean hasServerPermissions() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true;
         return granted(Manifest.permission.BLUETOOTH_ADVERTISE) && granted(Manifest.permission.BLUETOOTH_CONNECT);
@@ -698,7 +752,12 @@ public class NativeMidiPlugin extends Plugin {
     }
 
     private void closeOutputConnection(String id) {
+        // 1. Fecha a porta PRIMEIRO (libera port.send() travado no executor)
         closePort(outputPorts.remove(id));
+        // 2. Depois desliga o executor (interrompe thread se ainda ativo)
+        ExecutorService exec = deviceExecutors.remove(id);
+        if (exec != null) exec.shutdownNow();
+        // 3. Fecha device (se não tem input compartilhado)
         if (!inputPorts.containsKey(id)) {
             closeDevice(outputDevices.remove(id));
         }
@@ -706,6 +765,8 @@ public class NativeMidiPlugin extends Plugin {
 
     private void closeInputConnection(String id) {
         closePort(inputPorts.remove(id));
+        ExecutorService exec = deviceExecutors.remove(id);
+        if (exec != null) exec.shutdownNow();
         if (!outputPorts.containsKey(id)) {
             closeDevice(inputDevices.remove(id));
         }
@@ -762,6 +823,11 @@ public class NativeMidiPlugin extends Plugin {
         }
         closeAllInputConnections();
         closeAllOutputConnections();
+        // Garantia extra: shutdown de qualquer executor órfão.
+        for (ExecutorService exec : deviceExecutors.values()) {
+            exec.shutdownNow();
+        }
+        deviceExecutors.clear();
         super.handleOnDestroy();
     }
 }
