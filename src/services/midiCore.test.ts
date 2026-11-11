@@ -159,6 +159,20 @@ describe('MidiService', () => {
       expect(svc.getConnectedDestinations()).toEqual([]);
     });
 
+    it('desconexão manual não é reportada como falha se o panic falhar', async () => {
+      await service.connectOutput(usbModule);
+      const disconnected = vi.fn();
+      service.setCallbacks(() => undefined, disconnected);
+      n.setFailSend(true);
+
+      await service.disconnectOutput('7');
+
+      expect(disconnected).toHaveBeenCalledTimes(1);
+      expect(disconnected).toHaveBeenCalledWith(usbModule, 'manual');
+      expect(service.getConnectedDestinations()).toEqual([]);
+      expect(n.calls).toContain('disconnectOutput:7');
+    });
+
     it('desconectar envia a tríade de emergência (Sustain Off + All Sound Off + All Notes Off) e fecha as portas', async () => {
       await service.connectOutput(usbBoth);
       n.sent.length = 0;
