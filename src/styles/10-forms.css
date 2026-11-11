@@ -10,6 +10,16 @@ input::placeholder, textarea::placeholder {
   color: var(--nexus-text-muted);
 }
 
+/* Mantém a lista nativa de opções alinhada ao tema ativo. */
+.nexus-themed-select {
+  color-scheme: inherit;
+}
+
+.nexus-themed-select option {
+  color: var(--nexus-text);
+  background-color: var(--nexus-panel);
+}
+
 input[type="range"] {
   accent-color: var(--nexus-primary);
 }
