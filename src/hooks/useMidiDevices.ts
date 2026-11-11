@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { tr } from '../i18n';
 import { midiManager } from '../services/midiService';
+import type { DisconnectReason } from '../services/midiService';
 import type { MidiDestination } from '../types/midi';
 import type { ToastType } from './useToast';
 
@@ -34,13 +35,15 @@ export function useMidiDevices(notify: Notify) {
     // - 'reconnecting': NÃO faz refresh (evita spam de notificações a cada tentativa)
     // - 'failed': avisa e faz refresh
     // - 'lost' (ou ausente): avisa e faz refresh
-    const handleDisconnect = (lost: MidiDestination, reason?: 'lost' | 'reconnecting' | 'failed') => {
+    const handleDisconnect = (lost: MidiDestination, reason?: DisconnectReason) => {
       if (!mounted) return;
       if (reason === 'reconnecting') {
         notify(tr('Reconectando a "{name}"...', { name: lost.displayName }), 'info', 2000);
         return;
       }
       void refresh();
+      // A ação manual já exibe seu aviso em toggleConnect; evita duplicidade.
+      if (reason === 'manual') return;
       if (reason === 'failed') {
         notify(tr('Falha ao reconectar a "{name}".', { name: lost.displayName }), 'error', 4000);
       } else {
