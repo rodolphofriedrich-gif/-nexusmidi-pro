@@ -84,4 +84,4 @@ export function RangeRow({ label, value, min, max, step = 1, unit = '', onChange
 }
 
 export const selectClass =
-  'w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-2 py-2 text-xs font-semibold text-[var(--text-main)] outline-none focus:border-indigo-500';
+  'nexus-themed-select w-full cursor-pointer rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] px-2 py-2 text-xs font-semibold text-[var(--text-main)] outline-none focus:border-indigo-500';
