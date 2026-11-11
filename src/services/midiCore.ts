@@ -542,7 +542,7 @@ export class MidiService {
 
     const tasks = targets.map(async (dest) => {
       try {
-        const ok = await this.sendPanicToDevice(dest, channels);
+        const ok = await this.sendQueue.panicToDevice(dest, channels);
         if (ok) okSet.add(dest.id);
       } catch {
         // Erro individual do device: será reportado como failed pela ausência no okSet.
@@ -649,9 +649,8 @@ export class MidiService {
   }
 
   public async allNotesOffForDevice(destination: MidiDestination): Promise<void> {
-    if (destination.id === VIRTUAL_ID) return;
-    await this.sendPanicToDevice(destination, Array.from({ length: 16 }, (_, i) => i + 1));
-  }
+  await this.sendQueue.allNotesOff(destination);
+}
 
   private normalizeSource(sourceId?: string): string | undefined {
     if (!sourceId) return sourceId;
