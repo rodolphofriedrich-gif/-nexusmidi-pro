@@ -42,7 +42,7 @@ function resolveTarget(destination: MidiDestination): string {
  * foi descartada (por saturação ou se o envio nativo falhou).
  *
  * `sendUrgent` bypassa a fila (usado pelo MIDI Panic e por
- * `allNotesOffForDevice`) — precisa furar a FIFO quando há centenas de
+ * `allNotesOff`) — precisa furar a FIFO quando há centenas de
  * clocks/CCs acumulados.
  */
 export class MidiSendQueue {
@@ -148,6 +148,51 @@ export class MidiSendQueue {
       }
       return false;
     }
+  }
+
+  /**
+   * Envia a tríade de emergência (CC64=0, CC120=0, CC123=0) nos canais
+   * informados. Usado por `MidiService.sendPanic` (canais customizáveis) e
+   * por `allNotesOff` (todos os 16 canais).
+   *
+   * Bypass da fila FIFO via `sendUrgent` — o panic precisa chegar ANTES de
+   * clocks/CCs acumulados. Aborta cedo após `MAX_SEND_FAILURES` falhas
+   * consecutivas: se o device está claramente morto, não adianta insistir
+   * nas outras 45 mensagens.
+   *
+   * Extraído do `MidiService` na Fase 4 — antes vivia no core, mas é 100%
+   * envio e usa `sendFailures`/`sendUrgent` que já pertencem a este módulo.
+   */
+  public async panicToDevice(
+    destination: MidiDestination,
+    channels: readonly number[] = Array.from({ length: 16 }, (_, i) => i + 1),
+  ): Promise<boolean> {
+    if (destination.id === VIRTUAL_ID) return true;
+    let allOk = true;
+    let consecutiveFails = 0;
+    for (const channel of channels) {
+      const status = channelStatus(0xb0, channel);
+      for (const [cc, value] of [[64, 0], [120, 0], [123, 0]] as const) {
+        const ok = await this.sendUrgent(destination, [status, cc, value]);
+        if (ok) {
+          consecutiveFails = 0;
+        } else {
+          allOk = false;
+          consecutiveFails++;
+          if (consecutiveFails >= MAX_SEND_FAILURES) return false;
+        }
+      }
+    }
+    return allOk;
+  }
+
+  /**
+   * Envia a tríade de emergência em todos os 16 canais. Usado por
+   * `disconnectOutput` (antes de fechar a porta) e por
+   * `MidiService.allNotesOffForDevice`.
+   */
+  public async allNotesOff(destination: MidiDestination): Promise<void> {
+    await this.panicToDevice(destination);
   }
 
   /**
