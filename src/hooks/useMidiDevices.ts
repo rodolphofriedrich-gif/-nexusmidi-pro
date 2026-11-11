@@ -26,9 +26,14 @@ export function useMidiDevices(notify: Notify) {
 
   useEffect(() => {
     let mounted = true;
+    // Evita repetir o mesmo aviso durante as tentativas automáticas de BLE.
+    const reconnectingNotified = new Set<string>();
 
     const handleRefresh = () => {
-      if (mounted) void refresh();
+      if (mounted) {
+        reconnectingNotified.clear();
+        void refresh();
+      }
     };
 
     // Trata o `reason` corretamente:
@@ -38,13 +43,20 @@ export function useMidiDevices(notify: Notify) {
     const handleDisconnect = (lost: MidiDestination, reason?: DisconnectReason) => {
       if (!mounted) return;
       if (reason === 'reconnecting') {
-        notify(tr('Reconectando a "{name}"...', { name: lost.displayName }), 'info', 2000);
+        if (!reconnectingNotified.has(lost.id)) {
+          reconnectingNotified.add(lost.id);
+          notify(tr('Reconectando a "{name}"...', { name: lost.displayName }), 'info', 2000);
+        }
         return;
       }
       void refresh();
       // A ação manual já exibe seu aviso em toggleConnect; evita duplicidade.
-      if (reason === 'manual') return;
+      if (reason === 'manual') {
+        reconnectingNotified.delete(lost.id);
+        return;
+      }
       if (reason === 'failed') {
+        reconnectingNotified.delete(lost.id);
         notify(tr('Falha ao reconectar a "{name}".', { name: lost.displayName }), 'error', 4000);
       } else {
         notify(tr('Destino "{name}" desconectado.', { name: lost.displayName }), 'warn', 4000);
