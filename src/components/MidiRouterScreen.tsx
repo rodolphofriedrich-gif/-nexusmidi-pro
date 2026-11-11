@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ArrowRightLeft, ChevronDown, Download, Upload, Trash2 } from 'lucide-react';
 import { tr } from '../i18n';
 import { midiManager } from '../services/midiService';
+import { VIRTUAL_ID } from '../services/midi/midiConstants';
 import type { MidiDestination, MidiRoute } from '../types/midi';
 
 interface Props {
@@ -33,7 +34,7 @@ export function MidiRouterScreen({ destinations, connectedDestinations, isRefres
 
   const availableInputs: Array<{ id: string; name: string }> = [
     { id: ALL_INPUTS, name: tr('Todas as entradas') },
-    { id: 'virtual', name: tr('Teclado Virtual') },
+    { id: VIRTUAL_ID, name: tr('Teclado Virtual') },
     ...destinations
       .filter((d) => d.type !== 'virtual')
       .map((d) => ({ id: d.id, name: `${d.displayName} (${d.type.toUpperCase()})` })),
