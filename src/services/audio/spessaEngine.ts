@@ -108,10 +108,19 @@ export async function createWebAudioBackend(): Promise<SynthBackend> {
     window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   // Sem sampleRate fixo: usa a taxa nativa do aparelho, evitando reamostragem (mais latência/CPU).
   const ctx = new Ctor({ latencyHint: 'interactive' });
-  // Não aguardamos: sem gesto do usuário o resume() só resolve depois do primeiro toque.
-  if (ctx.state === 'suspended') void ctx.resume().catch(() => undefined);
-
+  // Carrega o worklet com o contexto ainda suspenso. No Chromium, retomar o
+  // AudioContext antes de addModule() pode fazer o currentTime inicial do
+  // AudioWorklet ficar defasado permanentemente (SpessaSynth issue #39).
   await ctx.audioWorklet.addModule(workletUrl);
+
+  // Workaround documentado pelo mantenedor: dar tempo ao Chromium para
+  // estabilizar o relógio do AudioWorklet antes de criar o sintetizador.
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 20));
+
+  // Retoma somente depois de o módulo estar carregado e o intervalo de
+  // estabilização ter passado. Se o navegador exigir gesto do usuário,
+  // o resume() chamado no primeiro noteOn continuará tentando novamente.
+  if (ctx.state === 'suspended') void ctx.resume().catch(() => undefined);
 
   const synth = new WorkletSynthesizer(ctx) as unknown as SpessaSynthLike;
   if (synth.isReady) await synth.isReady;
