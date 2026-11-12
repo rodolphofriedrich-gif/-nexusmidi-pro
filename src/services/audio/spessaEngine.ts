@@ -2,6 +2,7 @@ import { WorkletSynthesizer } from 'spessasynth_lib';
 import workletUrl from 'spessasynth_lib/dist/spessasynth_processor.min.js?url';
 import type { SynthBackend, SynthEngine } from '../synthTypes';
 import { FxChain } from './fxChain';
+import { recordAudioDiagnostic, startAudioDiagnostic } from './audioDiagnostics';
 
 /**
  * Superfície do WorkletSynthesizer que o app usa. Declarada aqui para que mudanças de tipagem
@@ -107,25 +108,42 @@ export async function createWebAudioBackend(): Promise<SynthBackend> {
   const Ctor: typeof AudioContext =
     window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   // Sem sampleRate fixo: usa a taxa nativa do aparelho, evitando reamostragem (mais latência/CPU).
+  const finishContext = startAudioDiagnostic('audioContext.create');
   const ctx = new Ctor({ latencyHint: 'interactive' });
+  finishContext();
+  recordAudioDiagnostic('audioContext.created', {
+    state: ctx.state,
+    sampleRate: ctx.sampleRate,
+    baseLatency: ctx.baseLatency ?? null,
+    outputLatency: 'outputLatency' in ctx ? (ctx as AudioContext & { outputLatency?: number }).outputLatency ?? null : null,
+  });
+  ctx.addEventListener('statechange', () => recordAudioDiagnostic('audioContext.statechange', { state: ctx.state }));
   // Carrega o worklet com o contexto ainda suspenso. No Chromium, retomar o
   // AudioContext antes de addModule() pode fazer o currentTime inicial do
   // AudioWorklet ficar defasado permanentemente (SpessaSynth issue #39).
+  const finishWorkletModule = startAudioDiagnostic('audioWorklet.addModule');
   await ctx.audioWorklet.addModule(workletUrl);
+  finishWorkletModule();
 
   // Workaround documentado pelo mantenedor: dar tempo ao Chromium para
   // estabilizar o relógio do AudioWorklet antes de criar o sintetizador.
   await new Promise<void>((resolve) => window.setTimeout(resolve, 20));
+  recordAudioDiagnostic('audioWorklet.stabilized', { state: ctx.state, currentTime: ctx.currentTime });
 
   // Retoma somente depois de o módulo estar carregado e o intervalo de
   // estabilização ter passado. Se o navegador exigir gesto do usuário,
   // o resume() chamado no primeiro noteOn continuará tentando novamente.
   if (ctx.state === 'suspended') void ctx.resume().catch(() => undefined);
 
+  const finishSynth = startAudioDiagnostic('spessaSynth.initialize');
   const synth = new WorkletSynthesizer(ctx) as unknown as SpessaSynthLike;
   if (synth.isReady) await synth.isReady;
+  finishSynth();
+  recordAudioDiagnostic('spessaSynth.ready', { state: ctx.state, currentTime: ctx.currentTime });
 
+  const finishFx = startAudioDiagnostic('fxChain.create');
   const fx = new FxChain(ctx, ctx.destination);
+  finishFx();
   synth.connect(fx.input);
 
   const engine = new SpessaEngine(synth);
@@ -136,6 +154,7 @@ export async function createWebAudioBackend(): Promise<SynthBackend> {
       if (ctx.state !== 'running') await ctx.resume().catch(() => undefined);
     },
     dispose: () => {
+      recordAudioDiagnostic('audioBackend.dispose', { state: ctx.state });
       engine.dispose();
       fx.dispose();
       void ctx.close().catch(() => undefined);
