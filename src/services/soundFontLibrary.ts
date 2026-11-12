@@ -2,6 +2,7 @@ import { createStore, type Store } from '../lib/storeCore';
 import { parseSf2Presets, summarizePresets, type Sf2Preset } from '../lib/sf2';
 import { storageService, type SoundFontMeta, type SoundFontStorage } from './storageService';
 import { synthService } from './synthService';
+import { recordAudioDiagnostic, startAudioDiagnostic } from './audio/audioDiagnostics';
 
 export interface LibrarySnapshot {
   items: SoundFontMeta[];
@@ -75,18 +76,24 @@ export class SoundFontLibrary {
   }
 
   private async doRestore(): Promise<boolean> {
+    const finishRestore = startAudioDiagnostic('soundFont.restore');
     try {
       const items = await this.storage.list();
+      recordAudioDiagnostic('soundFont.restore.libraryListed', { count: items.length });
       this.update({ items });
-      if (items.length === 0) return false;
+      if (items.length === 0) { finishRestore(); return false; }
 
       const saved = this.prefs.get();
       const wanted = saved.activeIds ?? (saved.activeId ? [saved.activeId] : null);
       const valid = (wanted ?? [items[0].id]).filter((id) => items.some((i) => i.id === id));
       // Preferência salva apontando para itens que não existem mais → cai para o primeiro.
       const ids = valid.length > 0 || (wanted !== null && wanted.length === 0) ? valid : [items[0].id];
-      return await this.apply(ids);
+      const result = await this.apply(ids);
+      finishRestore();
+      recordAudioDiagnostic('soundFont.restore.complete', { activeCount: this.snapshot.activeIds.length, result });
+      return result;
     } catch (error) {
+      finishRestore();
       this.fail(error, 'Falha ao abrir a biblioteca de SoundFonts.');
       return false;
     }
@@ -99,8 +106,14 @@ export class SoundFontLibrary {
     }
     this.update({ busy: true, error: null });
     try {
+      const finishRead = startAudioDiagnostic('soundFont.import.readFile');
       const data = await file.arrayBuffer();
+      finishRead();
+      recordAudioDiagnostic('soundFont.import.fileRead', { bytes: data.byteLength, fileName: file.name });
+      const finishParse = startAudioDiagnostic('soundFont.import.parsePresets');
       const presets = parseSf2Presets(data);
+      finishParse();
+      recordAudioDiagnostic('soundFont.import.presetsParsed', { presetCount: presets.length });
       const { total, drums } = summarizePresets(presets);
       const meta = await this.storage.add(file.name, data, { presetCount: total, drumKitCount: drums });
       this.update({
@@ -184,7 +197,11 @@ export class SoundFontLibrary {
           data = record.data;
           name = record.meta.name;
         }
-        if (!(await this.synth.addSoundBank(id, data, name ?? id))) {
+        const finishLoad = startAudioDiagnostic('soundFont.engine.addSoundBank');
+        const loaded = await this.synth.addSoundBank(id, data, name ?? id);
+        finishLoad();
+        recordAudioDiagnostic('soundFont.engine.addSoundBank.result', { success: loaded, bytes: data.byteLength });
+        if (!loaded) {
           allOk = false;
           this.update({ error: 'O motor de áudio não conseguiu carregar este arquivo.' });
           continue;
