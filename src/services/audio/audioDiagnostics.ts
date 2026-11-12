@@ -19,7 +19,10 @@ declare global {
 
 const enabled = (): boolean => {
   try {
-    return new URLSearchParams(window.location.search).get('audioDiagnostics') === '1';
+    return (
+      new URLSearchParams(window.location.search).get('audioDiagnostics') === '1' ||
+      window.localStorage.getItem('nexusmidi.audioDiagnostics') === '1'
+    );
   } catch {
     return false;
   }
