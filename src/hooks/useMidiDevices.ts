@@ -36,7 +36,10 @@ export function useMidiDevices(notify: Notify) {
     // - 'lost' (ou ausente): avisa e faz refresh
     const handleDisconnect = (lost: MidiDestination, reason?: DisconnectReason) => {
       if (!mounted) return;
-      if (reason === 'manual') {\n        void refresh();\n        return;\n      }\n      if (reason === 'reconnecting') {
+      if (reason === 'manual') {
+        void refresh();
+        return;
+      }\n      if (reason === 'reconnecting') {
         notify(tr('Reconectando a "{name}"...', { name: lost.displayName }), 'info', 2000);
         return;
       }
