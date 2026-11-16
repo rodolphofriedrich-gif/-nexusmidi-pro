@@ -533,7 +533,8 @@ export function SoundFontScreen({ onStatus }: Props) {
           )}
         </Popup>
       )}
-\n      {selectedPresetForChannel && (
+
+      {selectedPresetForChannel && (
         <Popup title={tr('Aplicar preset ao canal')} onClose={() => setSelectedPresetForChannel(null)} widthClass="max-w-sm">
           <div className="flex flex-col gap-4">
             <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-3">
