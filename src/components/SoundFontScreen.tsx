@@ -139,7 +139,7 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const [popupMode, setPopupMode] = useState<PopupMode>(null);
   const [inlineView, setInlineView] = useState<InlineView>(null);
-  const [selectedPresetForChannel, setSelectedPresetForChannel] = useState<SoundFontPreset | null>(null);
+  const [selectedPresetForChannel, setSelectedPresetForChannel] = useState<SoundFontPreset | null>(null);\n  const [pickerChannel, setPickerChannel] = useState<number | null>(null);
 
   const channelSettingsState = useStore(channelSettingsStore);
   const globalSettings = useStore(synthSettingsStore);
@@ -244,11 +244,11 @@ export function SoundFontScreen({ onStatus }: Props) {
       onStatus(tr('Importe um arquivo SF2 primeiro.'), 'warn');
       return;
     }
-    synthService.programChange(selectedPresetForChannel.programNumber, ch, selectedPresetForChannel.bankNumber);
+    synthService.programChange(preset.programNumber, ch, preset.bankNumber);
     channelsStore.set((s) => ({
       ...s,
-      assignments: { ...s.assignments, [ch]: selectedPresetForChannel.programNumber },
-      banks: { ...s.banks, [ch]: selectedPresetForChannel.bankNumber },
+      assignments: { ...s.assignments, [ch]: preset.programNumber },
+      banks: { ...s.banks, [ch]: preset.bankNumber },
     }));
     onStatus(tr('Preset aplicado ao canal {ch}.', { ch }), 'success');
     setSelectedPresetForChannel(null);
@@ -362,7 +362,7 @@ export function SoundFontScreen({ onStatus }: Props) {
           activeChannel={activeChannel}
           muted={channels.muted ?? {}}
           solo={channels.solo ?? null}
-          onSelect={selectChannel}
+          onSelect={(ch) => { selectChannel(ch); setPickerChannel(ch); }}
           onToggleMute={toggleMute}
           onToggleSolo={toggleSolo}
         />
@@ -507,14 +507,38 @@ export function SoundFontScreen({ onStatus }: Props) {
         </Popup>
       )}
 
-      {selectedPresetForChannel && (
+
+      {pickerChannel !== null && (
+        <Popup title={tr('Escolher instrumento • Canal {ch}', { ch: pickerChannel })} onClose={() => setPickerChannel(null)} widthClass="max-w-2xl">
+          {instruments.length > 0 ? (
+            <div className="flex h-[65dvh] min-h-[280px] flex-col">
+              <SoundFontList
+                activeChannel={pickerChannel}
+                channelAssignments={channels.assignments}
+                onAssignProgram={(preset) => applyPresetToChannel(pickerChannel, preset)}
+                instruments={instruments}
+                channelBanks={channels.banks ?? {}}
+                hasLibrary={hasLibrary}
+                showLibraryName={library.activeIds.length > 1}
+                onOpenLibrary={() => { setPickerChannel(null); setInlineView('library'); }}
+              />
+            </div>
+          ) : (
+            <div className="space-y-3 py-6 text-center">
+              <p className="text-sm text-[var(--text-muted)]">{tr('Não há instrumentos disponíveis. Ative uma biblioteca SoundFont para continuar.')}</p>
+              <button type="button" onClick={() => { setPickerChannel(null); setInlineView('library'); }} className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white">{tr('Abrir biblioteca')}</button>
+            </div>
+          )}
+        </Popup>
+      )}
+\n      {selectedPresetForChannel && (
         <Popup title={tr('Aplicar preset ao canal')} onClose={() => setSelectedPresetForChannel(null)} widthClass="max-w-sm">
           <div className="flex flex-col gap-4">
             <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-app)] p-3">
               <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{tr('Preset selecionado')}</p>
               <p className="mt-1 text-sm font-bold text-[var(--nexus-primary)]">{selectedPresetForChannel.name}</p>
               <p className="text-[11px] text-[var(--text-muted)]">
-                {selectedPresetForChannel.libraryName} • PRG {selectedPresetForChannel.programNumber}
+                {selectedPresetForChannel.libraryName} • PRG {preset.programNumber}
                 {selectedPresetForChannel.isDrum ? ' • Bateria' : ''}
               </p>
             </div>
