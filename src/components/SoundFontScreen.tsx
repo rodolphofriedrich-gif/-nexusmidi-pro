@@ -139,7 +139,8 @@ export function SoundFontScreen({ onStatus }: Props) {
 
   const [popupMode, setPopupMode] = useState<PopupMode>(null);
   const [inlineView, setInlineView] = useState<InlineView>(null);
-  const [selectedPresetForChannel, setSelectedPresetForChannel] = useState<SoundFontPreset | null>(null);\n  const [pickerChannel, setPickerChannel] = useState<number | null>(null);
+  const [selectedPresetForChannel, setSelectedPresetForChannel] = useState<SoundFontPreset | null>(null);
+  const [pickerChannel, setPickerChannel] = useState<number | null>(null);
 
   const channelSettingsState = useStore(channelSettingsStore);
   const globalSettings = useStore(synthSettingsStore);
@@ -238,8 +239,8 @@ export function SoundFontScreen({ onStatus }: Props) {
     setSelectedPresetForChannel(preset);
   };
 
-  const applyPresetToChannel = (ch: number) => {
-    if (!selectedPresetForChannel) return;
+  const applyPresetToChannel = (ch: number, preset: SoundFontPreset | null = selectedPresetForChannel) => {
+    if (!preset) return;
     if (!synth.ready) {
       onStatus(tr('Importe um arquivo SF2 primeiro.'), 'warn');
       return;
@@ -252,6 +253,7 @@ export function SoundFontScreen({ onStatus }: Props) {
     }));
     onStatus(tr('Preset aplicado ao canal {ch}.', { ch }), 'success');
     setSelectedPresetForChannel(null);
+    setPickerChannel(null);
   };
 
   const selectChannel = (ch: number) => prefsStore.set({ channel: ch });
@@ -538,7 +540,7 @@ export function SoundFontScreen({ onStatus }: Props) {
               <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{tr('Preset selecionado')}</p>
               <p className="mt-1 text-sm font-bold text-[var(--nexus-primary)]">{selectedPresetForChannel.name}</p>
               <p className="text-[11px] text-[var(--text-muted)]">
-                {selectedPresetForChannel.libraryName} • PRG {preset.programNumber}
+                {selectedPresetForChannel.libraryName} • PRG {selectedPresetForChannel.programNumber}
                 {selectedPresetForChannel.isDrum ? ' • Bateria' : ''}
               </p>
             </div>
