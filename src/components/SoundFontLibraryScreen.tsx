@@ -29,11 +29,9 @@ export function SoundFontLibraryScreen({ onStatus }: Props) {
   };
 
   const remove = async (id: string) => {
-    const item = library.items.find((entry) => entry.id === id);
     await soundFontLibrary.remove(id);
     if (!soundFontLibrary.getSnapshot().error) onStatus(tr('SoundFont removido da biblioteca.'), 'info');
     else onStatus(soundFontLibrary.getSnapshot().error ?? tr('Falha ao remover SoundFont.'), 'error');
-    void item;
   };
 
   return (
