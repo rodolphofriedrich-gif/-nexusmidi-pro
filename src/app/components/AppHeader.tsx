@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  GitBranch, Menu, Music2, Activity, AudioWaveform, Usb, Bluetooth,
+  GitBranch, Menu, Music2, Activity, AudioWaveform, Usb, Bluetooth, Library,
   RefreshCw, Plus, Play, Pause, Trash2, ChevronDown, Settings2, LayoutGrid,
   SlidersHorizontal, Lock, Unlock, ShieldAlert,
 } from 'lucide-react';
@@ -9,7 +9,7 @@ import { tr } from '../../i18n';
 type AppTab = 'play' | 'midi' | 'studio' | 'settings';
 type PlayTab = 'keyboard' | 'pads';
 type MidiTab = 'router' | 'monitor';
-type StudioTab = 'synth' | 'mixer' | 'tools';
+type StudioTab = 'synth' | 'library' | 'mixer' | 'tools';
 type MonitorFilter = 'all' | 'RX' | 'TX';
 
 interface AppHeaderProps {
@@ -167,8 +167,9 @@ export function AppHeader(props: AppHeaderProps) {
           <div className="flex items-center gap-2 lg:flex-1 lg:justify-center">
             <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--nexus-primary)] mr-2 px-1 shrink-0 hidden sm:block">{tr('Estúdio')}</h2>
             <div className="flex items-center gap-1 shrink-0 bg-[var(--bg-app)] p-0.5 rounded-lg border border-[var(--border-color)]">
-              <button type="button" onClick={() => onStudioTabChange('synth')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'synth' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><AudioWaveform size={16} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
-              <button type="button" onClick={() => onStudioTabChange('mixer')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'mixer' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><SlidersHorizontal size={16} /> <span className="hidden sm:inline">{tr('Mixer / CC')}</span></button>
+              <button type="button" onClick={() => onStudioTabChange('synth')} className={`flex items-center gap-2 px-3 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'synth' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><AudioWaveform size={16} /> <span className="hidden sm:inline">{tr('Sintetizador')}</span></button>
+              <button type="button" onClick={() => onStudioTabChange('library')} className={`flex items-center gap-2 px-3 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'library' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><Library size={16} /> <span className="hidden sm:inline">{tr('Biblioteca')}</span></button>
+              <button type="button" onClick={() => onStudioTabChange('mixer')} className={`flex items-center gap-2 px-3 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'mixer' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><SlidersHorizontal size={16} /> <span className="hidden sm:inline">{tr('Mixer / CC')}</span></button>
               <button type="button" onClick={() => onStudioTabChange('tools')} className={`flex items-center gap-2 px-4 h-9 rounded-md text-xs font-bold transition-all ${studioTab === 'tools' ? 'bg-indigo-600 text-white shadow-md' : 'text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]'}`}><Settings2 size={16} /> <span className="hidden sm:inline">{tr('Ferramentas')}</span></button>
             </div>
           </div>

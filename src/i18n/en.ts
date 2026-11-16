@@ -363,5 +363,17 @@ export const en: Record<string, string> = {
   "{count} eventos": "{count} events",
   "{count} notas ativas": "{count} active notes",
   "{label}: {value} • Canal {channel}": "{label}: {value} • Channel {channel}",
-  "Órgão": "Organ"
+  "Órgão": "Organ",
+  "Biblioteca": "Library",
+  "Importando e analisando SoundFont...": "Importing and analyzing SoundFont...",
+  "SoundFont \"{name}\" importado com sucesso.": "SoundFont \"{name}\" imported successfully.",
+  "Falha ao remover SoundFont.": "Failed to remove SoundFont.",
+  "Biblioteca SoundFont": "SoundFont Library",
+  "Gerencie os arquivos e os instrumentos disponíveis nos canais MIDI.": "Manage the files and instruments available to MIDI channels.",
+  "Importar SF2": "Import SF2",
+  "Estado da biblioteca atualizado.": "Library status updated.",
+  "Bibliotecas desligadas continuam armazenadas, mas seus instrumentos não aparecem para seleção. Excluir remove o arquivo salvo no aplicativo.": "Disabled libraries remain stored, but their instruments are hidden from selection. Deleting removes the file saved in the app.",
+  "Escolher instrumento • Canal {ch}": "Choose instrument • Channel {ch}",
+  "Não há instrumentos disponíveis. Ative uma biblioteca SoundFont para continuar.": "No instruments are available. Enable a SoundFont library to continue.",
+  "Abrir biblioteca": "Open library",
 };
