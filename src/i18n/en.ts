@@ -363,7 +363,7 @@ export const en: Record<string, string> = {
   "{count} eventos": "{count} events",
   "{count} notas ativas": "{count} active notes",
   "{label}: {value} • Canal {channel}": "{label}: {value} • Channel {channel}",
-  "Órgão": "Organ"
+  "Órgão": "Organ",
   "Biblioteca": "Library",
   "Importando e analisando SoundFont...": "Importing and analyzing SoundFont...",
   "SoundFont \"{name}\" importado com sucesso.": "SoundFont \"{name}\" imported successfully.",
