@@ -39,7 +39,8 @@ export function useMidiDevices(notify: Notify) {
       if (reason === 'manual') {
         void refresh();
         return;
-      }\n      if (reason === 'reconnecting') {
+      }
+      if (reason === 'reconnecting') {
         notify(tr('Reconectando a "{name}"...', { name: lost.displayName }), 'info', 2000);
         return;
       }
