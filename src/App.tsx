@@ -49,7 +49,7 @@ export default function App() {
   const [padBank, setPadBank] = useState(0);
   const keyboardRef = useRef<MidiKeyboardHandle>(null);
 
-  const [studioTab, setStudioTab] = useState<'synth' | 'mixer' | 'tools'>('synth');
+  const [studioTab, setStudioTab] = useState<'synth' | 'library' | 'mixer' | 'tools'>('synth');
   const [midiTab, setMidiTab] = useState<'router' | 'monitor'>('router');
 
   const [isRouterRefreshing, setIsRouterRefreshing] = useState(false);
